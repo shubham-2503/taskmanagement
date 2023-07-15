@@ -1,0 +1,248 @@
+import 'dart:async';
+import 'package:Taskapp/view/projects/projectDetailsScreen.dart';
+import 'package:flutter/material.dart';
+import 'package:googleapis/cloudsearch/v1.dart';
+
+import '../../common_widgets/round_button.dart';
+import '../../utils/app_colors.dart';
+
+class Task {
+  String name;
+  String status;
+
+  Task({required this.name, required this.status});
+}
+
+class Project {
+  String name;
+  String description;
+  String owner;
+  String status;
+  String? dueDate;
+  List<Task>? tasks;
+
+  Project({
+    required this.name,
+    required this.description,
+    required this.owner,
+    required this.status,
+    this.dueDate,
+    this.tasks,
+  });
+}
+
+class CreatedProjectScreen extends StatefulWidget {
+
+  @override
+  _CreatedProjectScreenState createState() => _CreatedProjectScreenState();
+}
+
+class _CreatedProjectScreenState extends State<CreatedProjectScreen> {
+
+  List<Project> projects = [
+    Project(
+      name: 'Alpha',
+      description: 'Description of Project 1',
+      owner: 'John Doe',
+      status: 'Active',
+      dueDate:"2023.31.7",
+      tasks: [
+        Task(name: 'Task 1', status: 'Completed'),
+        Task(name: 'Task 2', status: 'In Progress'),
+      ],
+    ),
+    Project(
+      name: 'Beta',
+      description: 'Description of Project 2',
+      owner: 'Jane Smith',
+      status: 'In-Active',
+      dueDate:"2023.31.8",
+      tasks: [
+        Task(name: 'Task 1', status: 'Pending'),
+      ],
+    ),
+    Project(
+      name: 'Gamma',
+      description: 'Description of Project 3',
+      owner: 'Mike Johnson',
+      status: 'Active',
+      dueDate:"2023.25.8",
+      tasks: [
+        Task(name: 'Task 1', status: 'Open'),
+        Task(name: 'Task 2', status: 'In Progress'),
+      ],
+    ),
+  ];
+
+
+  @override
+  void initState() {
+    super.initState();
+    // Sort the projects based on status
+    projects.sort((a, b) {
+      return _getStatusOrder(a.status).compareTo(_getStatusOrder(b.status));
+    });
+  }
+
+  int _getStatusOrder(String status) {
+    // Define the order of statuses based on your requirements
+    switch (status) {
+      case 'To-Do':
+        return 1;
+      case 'In Progress':
+        return 2;
+      case 'Pending':
+        return 3;
+      case 'Completed':
+        return 4;
+      default:
+        return 5;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        padding: EdgeInsets.only(top: 30),
+        child: Column(
+          children: [
+            Text(
+              'Created Project',
+              style: TextStyle(
+                  color: AppColors.secondaryColor2,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: projects.length,
+                itemBuilder: (BuildContext context, int index) {
+                  Project project = projects[index];
+                  Color statusColor = Colors.black;
+                  if (project.status == 'Active') {
+                    statusColor = Colors.orange;
+                  } else if (project.status == 'In-Active') {
+                    statusColor = Colors.green;
+                  }
+                  return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+                      padding: EdgeInsets.symmetric(vertical: 8,horizontal: 9),
+                      decoration: BoxDecoration(
+                        color: AppColors.whiteColor,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [
+                            AppColors.primaryColor2.withOpacity(0.3),
+                            AppColors.primaryColor1.withOpacity(0.3)
+                          ]),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    project.name,
+                                    style: TextStyle(
+                                        color: AppColors.secondaryColor2,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        project.owner,
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 5,),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Status: ',
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        project.status,
+                                        style: TextStyle(
+                                            color: statusColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 5,),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Due Date: ',
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                          project.dueDate ?? '',
+                                        style: TextStyle(
+                                            color: AppColors.secondaryColor2,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 10,),
+                                  SizedBox(
+                                    width: 100,
+                                    height: 30,
+                                    child: RoundButton(
+                                        title: "View More",
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ProjectDetailsScreen(
+                                                projectName: project.name,
+                                                assignee: project.owner,
+                                                status: project.status,
+                                                tasks: project.tasks ?? [ ],
+                                                dueDate: project.dueDate,
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                  )
+                                ],
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 15,
+                            ),
+                          ],
+                        ),
+                      ));
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
