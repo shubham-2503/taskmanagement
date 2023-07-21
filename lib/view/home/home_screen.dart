@@ -1,16 +1,22 @@
+import 'dart:convert';
 import 'package:Taskapp/view/activity/activity_screen.dart';
 import 'package:Taskapp/view/projects/projectCreation.dart';
 import 'package:Taskapp/view/projects/projectDashScreen.dart';
 import 'package:Taskapp/view/reports/reports.dart';
 import 'package:Taskapp/view/signup/inviteTeammates.dart';
+import 'package:Taskapp/view/tasks/taskCreation.dart';
 import 'package:Taskapp/view/tasks/taskDetails.dart';
-import 'package:Taskapp/view/tasks/taskcreation.dart';
+import 'package:Taskapp/view/projects/taskcreation.dart';
 import 'package:Taskapp/view/tasks/tasks.dart';
 import 'package:Taskapp/view/teams/createTeams.dart';
 import 'package:Taskapp/utils/app_colors.dart';
+import 'package:Taskapp/view/teams/teamList.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_button.dart';
+import '../../models/task_model.dart';
 import '../notification/notification_screen.dart';
+import 'package:http/http.dart' as http;
 
 class HomeScreen extends StatefulWidget {
   static String routeName = "/HomeScreen";
@@ -276,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(8)
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 4),
-                            child: Center(child: Text("10"),
+                            child: Center(child: Text("5"),
                             ),
                           )],
                       ),
@@ -288,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 20,),
                       Row(
                         children: [
-                          Text("Total Closed Task",style: TextStyle(
+                          Text("Total Completed Task",style: TextStyle(
                             color: AppColors.secondaryColor2,
                             fontSize: 14,
                           ),),
@@ -299,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(8)
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 4),
-                            child: Center(child: Text("0"),
+                            child: Center(child: Text("2"),
                             ),
                           )],
                       ),
@@ -311,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 20,),
                       Row(
                         children: [
-                          Text("Assigned To me",style: TextStyle(
+                          Text("Tasks Assigned To me",style: TextStyle(
                             color: AppColors.secondaryColor2,
                             fontSize: 14,
                           ),),
@@ -322,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(8)
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 4),
-                            child: Center(child: Text("6"),
+                            child: Center(child: Text("9"),
                             ),
                           )],
                       ),
@@ -447,7 +453,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: Icon(Icons.feedback),
-              title: Text('Feedback'),
+              title: Text('My Teams'),
+              onTap: (){
+                Navigator.push(context, MaterialPageRoute(builder: (context)=>TeamsFormedScreen(),));
+              },
             ),
             ListTile(
               leading: Icon(Icons.settings),
@@ -486,7 +495,7 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: Icon(Icons.add),
               title: Text('Create Tasks'),
               onTap: (){
-                Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskCreationScreen(),));
+                Navigator.push(context, MaterialPageRoute(builder: (context)=>MisTaskCreationScreen(),));
               },
             ),
             ListTile(

@@ -21,7 +21,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int selectTab = 0;
   PersistentBottomSheetController? _bottomSheetController;
-  int notificationCount = 0;
+  // int notificationCount = 0;
 
   final List<Widget> _widgetOptions = <Widget>[
     const HomeScreen(),
@@ -34,24 +34,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     // Initialize Firebase messaging and handle incoming messages
-    FirebaseMessaging.instance.getInitialMessage().then((message) {
-      // Handle initial message if needed
-    });
-
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // Handle foreground messages
-      handleNotificationReceived();
-    });
-
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      // Handle when the app is opened from a notification
-    });
-  }
-
-  void handleNotificationReceived() {
-    setState(() {
-      notificationCount++; // Increase the notification count
-    });
+  //   FirebaseMessaging.instance.getInitialMessage().then((message) {
+  //     // Handle initial message if needed
+  //   });
+  //
+  //   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  //     // Handle foreground messages
+  //     handleNotificationReceived();
+  //   });
+  //
+  //   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+  //     // Handle when the app is opened from a notification
+  //   });
+  // }
+  //
+  // void handleNotificationReceived() {
+  //   setState(() {
+  //     notificationCount++; // Increase the notification count
+  //   });
   }
 
   @override

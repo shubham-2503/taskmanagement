@@ -17,6 +17,41 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  String? email;
+  String? password;
+  String? confirmPassword = '';
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  String? validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your email';
+    }
+
+    // Email regex pattern
+    final emailRegex = RegExp(
+        r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+(\.[a-zA-Z]+)?$');
+
+    if (!emailRegex.hasMatch(value)) {
+      return 'Please enter a valid email';
+    }
+
+    return null;
+  }
+
+  String? validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your password';
+    }
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+    if (password != confirmPassword) {
+      return "Passwords do not match";
+    }
+    return null;
+  }
+
   bool isCheck = false;
   final GoogleSignIn googleSignIn = GoogleSignIn();
   Future<void> signUpWithGoogle() async {
@@ -26,7 +61,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (googleUser != null) {
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
         print("successfully account created");
-        Navigator.push(context, MaterialPageRoute(builder: (context)=>CompleteProfileScreen(),));
+        // Navigator.push(context, MaterialPageRoute(builder: (context)=>CompleteProfileScreen(),));
 
         // final String accessToken = googleAuth.accessToken;
         // final String idToken = googleAuth.idToken;
@@ -101,9 +136,17 @@ class _SignupScreenState extends State<SignupScreen> {
                   height: 30,
                 ),
                 RoundTextField(
-                    hintText: "Email",
-                    icon: "assets/icons/message_icon.png",
-                    textInputType: TextInputType.emailAddress),
+                  hintText: "Email",
+                  icon: "assets/icons/message_icon.png",
+                  textInputType: TextInputType.emailAddress,
+                  onChanged: (value) {
+                    setState(() {
+                      email = value;
+                    });
+                  },
+                  validator: validateEmail,
+                  textEditingController: _emailController,
+                ),
                 SizedBox(
                   height: 15,
                 ),
@@ -112,6 +155,13 @@ class _SignupScreenState extends State<SignupScreen> {
                   icon: "assets/icons/lock_icon.png",
                   textInputType: TextInputType.text,
                   isObscureText: true,
+                  validator: validatePassword,
+                  onChanged: (value){
+                    setState(() {
+                      password = value;
+                    });
+                  },
+                  textEditingController: _passwordController,
                   rightIcon: TextButton(
                       onPressed: () {},
                       child: Container(
@@ -134,6 +184,12 @@ class _SignupScreenState extends State<SignupScreen> {
                   icon: "assets/icons/lock_icon.png",
                   textInputType: TextInputType.text,
                   isObscureText: true,
+                  onChanged: (value) {
+                    setState(() {
+                      confirmPassword = value;
+                    });
+                  },
+                  validator: validatePassword,
                   rightIcon: TextButton(
                       onPressed: () {},
                       child: Container(
@@ -184,7 +240,37 @@ class _SignupScreenState extends State<SignupScreen> {
                 RoundGradientButton(
                   title: "Register",
                   onPressed: () {
-                    Navigator.pushNamed(context, CompleteProfileScreen.routeName);
+                    if (email != null &&
+                        password != null &&
+                        confirmPassword != null &&
+                        password == confirmPassword) {
+
+                      print("Email: $email");
+                      print("Password: $password");
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CompleteProfileScreen(email: _emailController.text, password: _passwordController.text),
+                        ),
+                      );
+
+                    } else {
+                      // Show an error message to the user
+                      String errorMessage = "Please fill in all the required fields";
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text("Error"),
+                          content: Text(errorMessage),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text("OK"),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                   },
                 ),
                 Row(

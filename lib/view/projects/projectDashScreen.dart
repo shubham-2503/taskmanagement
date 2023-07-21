@@ -1,11 +1,10 @@
 import 'package:Taskapp/common_widgets/round_button.dart';
-import 'package:Taskapp/view/projects/my_team_projects.dart';
+import 'package:Taskapp/view/projects/myTeamProjects/my_team_projects.dart';
 import 'package:Taskapp/view/projects/projectCreation.dart';
-import 'package:Taskapp/view/projects/project_assigned.dart';
+import 'package:Taskapp/view/projects/myProjects/project_assigned.dart';
 import 'package:flutter/material.dart';
-
 import '../../utils/app_colors.dart';
-import 'createdProject.dart';
+
 class Project {
   final String name;
   final String category;
@@ -20,26 +19,29 @@ class ProjectDashScreen extends StatefulWidget {
 }
 
 class _ProjectDashScreenState extends State<ProjectDashScreen> {
-  String selectedOption = 'createdProjects';
+  String selectedOption = 'myTeamProjects';
 
   Widget getCategoryWidget() {
     switch (selectedOption) {
-      case 'createdProjects':
-        return CreatedProjectScreen();
       case 'myTeamProjects':
         return MyTeamProjectScreen();
       case 'assignedProjects':
         return AssignedToMe();
       default:
-        return CreatedProjectScreen();
+        return MyTeamProjectScreen();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: AppColors.primaryColor2,
+        ),
+      ),
       body: Padding(
-        padding: const EdgeInsets.only(top: 90.0),
+        padding: const EdgeInsets.only(top: 50.0),
         child: Column(
           children: [
             SingleChildScrollView(
@@ -47,20 +49,9 @@ class _ProjectDashScreenState extends State<ProjectDashScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(onPressed: (){
-                    Navigator.pop(context);
-                  }, icon: Icon(Icons.arrow_back_ios,color: AppColors.secondaryColor2,)),
-                  SizedBox(
-                    height: 50,
-                    width: 100,
-                    child: RoundButton(
-                        title: "Created\nProjects",
-                      onPressed: () {
-                        setState(() {
-                          selectedOption = 'createdProjects';
-                        });
-                      },),
-                  ),
+                  // IconButton(onPressed: (){
+                  //   Navigator.pop(context);
+                  // }, icon: Icon(Icons.arrow_back_ios,color: AppColors.secondaryColor2,)),
                   SizedBox(width: 10),
                   SizedBox(
                     height: 50,
@@ -73,7 +64,7 @@ class _ProjectDashScreenState extends State<ProjectDashScreen> {
                         });
                       },),
                   ),
-                  SizedBox(width: 10),
+                  SizedBox(width: 30),
                   SizedBox(
                     height: 50,
                     width: 100,

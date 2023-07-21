@@ -1,8 +1,4 @@
 import 'package:Taskapp/view/activity/activity_screen.dart';
-import 'package:Taskapp/view/drawers/homedrawers.dart';
-import 'package:Taskapp/view/projects/projectDashScreen.dart';
-import 'package:Taskapp/view/reports/reports.dart';
-import 'package:Taskapp/view/tasks/tasks.dart';
 import 'package:dotted_dashed_line/dotted_dashed_line.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/activity_tracker/activity_tracker_screen.dart';
@@ -158,7 +154,6 @@ class _MySpacesState extends State<MySpaces> {
 
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
-      drawer: DrawerWidget(),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(

@@ -52,6 +52,7 @@ dependencies:
   http: ^1.1.0
   flutter_secure_storage: ^8.0.0
   google_sign_in: ^6.1.4
+  flutter_timer_countdown: ^1.0.5
 #  flutter_native_splash: ^2.3.1
   readmore: ^2.1.0
   search_choices: ^2.2.5
@@ -60,6 +61,8 @@ dependencies:
   flutter_tagging: ^3.0.0
   package_info_plus: ^4.0.2
   firebase_auth: ^4.7.0
+  truecaller_sdk: ^0.1.2
+  open_mail_app: ^0.4.5
 #  calendar_agenda:
 #    path: dev_lib/calendar_agenda/
   pdf: ^3.10.4
@@ -69,6 +72,8 @@ dependencies:
   firebase_messaging: ^14.6.5
   flutter_local_notifications: ^15.1.0+1
   firebase_core: ^2.15.0
+  uuid: ^3.0.7
+  collection: ^1.17.1
 
 
 dev_dependencies:

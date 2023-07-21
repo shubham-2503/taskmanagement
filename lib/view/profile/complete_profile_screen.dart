@@ -1,12 +1,20 @@
+import 'dart:convert';
+
 import 'package:Taskapp/utils/app_colors.dart';
+import 'package:Taskapp/view/profile/company_registration.dart';
 import 'package:Taskapp/view/welcome/welcome_screen.dart';
 import 'package:flutter/material.dart';
-
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_gradient_button.dart';
 import '../../common_widgets/round_textfield.dart';
 
 class CompleteProfileScreen extends StatefulWidget {
-  static String routeName = "/CompleteProfileScreen";
+  final String email;
+  final String password;
+
+  const CompleteProfileScreen({required this.email, required this.password});
+
 
   @override
   State<CompleteProfileScreen> createState() => _CompleteProfileScreenState();
@@ -16,6 +24,62 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   static const int UserTypeIndividual = 0;
   static const int UserTypeAdmin = 1;
   int _selectedUserType = UserTypeIndividual;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  TextEditingController _phoneController = TextEditingController();
+
+  Future<void> _registerUser() async {
+    // Prepare the request body
+    final Map<String, dynamic> requestBody = {
+      'name': _nameController.text,
+      'mobile': _phoneController.text,
+      'email': widget.email,
+      'password': widget.password,
+      'user_type': _selectedUserType == UserTypeIndividual
+          ? '42e09976-029a-4fee-98f7-1a7417b7ef5f'
+          : '945f7900-9f6e-4105-9a6e-672a2d74791a',
+    };
+
+    // Send the API request
+    final Uri url =
+    Uri.parse('http://43.205.97.189:8000/api/User/registration');
+    final response = await http.post(
+      url,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(requestBody),
+    );
+
+    print("API Response: ${response.body}");
+    print("StatusCode: ${response.statusCode}");
+
+    // Handle the response
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+
+      // Store the response locally using shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userData', jsonEncode(responseData));
+
+      if (_selectedUserType == UserTypeIndividual) {
+        Navigator.pushNamed(context, WelcomeScreen.routeName);
+      } else if (_selectedUserType == UserTypeAdmin) {
+        // Pass the necessary data to the next screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CompanyRegistrationScreen(),
+          ),
+        );
+      }
+    } else {
+      // Registration failed
+      final responseData = jsonDecode(response.body);
+      // Handle the error and display an error message to the user
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,58 +155,29 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                   ],
                 ),
                 SizedBox(height: 40),
-                if (_selectedUserType == UserTypeIndividual)
                   Column(
                     children: [
+                      RoundTextField(
+                        hintText: "Name",
+                        icon: "assets/icons/name.png",
+                        textInputType: TextInputType.text,
+                        textEditingController: _nameController,
+                      ),
+                      SizedBox(height: 15),
                       RoundTextField(
                         hintText: "Email",
                         icon: "assets/icons/message_icon.png",
                         textInputType: TextInputType.emailAddress,
+                        textEditingController: _emailController,
                       ),
                       SizedBox(height: 15),
                       RoundTextField(
                         hintText: "Phone Number",
                         icon: "assets/icons/pho.png",
                         textInputType: TextInputType.phone,
+                        textEditingController: _phoneController,
                       ),
                     ],
-                  ),
-
-                if (_selectedUserType ==UserTypeAdmin)
-                  SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        RoundTextField(
-                          hintText: "Company Name",
-                          icon: "assets/icons/name.png",
-                          textInputType: TextInputType.text,
-                        ),
-                        SizedBox(height: 15),
-                        RoundTextField(
-                          hintText: "GST Number",
-                          icon: "assets/icons/gst.jpeg",
-                          textInputType: TextInputType.text,
-                        ),
-                        SizedBox(height: 15),
-                        RoundTextField(
-                          hintText: "Employees Count",
-                          icon: "assets/icons/count.png",
-                          textInputType: TextInputType.number,
-                        ),
-                        SizedBox(height: 15),
-                        RoundTextField(
-                          hintText: "Company Address",
-                          icon: "assets/icons/add.png",
-                          textInputType: TextInputType.text,
-                        ),
-                        SizedBox(height: 15),
-                        RoundTextField(
-                          hintText: "Phone Number",
-                          icon: "assets/icons/pho.png",
-                          textInputType: TextInputType.phone,
-                        ),
-                      ],
-                    ),
                   ),
                 SizedBox(height: 40,),
                 Row(
@@ -163,9 +198,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                       width: 140,
                       child: RoundGradientButton(
                         title: "Next >",
-                        onPressed: () {
-                          Navigator.pushNamed(context, WelcomeScreen.routeName);
-                        },
+                        onPressed: _registerUser,
                       ),
                     ),
                   ],

@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../common_widgets/round_textfield.dart';
 import '../../utils/app_colors.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 
 
 enum Activity{
@@ -11,13 +14,13 @@ enum Activity{
 }
 
 class TaskDetailsScreen extends StatefulWidget {
-  final String projectName;
+  final String? projectName;
   final String taskTitle;
   final String assignee;
   final String? status;
 
   TaskDetailsScreen({
-    required this.projectName,
+    this.projectName,
     required this.taskTitle,
     required this.assignee,
     this.status,
@@ -33,11 +36,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   TextEditingController _commentController = TextEditingController();
   String? _selectedStatus;
 
-  final List<String> activityLog = [
-    'Aman changes the Status',
-    'Aman updates summary',
-    'Aman created the task',
-  ];
+  List<String> historyLog = [];
 
   List<String> comments = [
     'Looking forward to the next update.',
@@ -85,7 +84,41 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   void initState() {
     super.initState();
     _selectedStatus = widget.status;
+    _fetchHistoryLog();
   }
+
+  Future<void> _fetchHistoryLog() async {
+    try {
+      // Replace 'YOUR_HISTORY_LOG_API_ENDPOINT' with the actual API endpoint URL
+      final apiUrl = 'http://43.205.97.189:8000/api/History/history';
+      // final taskId = widget.taskId; // Assuming you have a widget property containing the task ID
+      final response = await http.post(Uri.parse(apiUrl),
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            // 'taskId': taskId,
+          }));
+
+      if (response.statusCode == 200) {
+        // If the API call is successful, parse the response JSON
+        final data = jsonDecode(response.body);
+        // Assuming the API response contains a list of history log strings
+        List<String> historyData = List<String>.from(data['result']);
+        setState(() {
+          historyLog = historyData;
+        });
+      } else {
+        // Handle API call failure
+        // You may want to display an error message or retry the request
+      }
+    } catch (e) {
+      // Handle exceptions
+      // You may want to display an error message or retry the request
+    }
+  }
+
 
   Widget _buildReportTypeText() {
     switch (_selectedActivityType) {
@@ -106,12 +139,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                 SizedBox(height: 2,),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: activityLog.length,
+                    itemCount: historyLog.length,
                     itemBuilder: (context, index) {
                       return ListTile(
                         leading: CircleAvatar(
                           child: Text(
-                            activityLog[index][0],
+                            historyLog[index][0],
                             style: TextStyle(
                               color: Colors.white,
                             ),
@@ -119,7 +152,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           backgroundColor: AppColors.primaryColor1,
                         ),
                         title: Text(
-                          activityLog[index],
+                          historyLog[index],
                           style: TextStyle(
                             color: AppColors.secondaryColor2,
                           ),
@@ -287,7 +320,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                 Image.asset("assets/images/magic.png", width: 30,),
                 SizedBox(width: 5,),
                 Text(
-                  projectName,
+                  taskTitle,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,

@@ -1,4 +1,3 @@
-import 'package:Taskapp/view/on_boarding/on_boarding_screen.dart';
 import 'package:Taskapp/view/signup/signup_screen.dart';
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
@@ -14,19 +13,19 @@ class StartScreen extends StatefulWidget {
 }
 
 class _StartScreenState extends State<StartScreen> {
-  NotificationServices notificationServices = NotificationServices();
+  // NotificationServices notificationServices = NotificationServices();
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    notificationServices.requestNotification();
-    notificationServices.firebaseinit(context);
-    notificationServices.isTokenRefresh();
-    notificationServices.getDeviceToken().then((value) {
-      print("Device token: ");
-      print(value);
-    });
+    // notificationServices.requestNotification();
+    // notificationServices.firebaseinit(context);
+    // notificationServices.isTokenRefresh();
+    // notificationServices.getDeviceToken().then((value) {
+    //   print("Device token: ");
+    //   print(value);
+    // });
   }
   @override
   Widget build(BuildContext context) {

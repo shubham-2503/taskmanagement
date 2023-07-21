@@ -1,13 +1,18 @@
+import 'dart:convert';
+import 'package:Taskapp/view/login/forgetpassword/forgetpassword_mailScreen.dart';
+import 'package:Taskapp/view/login/phoneNumber.dart';
+import 'package:Taskapp/view/login/true_caller_auth_services.dart';
+import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../common_widgets/round_gradient_button.dart';
+import '../../common_widgets/round_textfield.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:Taskapp/view/login/otpScreen.dart';
 import 'package:Taskapp/view/signup/signup_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:googleapis/classroom/v1.dart';
-import '../../common_widgets/round_gradient_button.dart';
-import '../../common_widgets/round_textfield.dart';
-import '../profile/complete_profile_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   static String routeName = "/LoginScreen";
@@ -18,23 +23,150 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final GoogleSignIn googleSignIn = GoogleSignIn();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  TruecallerAuthServices truecallerAuthServices = TruecallerAuthServices();
+
+  String? validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your email';
+    }
+
+    // Email regex pattern
+    final emailRegex = RegExp(
+        r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+(\.[a-zA-Z]+)?$');
+
+    if (!emailRegex.hasMatch(value)) {
+      return 'Please enter a valid email';
+    }
+
+    return null;
+  }
+
+  String? validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your password';
+    }
+
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+
+    return null;
+  }
+
+  void login(String email, password) async {
+    try {
+      final Uri loginUri = Uri.parse('http://43.205.97.189:8000/api/UserAuth/login');
+      final Uri requestUri = loginUri.replace(queryParameters: {
+        'email': email,
+        'password': password,
+      });
+
+      Response response = await post(requestUri, headers: {'accept': '*/*'});
+
+      print("Email: $email");
+      print("Password: $password");
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+        if (data['status']) {
+          var userId = data['data']['user_id'];
+          var jwtToken = data['data']['jwttOken'];
+          print('User ID: $userId');
+          print('JWT Token: $jwtToken');
+          print('Login successful');
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('userId', userId);
+          if (jwtToken != null) {
+            await prefs.setString('jwtToken', jwtToken);
+          }
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OTPVerificationScreen(userId: userId),
+            ),
+          );
+        } else {
+          print('Login failed');
+        }
+      } else {
+        print('Request failed');
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
+
+  void loginWithTruecaller(String contact) async {
+    try {
+      Response response = await post(
+        Uri.parse('http://43.205.97.189:8000/api/UserAuth/otpLessLogin'),
+        body: {'contact': contact},
+      );
+
+      print("Contact: $contact");
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body.toString());
+        print(data['token']);
+        print('Login successfully');
+
+        // Perform actions after successful login with Truecaller
+      } else {
+        print('Login failed');
+      }
+    } catch (e) {
+      print(e.toString());
+    }
+  }
 
   Future<void> signInWithGoogle() async {
     try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
       if (googleUser != null) {
         print("Successfully logged in");
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-        Navigator.push(context, MaterialPageRoute(builder: (context)=> DashboardScreen(),));
 
+        // Prepare the API request
+        final String email = googleUser.email ?? ''; // Get the user's email
+        final String url = 'http://43.205.97.189:8000/api/UserAuth/googleSignIn?email=$email';
+
+        // Send the API request
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {'accept': '*/*'},
+        );
+
+        print("StatusCode: ${response.body}");
+
+        // Handle the API response
+        if (response.statusCode == 200) {
+          final responseData = jsonDecode(response.body);
+          final String jwtToken = responseData['data']['jwttOken'];
+
+          // Handle the JWT token or perform any necessary actions
+          print('JWT Token: $jwtToken');
+
+          // Navigate to the DashboardScreen
+          Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
+        } else {
+          // Handle API error or sign-in failure
+          print('API Error: ${response.body}');
+        }
       } else {
         // Handle sign-in failure
         print("Error");
       }
     } catch (error) {
       // Handle sign-in error
+      print('Sign-in Error: $error');
     }
   }
 
@@ -42,23 +174,19 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     var media = MediaQuery.of(context).size;
     return Scaffold(
-      backgroundColor: AppColors.whiteColor,
-      body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/bagroud.png"), // Replace with your background image
-            fit: BoxFit.cover,
+      body: Padding(
+        padding: const EdgeInsets.only(top: 70),
+        child: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/images/bagroud.png"), // Replace with your background image
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
-        padding: const EdgeInsets.all(30),
-        margin: const EdgeInsets.only(top: 10,),
-        child: Padding(
-          padding: EdgeInsets.only(top: 200,left: 10,right: 10),
+          padding: const EdgeInsets.all(30),
           child: Column(
             children: [
-              SizedBox(
-                width: media.width,
-                child: Column(
+              Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(
@@ -86,66 +214,94 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-              ),
+
               SizedBox(height: media.width*0.05),
-              const RoundTextField(
-                  hintText: "Email",
-                  icon: "assets/icons/message_icon.png",
-                  textInputType: TextInputType.emailAddress),
-              SizedBox(height: media.width*0.05),
-              RoundTextField(
-                hintText: "Password",
-                icon: "assets/icons/lock_icon.png",
-                textInputType: TextInputType.text,
-                isObscureText: true,
-                rightIcon: TextButton(
-                    onPressed: () {},
-                    child: Container(
-                        alignment: Alignment.center,
-                        width: 20,
-                        height: 20,
-                        child: Image.asset(
-                          "assets/icons/hide_pwd_icon.png",
-                          width: 20,
-                          height: 20,
-                          fit: BoxFit.contain,
-                          color: AppColors.grayColor,
-                        ))),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      RoundTextField(
+                        hintText: "Email",
+                        icon: "assets/icons/message_icon.png",
+                        textInputType: TextInputType.emailAddress,
+                        validator: validateEmail,
+                        textEditingController: _emailController,
+                      ),
+                      SizedBox(height: media.width*0.05),
+                      RoundTextField(
+                        hintText: "Password",
+                        icon: "assets/icons/lock_icon.png",
+                        textInputType: TextInputType.text,
+                        isObscureText: true,
+                        textEditingController: _passwordController,
+                        validator: validatePassword,
+                        rightIcon: TextButton(
+                          onPressed: () {},
+                          child: Container(
+                            alignment: Alignment.center,
+                            width: 20,
+                            height: 20,
+                            child: Image.asset(
+                              "assets/icons/hide_pwd_icon.png",
+                              width: 20,
+                              height: 20,
+                              fit: BoxFit.contain,
+                              color: AppColors.grayColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               SizedBox(height: media.width*0.03),
-              const Text("Forgot your password?",
-                  style: TextStyle(
-                    color: AppColors.grayColor,
-                    fontSize: 10,
-                  )),
+              GestureDetector(
+                onTap: (){
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=>ForgetPasswordMailScreen(),));
+                },
+                child: const Text("Forgot your password?",
+                    style: TextStyle(
+                      color: AppColors.grayColor,
+                      fontSize: 10,
+                    )),
+              ),
               SizedBox(height: 10,),
-              // const Spacer(),
               RoundGradientButton(
                 title: "Login",
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>OTPVerificationScreen(),));
+                  if (_formKey.currentState!.validate()) {
+                    login(
+                      _emailController.text.toString(),
+                      _passwordController.text.toString(),
+                    );
+                  }
                 },
               ),
               const Spacer(),
               Row(
                 children: [
                   Expanded(
-                      child: Container(
-                        width: double.maxFinite,
-                        height: 1,
-                        color: AppColors.grayColor.withOpacity(0.5),
-                      )),
+                    child: Container(
+                      width: double.maxFinite,
+                      height: 1,
+                      color: AppColors.grayColor.withOpacity(0.5),
+                    ),
+                  ),
                   Text("  Or  ",
                       style: TextStyle(
                           color: AppColors.grayColor,
                           fontSize: 12,
                           fontWeight: FontWeight.w400)),
                   Expanded(
-                      child: Container(
-                        width: double.maxFinite,
-                        height: 1,
-                        color: AppColors.grayColor.withOpacity(0.5),
-                      )),
+                    child: Container(
+                      width: double.maxFinite,
+                      height: 1,
+                      color: AppColors.grayColor.withOpacity(0.5),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(
@@ -169,8 +325,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   SizedBox(width: 30,),
                   GestureDetector(
-                    onTap: () {
-
+                    onTap: () async {
+                      String contact = await truecallerAuthServices.startVerification(context);
+                      loginWithTruecaller(contact);
                     },
                     child: Container(
                       width: 50,
@@ -180,7 +337,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: AppColors.primaryColor1.withOpacity(0.5), width: 1, ),
                       ),
-                      child: Image.asset("assets/icons/facebook_icon.png",width: 20,height: 20,),
+                      child: Image.asset("assets/images/true.png",width: 20,height: 20,),
+                    ),
+                  ),
+                  SizedBox(width: 30,),
+                  GestureDetector(
+                    onTap: (){
+                      Navigator.push(context, MaterialPageRoute(builder: (context)=>PhoneNumber(),));
+                    },
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.primaryColor1.withOpacity(0.5), width: 1, ),
+                      ),
+                      child: Image.asset("assets/images/phone.webp",width: 20,height: 20,),
                     ),
                   ),
                 ],
@@ -189,32 +362,39 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 20,
               ),
               TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, SignupScreen.routeName);
-                  },
-                  child: RichText(
-                    textAlign: TextAlign.center,
-                    text: TextSpan(
-                        style: TextStyle(
-                            color: AppColors.blackColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400),
-                        children: [
-                          const TextSpan(
-                            text: "Don’t have an account yet? ",
-                          ),
-                          TextSpan(
-                              text: "Register",
-                              style: TextStyle(
-                                  color: AppColors.secondaryColor1,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500)),
-                        ]),
-                  )),
+                onPressed: () {
+                  Navigator.pushNamed(context, SignupScreen.routeName);
+                },
+                child: RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                      style: TextStyle(
+                          color: AppColors.blackColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400),
+                      children: [
+                        const TextSpan(
+                          text: "Don’t have an account yet? ",
+                        ),
+                        TextSpan(
+                            text: "Register",
+                            style: TextStyle(
+                                color: AppColors.secondaryColor1,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500)),
+                      ]),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    truecallerAuthServices.dispose();
+    super.dispose();
   }
 }

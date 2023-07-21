@@ -43,7 +43,7 @@ class WelcomeScreen extends StatelessWidget {
               RoundGradientButton(
                 title: "Go To Home",
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>ChoosePlan(),));
+                  // Navigator.push(context, MaterialPageRoute(builder: (context)=>ChoosePlan(),));
                 },
               )
             ],

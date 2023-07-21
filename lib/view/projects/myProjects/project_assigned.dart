@@ -1,32 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:Taskapp/view/projects/projectDetailsScreen.dart';
 import 'package:flutter/material.dart';
-
-import '../../common_widgets/round_button.dart';
-import '../../utils/app_colors.dart';
-
-class Task {
-  String name;
-  String status;
-
-  Task({required this.name, required this.status});
-}
-
-class Project {
-  String name;
-  String owner;
-  String status;
-  String? dueDate;
-  List<Task>? tasks;
-
-  Project({
-    required this.name,
-    required this.owner,
-    required this.status,
-    this.dueDate,
-    this.tasks,
-  });
-}
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../common_widgets/round_button.dart';
+import '../../../models/project_model.dart';
+import '../../../models/project_team_model.dart';
+import '../../../models/task_model.dart';
+import '../../../models/user.dart';
+import '../../../utils/app_colors.dart';
+import 'package:intl/intl.dart';
 
 class AssignedToMe extends StatefulWidget {
   @override
@@ -35,33 +19,77 @@ class AssignedToMe extends StatefulWidget {
 
 class _AssignedToMeState extends State<AssignedToMe> {
 
-  List<Project> projects = [
-    Project(
-      name: 'Alpha',
-      owner: 'John Doe',
-      status: 'Active',
-      dueDate: "2023.31.7",
-      tasks: [
-        Task(name: 'Task 1', status: 'Completed'),
-        Task(name: 'Task 2', status: 'In Progress'),
-      ],
-    ),
-    Project(
-      name: 'Beta',
-      owner: 'Jane Smith',
-      status: 'In-Active',
-      dueDate: "2023.31.8",
-      tasks: [
-        Task(name: 'Task 1', status: 'Pending'),
-      ],
-    ),
-  ];
+  List<Project> projects = [];
 
+  Future<void> fetchMyProjects() async {
+    try {
+      final url = 'http://43.205.97.189:8000/api/Project/myProjects';
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+      };
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> responseData = jsonDecode(response.body);
+        final List<Future<Project>> fetchedProjects = responseData.map((projectData) async {
+          // Convert the 'status' field to a string representation
+          String status = projectData['status'] == true ? 'Active' : 'In-Active';
+          String projectId = projectData['project_id'] ?? '';
+
+          // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
+          List<Team> teams = (projectData['teams'] as List<dynamic>).map((teamData) {
+            return Team(
+              teamId: teamData['teamId'] ?? '',
+              teamName: teamData['teamName'] ?? '',
+            );
+          }).toList();
+
+          List<User> users = (projectData['users'] as List<dynamic>).map((userData) {
+            return User.fromJson(userData); // Create User object from JSON data
+          }).toList();
+
+          return Project(
+            id: projectId,
+            name: projectData['projectName'] ?? '',
+            owner: projectData['created_by'] ?? '',
+            status: status,
+            dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
+            // tasks: tasks,
+            teams: teams,
+            users: users,
+          );
+        }).toList();
+
+        final List<Project> projectsWithTasks = await Future.wait(fetchedProjects);
+
+        setState(() {
+          projects = projectsWithTasks;
+        });
+
+        // Store the projectId locally using SharedPreferences
+        final List<String> projectIds = projectsWithTasks.map((project) => project.id).toList();
+        await prefs.setStringList('projectIds', projectIds);
+        print("ProjectID: $projectIds");
+
+      } else {
+        print('Error fetching projects: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching projects: $e');
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     // Sort the projects based on status
+    fetchMyProjects();
     projects.sort((a, b) {
       return _getStatusOrder(a.status).compareTo(_getStatusOrder(b.status));
     });
@@ -145,9 +173,17 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold),
                                     ),
+                                    SizedBox(height: 5,),
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.start,
                                       children: [
+                                        Text(
+                                          'Owner: ',
+                                          style: TextStyle(
+                                              color: AppColors.blackColor,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold),
+                                        ),
                                         Text(
                                           project.owner,
                                           style: TextStyle(
@@ -163,7 +199,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                         Text(
                                           'Status: ',
                                           style: TextStyle(
-                                              color: AppColors.blackColor,
+                                              color: AppColors.secondaryColor2,
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold),
                                         ),
@@ -173,6 +209,29 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                               color: statusColor,
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 5,),
+                                    Wrap(
+                                      crossAxisAlignment: WrapCrossAlignment.center, // Align children at the center
+                                      spacing: 5, // Add some spacing between the elements
+                                      children: [
+                                        Text(
+                                          'Assigned To: ',
+                                          style: TextStyle(
+                                            color: AppColors.secondaryColor2,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          project.users!.map((user) => user.userName).join(', '),
+                                          style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -187,7 +246,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                               fontWeight: FontWeight.bold),
                                         ),
                                         Text(
-                                          project.dueDate ?? '',
+                                          formatDate(project.dueDate) ?? '',
                                           style: TextStyle(
                                               color: AppColors.secondaryColor2,
                                               fontSize: 14,
@@ -197,23 +256,34 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                     ),
                                     SizedBox(height: 10,),
                                     SizedBox(
-                                      width: 100,
-                                      height: 30,
-                                      child: RoundButton(
+                                        width: 100,
+                                        height: 30,
+                                        child: RoundButton(
                                           title: "View More",
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    ProjectDetailsScreen(
+                                          onPressed: () async {
+                                            final SharedPreferences prefs = await SharedPreferences.getInstance();
+                                            final List<String>? projectIds = prefs.getStringList('projectIds');
+                                            if (projectIds != null) {
+                                              // Find the index of the selected project in the list of stored projectIds
+                                              int projectIndex = projectIds.indexOf(project.id);
+                                              if (projectIndex != -1) {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ProjectDetailsScreen(
+                                                      projectId: projectIds[projectIndex], // Use the selected projectId from the list
                                                       projectName: project.name,
-                                                      assignee: project.owner,
-                                                      status: project.status,
+                                                      assigneeTo: project.users!.map((user) => user.userName).join(', '),
+                                                      dueDate: formatDate(project.dueDate) ?? '',
+                                                      createdBy: project.owner,
+                                                      assigneeTeam: project.teams!.map((user) => user.teamName).join(', '),
                                                     ),
-                                              ),
-                                            );
-                                          }),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                        )
                                     )
                                   ],
                                 ),
@@ -233,4 +303,14 @@ class _AssignedToMeState extends State<AssignedToMe> {
       ),
     );
   }
+}
+String? formatDate(String? dateString) {
+  if (dateString == null || dateString.isEmpty) {
+    return null;
+  }
+
+  final dateTime = DateTime.parse(dateString);
+  final formattedDate = DateFormat('yyyy-MM-dd').format(dateTime);
+
+  return formattedDate;
 }

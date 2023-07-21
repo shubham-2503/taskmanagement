@@ -12,6 +12,7 @@ class RoundTextField extends StatelessWidget {
   final Widget? rightIcon;
   final void Function(String)? onChanged;
   final VoidCallback? onTap;
+  final String? Function(String?)? validator; // Add validator property
 
   const RoundTextField({
     Key? key,
@@ -22,23 +23,27 @@ class RoundTextField extends StatelessWidget {
     this.isObscureText = false,
     this.rightIcon,
     this.onChanged,
-    this.onTap, this.isReadOnly = false,
+    this.onTap,
+    this.isReadOnly = false,
+    this.validator, // Initialize validator property
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.lightGrayColor,
         borderRadius: BorderRadius.circular(15),
       ),
-      child: TextField(
-        readOnly: isReadOnly,
+      child: TextFormField( // Replace TextField with TextFormField
         controller: textEditingController,
+        readOnly: isReadOnly,
         keyboardType: textInputType,
         obscureText: isObscureText,
         onChanged: onChanged,
         onTap: onTap,
+        validator: validator, // Assign validator property
         decoration: InputDecoration(
           contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
           enabledBorder: InputBorder.none,
@@ -62,4 +67,5 @@ class RoundTextField extends StatelessWidget {
     );
   }
 }
+
 
