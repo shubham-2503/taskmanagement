@@ -1,22 +1,30 @@
 import 'dart:convert';
+import 'package:Taskapp/models/project_model.dart';
 import 'package:Taskapp/view/activity/activity_screen.dart';
 import 'package:Taskapp/view/projects/projectCreation.dart';
-import 'package:Taskapp/view/projects/projectDashScreen.dart';
 import 'package:Taskapp/view/reports/reports.dart';
 import 'package:Taskapp/view/signup/inviteTeammates.dart';
-import 'package:Taskapp/view/tasks/taskCreation.dart';
+import 'package:Taskapp/view/subscription/chooseplan.dart';
+import 'package:Taskapp/view/subscription/subscriptions.dart';
+import 'package:Taskapp/view/tasks/completedTasks.dart';
+import 'package:Taskapp/view/tasks/openTasks.dart';
 import 'package:Taskapp/view/tasks/taskDetails.dart';
 import 'package:Taskapp/view/projects/taskcreation.dart';
 import 'package:Taskapp/view/tasks/tasks.dart';
-import 'package:Taskapp/view/teams/createTeams.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/teams/teamList.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_button.dart';
+import '../../models/project_team_model.dart';
 import '../../models/task_model.dart';
+import '../../models/user.dart';
 import '../notification/notification_screen.dart';
 import 'package:http/http.dart' as http;
+import '../projects/projectDashScreen.dart';
+import '../tasks/taskCreation.dart';
+import '../teams/createTeams.dart';
+
 
 class HomeScreen extends StatefulWidget {
   static String routeName = "/HomeScreen";
@@ -28,6 +36,148 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int totalCompletedTasks = 0;
+  List<Task> tasks = [];
+  int totalMyProjects = 0;
+  int totalMyTasks = 0;
+  bool isProjectsFetched = false;
+  bool isTasksFetched = false;
+  bool isTasksCompleted = false;
+  String userName="";
+  bool _isMounted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchMyProjects(); // Fetch projects when the screen is loaded
+    fetchMyTasks();
+    fetchUserName();// Fetch tasks when the screen is loaded
+  }
+
+
+  Future<void> fetchMyProjects() async {
+    try {
+      final url = 'http://43.205.97.189:8000/api/Project/myProjects';
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+      };
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> responseData = jsonDecode(response.body);
+        final List<Future<Project>> fetchedProjects = responseData.map((projectData) async {
+          // Convert the 'status' field to a string representation
+          String status = projectData['status'] == true ? 'Active' : 'In-Active';
+          String projectId = projectData['project_id'] ?? '';
+
+          List<User> users = (projectData['users'] as List<dynamic>).map((userData) {
+            return User.fromJson(userData); // Create User object from JSON data
+          }).toList();
+
+          return Project(
+            id: projectId,
+            name: projectData['projectName'] ?? '',
+            owner: projectData['created_by'] ?? '',
+            status: status,
+            dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
+            // tasks: tasks,
+            // teams: teams,
+            users: users,
+          );
+        }).toList();
+        setState(() {
+          totalMyProjects = responseData.length;
+          isProjectsFetched = true;
+        });
+
+      } else {
+        print('Error fetching projects: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching projects: $e');
+    }
+  }
+
+  Future<void> fetchUserName() async {
+    try {
+      final url = 'http://43.205.97.189:8000/api/User/myProfile';
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+      };
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> responseData = jsonDecode(response.body);
+        if (responseData.isNotEmpty) {
+          final Map<String, dynamic> userData = responseData[0];
+          setState(() {
+            userName = userData['name'] ?? 'Admin'; // Set the value of userName in the class scope
+          });
+        }
+      } else {
+        print('Error fetching user name: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching user name: $e');
+    }
+  }
+
+  Future<void> fetchMyTasks() async {
+    try {
+      final url = 'http://43.205.97.189:8000/api/Task/myTasks';
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+      };
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      print("StatusCode: ${response.statusCode}");
+      print("Response: ${response.body}");
+      if (response.statusCode == 200) {
+        final List<dynamic> responseData = jsonDecode(response.body);
+        final List<Task> fetchedTasks = responseData.map((taskData) {
+          return Task(
+            taskName: taskData['task_name'] ?? '', // Changed to 'task_name'
+            assignedTo: taskData['assignee'] ?? '', // Changed to 'assignee'
+            status: taskData['status'] ?? '',
+            description: taskData['description'] ?? '',
+            priority: taskData['priority'] ?? '',
+            dueDate: taskData['dueDate'], // 'dueDate' remains the same
+          );
+        }).toList();
+        setState(() {
+          tasks = fetchedTasks;
+          totalMyTasks = responseData.length;
+          totalCompletedTasks = tasks.where((task) => task.status == 'Completed').length;
+          isTasksFetched = true;
+          isTasksCompleted = true;
+        });
+      } else {
+        print('Error fetching tasks: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching tasks: $e');
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             Text(
-                              "Admin",
+                              userName,
                               style: TextStyle(
                                 color: AppColors.blackColor,
                                 fontSize: 20,
@@ -168,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(projectName: "Project B", taskTitle: "Task 4", assignee: "Bob",status: "Completed",)));
+                        Navigator.push(context, MaterialPageRoute(builder: (context)=>CompletedTaskScreen()));
                       },
                       child: Column(
                         children: [
@@ -181,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 border: Border.all(color: const Color(0xffE0E0E0))),
                             child: Center(
                               child: Image.asset(
-                                "assets/images/cross.png",
+                                "assets/images/completed-task.png",
                                 color: AppColors.secondaryColor2,
                                 width:35,
                                 height:35,
@@ -211,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 border: Border.all(color: const Color(0xffE0E0E0))),
                             child: Center(
                               child: Image.asset(
-                                "assets/images/employee-benefit.png",
+                                "assets/images/to-do-list.png",
                                 color: AppColors.secondaryColor2,
                                 width:35,
                                 height:35,
@@ -252,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           title: "check",
                           type: RoundButtonType.primaryBG,
                           onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(projectName: "Alpha", taskTitle: "Task 1", assignee: "John",status: "Open",)));
+                            Navigator.push(context, MaterialPageRoute(builder: (context)=>OpenTaskScreen()));
                           },
                         ),
                       )
@@ -282,7 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(8)
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 4),
-                            child: Center(child: Text("5"),
+                            child: Center(child: Text(totalMyProjects.toString(),),
                             ),
                           )],
                       ),
@@ -300,12 +450,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),),
                           const Spacer(),
                           Container(
-                            decoration:  BoxDecoration(
-                                color: const Color(0xffDEE5FF),
-                                borderRadius: BorderRadius.circular(8)
-                            ),
                             padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 4),
-                            child: Center(child: Text("2"),
+                            child: Center(child: Text(totalCompletedTasks.toString()),
                             ),
                           )],
                       ),
@@ -323,12 +469,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),),
                           const Spacer(),
                           Container(
-                            decoration:  BoxDecoration(
-                                color: const Color(0xffDEE5FF),
-                                borderRadius: BorderRadius.circular(8)
-                            ),
                             padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 4),
-                            child: Center(child: Text("9"),
+                            child: Center(child: Text(totalMyTasks.toString(),),
                             ),
                           )],
                       ),
@@ -427,22 +569,11 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.remove_red_eye),
-              title: Text('View Tasks'),
-              onTap: (){
-                Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskScreen(),));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.notifications),
-              title: Text('Activity'),
-              onTap: (){
-                Navigator.push(context, MaterialPageRoute(builder: (context)=>ActivityScreen(),));
-              },
-            ),
-            ListTile(
               leading:Icon(Icons.subscriptions) ,
               title: Text('Subscriptions'),
+              onTap: (){
+                Navigator.push(context, MaterialPageRoute(builder: (context)=>SubscriptionsPlan()));
+              },
             ),
             ListTile(
               leading: Icon(Icons.report),

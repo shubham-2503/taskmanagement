@@ -1,5 +1,6 @@
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
+import 'package:Taskapp/view/login/login_screen.dart';
 import 'package:Taskapp/view/subscription/chooseplan.dart';
 import 'package:flutter/material.dart';
 
@@ -41,9 +42,9 @@ class WelcomeScreen extends StatelessWidget {
               ),
               Spacer(),
               RoundGradientButton(
-                title: "Go To Home",
+                title: "Go To Login",
                 onPressed: () {
-                  // Navigator.push(context, MaterialPageRoute(builder: (context)=>ChoosePlan(),));
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=>LoginScreen(),));
                 },
               )
             ],

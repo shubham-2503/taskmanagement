@@ -45,7 +45,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
           // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
           List<Team> teams = (projectData['teams'] as List<dynamic>).map((teamData) {
             return Team(
-              teamId: teamData['teamId'] ?? '',
+              id: teamData['teamId'] ?? '',
               teamName: teamData['teamName'] ?? '',
             );
           }).toList();

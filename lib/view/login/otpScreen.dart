@@ -1,17 +1,22 @@
 import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_gradient_button.dart';
 import '../../utils/app_colors.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
+  final String email;
   final String userId;
+  final String roleId;
+  final String orgId;
 
-  OTPVerificationScreen({required this.userId});
+  OTPVerificationScreen({required this.userId, required this.email, required this.roleId, required this.orgId});
 
   @override
   State<OTPVerificationScreen> createState() => _OTPVerificationScreenState();
@@ -63,25 +68,64 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
         if (response.statusCode == 200) {
           // Resend OTP successful
+          Fluttertoast.showToast(
+            msg: "OTP sent successfully!",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.CENTER,
+            backgroundColor: Colors.green,
+            textColor: Colors.white,
+          );
           print('Resend OTP successful!');
+        } else if (response.statusCode == 404) {
+          // User not found
+          Fluttertoast.showToast(
+            msg: "User not found. Please check your user ID.",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.CENTER,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+          );
+          print('User not found. Please check your user ID.');
         } else {
-          // Resend OTP failed
+          // Resend OTP failed with an unexpected status code
+          Fluttertoast.showToast(
+            msg: "Resend OTP failed with status: ${response.statusCode}",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.CENTER,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+          );
           print('Resend OTP failed with status: ${response.statusCode}');
         }
       } catch (error) {
         // Error occurred
+        Fluttertoast.showToast(
+          msg: "Error occurred while resending OTP. Please try again later.",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.CENTER,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
         print('Error: $error');
       }
     }
   }
 
-  Future<void> verifyOTP(BuildContext context, String userId, String otp) async {
-    final url = Uri.parse(
-        'http://43.205.97.189:8000/api/UserAuth/verifyOtp?user_id=$userId&otp=$otp');
+  Future<void> verifyOTP(BuildContext context, String userId, String otp,String email,String orgId,String roleId) async {
+    print("Email: $email");
+    print("UserId: $userId");
+    print("OrgId: $orgId");
+    print("RoleId: $roleId");
+    final url = Uri.parse('http://43.205.97.189:8000/api/UserAuth/verifyOtp?user_id=$userId&otp=$otp&email=$email&org_id=$orgId&role_id=$roleId');
 
     try {
       final response = await http.post(url, headers: {
         'accept': '*/*',
+      }, body: {
+        'email': email, // Replace with the user's email
+        'role_id': roleId, // Replace with the user's role ID
+        'user_id': userId,
+        'otp': otp,
       });
 
       if (response.statusCode == 200) {
@@ -90,22 +134,62 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         bool status = responseData['status'];
 
         if (status) {
-          // OTP verification successful
-          Navigator.pushReplacementNamed(context, DashboardScreen.routeName);
-          print('OTP verification successful!');
-        } else {
+          if (responseData['status']) {
+            var jwtToken = responseData['data']['jwtToken'];
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('jwtToken', jwtToken);
+            String Message = "OTP verification successful!";
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(Message, style: TextStyle(
+                    color: Colors.black54
+                ),),
+                backgroundColor: AppColors.primaryColor1,
+              ),
+            );
+            Navigator.pushReplacementNamed(context, DashboardScreen.routeName);
+            print('OTP verification successful!');
+          } } else {
           // OTP verification failed
+          String errorMessage = "OTP verification failed!";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage,style: TextStyle(
+                  color: Colors.black54
+              ),),
+              backgroundColor: AppColors.primaryColor1,
+            ),
+          );
           print('OTP verification failed!');
         }
       } else {
         // Request failed
+        String errorMessage = "Request failed with status: ${response.statusCode}";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage,style: TextStyle(
+                color: Colors.black54
+            ),),
+            backgroundColor: AppColors.primaryColor1,
+          ),
+        );
         print('Request failed with status: ${response.statusCode}');
       }
     } catch (error) {
       // Error occurred
+      String errorMessage = "Error: $error";
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage,style: TextStyle(
+              color: Colors.black54
+          ),),
+          backgroundColor: AppColors.primaryColor1,
+        ),
+      );
       print('Error: $error');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +250,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   animationDuration: Duration(milliseconds: 300),
                   onChanged: null,
                   onCompleted: (value) {
-                    verifyOTP(context, widget.userId, value);
+                    verifyOTP(context, widget.userId, value, widget.email, widget.orgId, widget.roleId);
                   },
                 ),
                 SizedBox(height: 16.0),

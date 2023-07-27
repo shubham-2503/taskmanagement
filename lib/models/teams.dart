@@ -1,7 +1,9 @@
+import 'package:Taskapp/models/user.dart';
+
 class Team {
   final String id;
   final String name;
-  final List<String> users;
+  List<String> users;
   final String? createdBy;
   final String? modifiedBy;
   final String? createdDate;
@@ -38,20 +40,21 @@ class Team {
 class MyTeam {
   final String teamId;
   final String teamName;
-  final List<String> users;
+  final List<String>? users;
 
   MyTeam({
     required this.teamId,
     required this.teamName,
-    required this.users,
+    this.users,
   });
 
   factory MyTeam.fromJson(Map<String, dynamic> json) {
     return MyTeam(
-      teamId: json['teamId'] as String,
-      teamName: json['teamName'] as String,
-      users: (json['users'] as List<dynamic>).map((user) => user as String).toList(),
+      teamId: json['teamId'] ?? '',
+      teamName: json['teamName'] ?? '',
+      users: (json['users'] as List<dynamic>?)?.map((userJson) => userJson['name'].toString()).toList() ?? [],
     );
   }
 }
+
 

@@ -1,4 +1,5 @@
 class Task {
+  final String? taskId;
   final String taskName; // Changed "title" to "taskName"
   final String assignedTo;
   final String? assignedTeam;
@@ -9,6 +10,7 @@ class Task {
   String? dueDate;
 
   Task({
+    this.taskId,
     required this.taskName,
     required this.assignedTo,
     this.assignedTeam,

@@ -1,16 +1,14 @@
 import 'dart:convert';
-import 'package:Taskapp/View_model/api_services.dart';
 import 'package:http/http.dart' as http;
 import 'package:Taskapp/common_widgets/round_button.dart';
-import 'package:Taskapp/view/tasks/tasks.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../../common_widgets/round_textfield.dart';
-import '../../models/teams.dart';
-import '../../models/user.dart';
+import '../../models/project_team_model.dart';
+import 'package:Taskapp/models/fetch_user_model.dart';
 import '../../utils/app_colors.dart';
 
 class TaskCreationScreen extends StatefulWidget {
@@ -22,8 +20,6 @@ class TaskCreationScreen extends StatefulWidget {
 }
 
 class _TaskCreationScreenState extends State<TaskCreationScreen> {
-  ApiRepo apiRepo = ApiRepo();
-  late String _projectName;
   late String _taskTitle;
   late String _taskDescription;
   late String _organizationName;
@@ -38,6 +34,8 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
   TextEditingController projectNameController = TextEditingController();
   List<User> users = [];
   List<Team> teams = [];
+  List<String> _selectedMembers = [];
+  List<String> _selectedTeams = [];
 
   @override
   void initState() {
@@ -45,6 +43,8 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
     projectNameController = TextEditingController(text: widget.initialTitle);
     _attachmentController.text = _attachment;
     fetchPriorities();
+    fetchTeams();
+    fetchUsers();
   }
 
   @override
@@ -85,14 +85,103 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
     }
   }
 
+  Future<List<Team>> fetchTeams() async {
+    List<Team> teams = [];
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+
+      final response = await http.get(
+        Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers'), // Update the API endpoint URL
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $storedData',
+        },
+      );
+
+      print("Stored: $storedData");
+      print("API response: ${response.body}");
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final responseBody = response.body;
+        if (responseBody != null && responseBody.isNotEmpty) {
+          try {
+            final List<dynamic> data = jsonDecode(responseBody);
+            if (data != null) {
+              final List<Team> teams = data
+                  .map((teamJson) => Team.fromJson(teamJson as Map<String, dynamic>))
+                  .toList();
+
+              for (var team in teams) {
+                print("Team Name: ${team.teamName}");
+                print("Team ID: ${team.id}");
+                print("Users: ${team.users}");
+                print("----------------------");
+              }
+
+              return teams;
+            }
+          } catch (e) {
+            print('Error decoding JSON: $e');
+          }
+        }
+      } else {
+        print('Error: ${response.statusCode}');
+      }
+      return teams;
+
+    } catch (e) {
+      print('Error: $e');
+      throw Exception('Failed to fetch teams');
+    }
+  }
+
   Future<List<User>> fetchUsers() async {
     try {
-      // Call the fetchUsers function from api_service.dart
-      final users = await apiRepo.fetchUsers();
-      return users ?? []; // If users is null, return an empty list
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+
+      if (storedData == null || storedData.isEmpty) {
+        // Handle the case when storedData is null or empty
+        print('Stored token is null or empty. Cannot make API request.');
+        throw Exception('Failed to fetch users: Stored token is null or empty.');
+      }
+
+      final response = await http.get(
+        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers'),
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $storedData',
+        },
+      );
+
+      print("Stored: $storedData");
+      print("API response: ${response.body}");
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final responseBody = response.body;
+        if (responseBody != null && responseBody.isNotEmpty) {
+          final List<dynamic> data = jsonDecode(responseBody);
+          final List<User> users = data.map((userJson) => User.fromJson(userJson)).toList();
+
+          for (User user in users) {
+            print('User ID: ${user.userId}');
+            print('User Name: ${user.userName}');
+          }
+          return users;
+        } else {
+          print('Failed to fetch users: Response body is null or empty');
+          throw Exception('Failed to fetch users');
+        }
+      } else {
+        print('Failed to fetch users: StatusCode: ${response.statusCode}');
+        throw Exception('Failed to fetch users');
+      }
     } catch (e) {
-      print('Error while fetching users: $e');
-      return []; // Return an empty list in case of an error
+      print('Error: $e');
+      throw Exception('Failed to fetch users');
     }
   }
 
@@ -116,17 +205,21 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
                     return SingleChildScrollView(
                       child: Column(
                         children: users.map((user) {
-                          bool isSelected = users.contains(user);
+                          bool isSelected = _selectedMembers.contains(user.userId);
 
                           return CheckboxListTile(
                             title: Text(user.userName),
-                            value: users.contains(user), // Check if the user is already in the users list
+                            value: isSelected,
                             onChanged: (value) {
                               setState(() {
                                 if (value == true) {
-                                  users.add(user); // Add the user to the list if the checkbox is checked
+                                  if (!_selectedMembers.contains(user.userId)) {
+                                    _selectedMembers.add(user.userId);
+                                  }
                                 } else {
-                                  users.remove(user); // Remove the user from the list if the checkbox is unchecked
+                                  if (_selectedMembers.contains(user.userId)) {
+                                    _selectedMembers.remove(user.userId);
+                                  }
                                 }
                               });
                             },
@@ -144,9 +237,15 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
                   child: Text('Add'),
                   onPressed: () {
                     setState(() {
-                      // Close the dialog
-                      Navigator.of(context).pop();
+                      // Perform any desired actions with the selected members
+                      // For example, you can add them to a list or display them in a text field
+                      List<String> selectedMembersText = _selectedMembers
+                          .map((id) => users.firstWhere((user) => user.userId == id).userName.toString())
+                          .toList();
+                      // Set the value of the desired field
+                      _assigneeMembersController.text = selectedMembersText.join(', ');
                     });
+                    Navigator.pop(context);
                   },
                 ),
               ],
@@ -155,17 +254,6 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
         );
       },
     );
-  }
-
-  Future<List<Team>> fetchTeams() async {
-    try {
-      // Call the fetchTeams function from api_service.dart
-      final teams = await apiRepo.fetchTeams();
-      return teams ?? []; // If teams is null, return an empty list
-    } catch (e) {
-      print('Error while fetching teams: $e');
-      return []; // Return an empty list in case of an error
-    }
   }
 
   void _showTeamsDialog() {
@@ -188,20 +276,20 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
                     return SingleChildScrollView(
                       child: Column(
                         children: teams.map((team) {
-                          bool isSelected = teams.contains(team);
+                          bool isSelected = _selectedTeams.contains(team.id);
 
                           return CheckboxListTile(
-                            title: Text(team.name),
+                            title: Text(team.teamName),
                             value: isSelected,
                             onChanged: (value) {
                               setState(() {
                                 if (value == true) {
-                                  if (!teams.contains(team)) {
-                                    teams.add(team);
+                                  if (!_selectedTeams.contains(team.id)) {
+                                    _selectedTeams.add(team.id);
                                   }
                                 } else {
-                                  if (teams.contains(team)) {
-                                    teams.remove(team);
+                                  if (_selectedTeams.contains(team.id)) {
+                                    _selectedTeams.remove(team.id);
                                   }
                                 }
                               });
@@ -220,9 +308,15 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
                   child: Text('Add'),
                   onPressed: () {
                     setState(() {
-                      // Close the dialog
-                      Navigator.of(context).pop();
+                      // Perform any desired actions with the selected teams
+                      // For example, you can add them to a list or display them in a text field
+                      List<String> selectedTeamsText = _selectedTeams
+                          .map((id) => teams.firstWhere((team) => team.id == id).teamName.toString())
+                          .toList();
+                      // Set the value of the desired field
+                      _assigneeTeamsController.text = selectedTeamsText.join(', ');
                     });
+                    Navigator.of(context).pop(); // Close the dialog
                   },
                 ),
               ],
@@ -503,6 +597,46 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
 
       if (response.statusCode == 200) {
         // Task creation successful
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Thank You'),
+              content: RichText(
+                text: TextSpan(
+                  text: 'Your Task ',
+                  style: TextStyle(color: Colors.black),
+                  children: [
+                    TextSpan(
+                      text: taskTitle.isNotEmpty
+                          ? taskTitle
+                          : '',
+                      style: TextStyle(
+                        color: Colors.black, // Set the desired color here
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' has been successfully created.',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                InkWell(
+                  onTap: (){
+                    Navigator.pop(context);
+                  },
+                    child: Text("OK",style: TextStyle(
+                      color: AppColors.blackColor,
+                      fontSize: 20
+                    ),))
+              ],
+            );
+          },
+        );
         print('Task created successfully');
 
         // Proceed to the next screen or perform any additional actions if needed

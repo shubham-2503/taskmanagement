@@ -1,14 +1,19 @@
 import 'dart:convert';
+import 'package:Taskapp/common_widgets/snackbar.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/subscription/chooseplan.dart';
 import 'package:Taskapp/view/welcome/welcome_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_gradient_button.dart';
 import '../../common_widgets/round_textfield.dart';
 
 class CompanyRegistrationScreen extends StatefulWidget {
+  final String userId;
+  CompanyRegistrationScreen({required this.userId});
 
   @override
   State<CompanyRegistrationScreen> createState() => _CompanyRegistrationScreenState();
@@ -21,6 +26,10 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
   final TextEditingController _companyAddressController =
   TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
+  List<Map<String, dynamic>> countryCodes = [
+    {"name": "+91 (India)", "code": "+91"},
+  ];
+  String selectedCountryCode = "+91";
 
   Future<void> _registerCompany() async {
     final Map<String, dynamic> requestBody = {
@@ -135,43 +144,122 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
                   ),
                 ),
                 SizedBox(height: 40),
-                Column(
-                  children: [
-                    RoundTextField(
-                      textEditingController: _companyNameController,
-                      hintText: "Company Name",
-                      icon: "assets/icons/name.png",
-                      textInputType: TextInputType.text,
+                RoundTextField(
+                  textEditingController: _companyNameController,
+                  hintText: "Company Name",
+                  icon: "assets/icons/name.png",
+                  textInputType: TextInputType.text,
+                ),
+                SizedBox(height: 15),
+                RoundTextField(
+                 textEditingController: _gstNumberController,
+                  hintText: "GST Number",
+                  icon: "assets/icons/gst.jpeg",
+                  textInputType: TextInputType.text,
+                ),
+                SizedBox(height: 15),
+                RoundTextField(
+                  textEditingController: _employeeCountController,
+                  hintText: "Employees Count",
+                  icon: "assets/icons/count.png",
+                  textInputType: TextInputType.number,
+                ),
+                SizedBox(height: 15),
+                RoundTextField(
+                 textEditingController: _companyAddressController,
+                  hintText: "Company Address",
+                  icon: "assets/icons/add.png",
+                  textInputType: TextInputType.text,
+                ),
+                SizedBox(height: 15),
+                RoundTextField(
+                  hintText: "Phone Number",
+                  textInputType: TextInputType.phone,
+                  textEditingController: _phoneNumberController,
+                  rightIcon: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        SizedBox(width: 8), // Add some spacing between the dropdown and phone number input
+                        RoundTextField(
+                          hintText: "Phone Number",
+                          textEditingController: _phoneNumberController,
+                          rightIcon: Row(
+                            children: [
+                              DropdownButton<String>(
+                                value: selectedCountryCode,
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    selectedCountryCode = newValue!;
+                                  });
+                                },
+                                items: countryCodes.map<DropdownMenuItem<String>>((Map<String, dynamic> country) {
+                                  return DropdownMenuItem<String>(
+                                    value: country['code'],
+                                    child: Text(
+                                      country['code'],
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                selectedItemBuilder: (BuildContext context) {
+                                  return countryCodes.map<Widget>((Map<String, dynamic> country) {
+                                    return Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        country['code'],
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black, // Customize the selected item color
+                                        ),
+                                      ),
+                                    );
+                                  }).toList();
+                                },
+                              ),
+                              SizedBox(width: 8), // Add some spacing between the dropdown and phone number input
+                              Expanded(
+                                child: TextFormField(
+                                  decoration: InputDecoration(
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                  keyboardType: TextInputType.phone,
+                                  controller: _phoneNumberController,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                     DialogUtils.showSnackbar(context, "Please enter your phone number");
+                                      return "Please enter your phone number";
+                                    }
+                                    if (value.length != 10) {
+                                      Fluttertoast.showToast(
+                                        msg: "Phone number must contain 10 digits",
+                                        toastLength: Toast.LENGTH_LONG,
+                                        gravity: ToastGravity.CENTER,
+                                        backgroundColor: Colors.red,
+                                        textColor: Colors.white,
+                                      );
+                                      return "Phone number must contain 10 digits";
+                                    }
+                                    return null; // Return null if validation is successful
+                                  },
+                                  autovalidateMode: AutovalidateMode.onUserInteraction, // Trigger validation on user interaction
+                                  inputFormatters: [
+                                    LengthLimitingTextInputFormatter(10), // Limit input length to 10 characters
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 15),
-                    RoundTextField(
-                     textEditingController: _gstNumberController,
-                      hintText: "GST Number",
-                      icon: "assets/icons/gst.jpeg",
-                      textInputType: TextInputType.text,
-                    ),
-                    SizedBox(height: 15),
-                    RoundTextField(
-                      textEditingController: _employeeCountController,
-                      hintText: "Employees Count",
-                      icon: "assets/icons/count.png",
-                      textInputType: TextInputType.number,
-                    ),
-                    SizedBox(height: 15),
-                    RoundTextField(
-                     textEditingController: _companyAddressController,
-                      hintText: "Company Address",
-                      icon: "assets/icons/add.png",
-                      textInputType: TextInputType.text,
-                    ),
-                    SizedBox(height: 15),
-                    RoundTextField(
-                      textEditingController: _phoneNumberController,
-                      hintText: "Phone Number",
-                      icon: "assets/icons/pho.png",
-                      textInputType: TextInputType.phone,
-                    ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: 40),
                 Row(

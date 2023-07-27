@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_button.dart';
 import '../../common_widgets/round_textfield.dart';
+import '../../common_widgets/snackbar.dart';
 import '../../utils/app_colors.dart';
 import 'package:http/http.dart' as http;
 
@@ -17,6 +20,11 @@ class InviteTeammatesScreen extends StatefulWidget {
 class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
   List<Teammate> teammates = [];
   List<Map<String, String>> _roles = [];
+  List<Map<String, dynamic>> countryCodes = [
+    {"name": "+91", "code": "+91"},
+    // Add more country codes as needed
+  ];
+  String selectedCountryCode = "+91";
 
   @override
   void initState() {
@@ -126,11 +134,39 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
       if (response.statusCode == 200) {
         // Invitation successful, handle the response if needed
         print('Invitation successful');
+        String errorMessage = "Invitation sent Successfully";
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Sent"),
+            content: Text(errorMessage),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context)=>DashboardScreen(),)),
+                child: Text("OK"),
+              ),
+            ],
+          ),
+        );
       } else {
         // Invitation failed
         final responseData = response.body;
         // Handle the error and display an error message to the user
         print('Invitation failed: $responseData');
+        String errorMessage = "Invitation Failed: $responseData";
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Error"),
+            content: Text(errorMessage),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("OK"),
+              ),
+            ],
+          ),
+        );
       }
     } catch (e) {
       print('API Error: $e');
@@ -197,10 +233,72 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                           SizedBox(height: 20,),
                           RoundTextField(
                             hintText: "Phone Number",
-                            icon: "assets/icons/pho.png",
-                            textInputType: TextInputType.phone,
                             textEditingController: teammate.phoneController,
-                            validator: validatePhoneNumber,
+                            rightIcon: Row(
+                              children: [
+                                DropdownButton<String>(
+                                  value: selectedCountryCode,
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      selectedCountryCode = newValue!;
+                                    });
+                                  },
+                                  items: countryCodes.map<DropdownMenuItem<String>>((Map<String, dynamic> country) {
+                                    return DropdownMenuItem<String>(
+                                      value: country['code'],
+                                      child: Text(
+                                        country['code'],
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  selectedItemBuilder: (BuildContext context) {
+                                    return countryCodes.map<Widget>((Map<String, dynamic> country) {
+                                      return Align(
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          country['code'],
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black, // Customize the selected item color
+                                          ),
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+                                ),
+                                SizedBox(width: 8), // Add some spacing between the dropdown and phone number input
+                                Expanded(
+                                  child: TextFormField(
+                                    decoration: InputDecoration(
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                    keyboardType: TextInputType.phone,
+                                    controller: teammate.phoneController,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        DialogUtils.showSnackbar(context, 'Please enter your phone number');
+                                        return "Please enter your phone number";
+                                      }
+                                      if (value.length != 10) {
+                                        return "Phone number must contain 10 digits";
+                                      }
+                                      return null; // Return null if validation is successful
+                                    },
+                                    autovalidateMode: AutovalidateMode.onUserInteraction, // Trigger validation on user interaction
+                                    inputFormatters: [
+                                      LengthLimitingTextInputFormatter(10), // Limit input length to 10 characters
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           SizedBox(width: 10), // Add spacing between the fields
                           Container(

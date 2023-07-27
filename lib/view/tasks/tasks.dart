@@ -8,13 +8,6 @@ import 'package:Taskapp/view/tasks/teamTask.dart';
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 
-class Project {
-  final String name;
-  final String category;
-  final String details;
-
-  Project(this.name, this.category, this.details);
-}
 
 class TaskScreen extends StatefulWidget {
   @override

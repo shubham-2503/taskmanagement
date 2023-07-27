@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/login/login_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
+import 'package:http/http.dart' as http;
 import '../../common_widgets/round_gradient_button.dart';
 import '../../common_widgets/round_textfield.dart';
 import '../profile/complete_profile_screen.dart';
@@ -22,10 +25,12 @@ class _SignupScreenState extends State<SignupScreen> {
   String? confirmPassword = '';
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
+  bool _isconfirmPasswordVisible = false;
 
   String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your email';
+      return 'Please enter your email and Password';
     }
 
     // Email regex pattern
@@ -43,13 +48,63 @@ class _SignupScreenState extends State<SignupScreen> {
     if (value == null || value.isEmpty) {
       return 'Please enter your password';
     }
+
     if (value.length < 8) {
       return 'Password must be at least 8 characters long';
     }
-    if (password != confirmPassword) {
-      return "Passwords do not match";
+
+    // Regular expression to check if the password contains at least one uppercase, one lowercase,
+    // one special character, and one digit.
+    final passwordRegex = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$');
+    if (!passwordRegex.hasMatch(value)) {
+      return "Password should be a combination of uppercase, lowercase, special char, and numeric";
     }
+
     return null;
+  }
+
+  Future<void> checkIfEmailExists(String email) async {
+    final response = await http.post(
+      Uri.parse('http://43.205.97.189:8000/api/User/checkEmail?email=$email'),
+      headers: {'accept': '*/*'},
+    );
+
+    if (response.statusCode == 200) {
+      // Email does not exist, proceed with registration or display a success message
+      print("Email is available for registration");
+    } else if (response.statusCode == 400) {
+      // Email already exists, display an error message to the user
+      final responseData = json.decode(response.body);
+      String Message = responseData['message'];
+      _showDialog(Message);
+    } else {
+      // Handle API request failure or other errors
+      print("Failed to check email: ${response.statusCode}");
+      Fluttertoast.showToast(
+        msg: "Failed to check email. Please try again later.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: AppColors.primaryColor1,
+        textColor: Colors.white,
+      );
+    }
+  }
+
+  void _showDialog(String Message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(Message,style: TextStyle(
+          fontSize: 20
+        ),),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen())),
+            child: Text("Login"),
+          ),
+        ],
+      ),
+    );
   }
 
   bool isCheck = false;
@@ -143,6 +198,12 @@ class _SignupScreenState extends State<SignupScreen> {
                     setState(() {
                       email = value;
                     });
+
+                    // Check if the email is valid before making the API request
+                    String? emailError = validateEmail(email);
+                    if (emailError == null) {
+                      checkIfEmailExists(email!);
+                    }
                   },
                   validator: validateEmail,
                   textEditingController: _emailController,
@@ -154,27 +215,35 @@ class _SignupScreenState extends State<SignupScreen> {
                   hintText: "Password",
                   icon: "assets/icons/lock_icon.png",
                   textInputType: TextInputType.text,
-                  isObscureText: true,
+                  isObscureText: !_isPasswordVisible, // Password visibility is toggled based on the state variable
+                  textEditingController: _passwordController,
                   validator: validatePassword,
-                  onChanged: (value){
+                  onChanged: (value) {
                     setState(() {
-                      password = value;
+                      password = value; // Update the password variable
                     });
                   },
-                  textEditingController: _passwordController,
                   rightIcon: TextButton(
-                      onPressed: () {},
-                      child: Container(
-                          alignment: Alignment.center,
-                          width: 20,
-                          height: 20,
-                          child: Image.asset(
-                            "assets/icons/hide_pwd_icon.png",
-                            width: 20,
-                            height: 20,
-                            fit: BoxFit.contain,
-                            color: AppColors.grayColor,
-                          ))),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible; // Toggle password visibility on icon tap
+                      });
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      width: 20,
+                      height: 20,
+                      child: Image.asset(
+                        _isPasswordVisible
+                            ? "assets/icons/show.png" // Show eye icon when password is visible
+                            : "assets/icons/hide_pwd_icon.png", // Show crossed eye icon when password is hidden
+                        width: 20,
+                        height: 20,
+                        fit: BoxFit.contain,
+                        color: AppColors.grayColor,
+                      ),
+                    ),
+                  ),
                 ),
                 SizedBox(
                   height: 15,
@@ -183,7 +252,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   hintText: "Confirm Password",
                   icon: "assets/icons/lock_icon.png",
                   textInputType: TextInputType.text,
-                  isObscureText: true,
+                  isObscureText: !_isconfirmPasswordVisible,
                   onChanged: (value) {
                     setState(() {
                       confirmPassword = value;
@@ -191,18 +260,26 @@ class _SignupScreenState extends State<SignupScreen> {
                   },
                   validator: validatePassword,
                   rightIcon: TextButton(
-                      onPressed: () {},
-                      child: Container(
-                          alignment: Alignment.center,
-                          width: 20,
-                          height: 20,
-                          child: Image.asset(
-                            "assets/icons/hide_pwd_icon.png",
-                            width: 20,
-                            height: 20,
-                            fit: BoxFit.contain,
-                            color: AppColors.grayColor,
-                          ))),
+                    onPressed: () {
+                      setState(() {
+                        _isconfirmPasswordVisible = !_isconfirmPasswordVisible; // Toggle password visibility on icon tap
+                      });
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      width: 20,
+                      height: 20,
+                      child: Image.asset(
+                        _isPasswordVisible
+                            ? "assets/icons/show.png" // Show eye icon when password is visible
+                            : "assets/icons/hide_pwd_icon.png", // Show crossed eye icon when password is hidden
+                        width: 20,
+                        height: 20,
+                        fit: BoxFit.contain,
+                        color: AppColors.grayColor,
+                      ),
+                    ),
+                  ),
                 ),
                 SizedBox(
                   height: 50,
@@ -240,34 +317,42 @@ class _SignupScreenState extends State<SignupScreen> {
                 RoundGradientButton(
                   title: "Register",
                   onPressed: () {
-                    if (email != null &&
-                        password != null &&
-                        confirmPassword != null &&
-                        password == confirmPassword) {
+                    String? emailError = validateEmail(email);
+                    String? passwordError = validatePassword(password);
 
+                    if (emailError != null || passwordError != null) {
+                      // Show the validation error messages for email and password
+                      String errorMessage = emailError ?? passwordError ?? "";
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(errorMessage,style: TextStyle(
+                              color: Colors.black54
+                          ),),
+                          backgroundColor: AppColors.primaryColor1,
+                        ),
+                      );
+                    } else if (password != confirmPassword) {
+                      // Show the validation error message for password mismatch
+                      String errorMessage = "Passwords do not match";
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(errorMessage,style: TextStyle(
+                            color: Colors.black54
+                          ),),
+                          backgroundColor: AppColors.primaryColor1,
+                        ),
+                      );
+                    } else {
+                      // Validation successful, proceed with navigation
                       print("Email: $email");
                       print("Password: $password");
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => CompleteProfileScreen(email: _emailController.text, password: _passwordController.text),
-                        ),
-                      );
-
-                    } else {
-                      // Show an error message to the user
-                      String errorMessage = "Please fill in all the required fields";
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text("Error"),
-                          content: Text(errorMessage),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: Text("OK"),
-                            ),
-                          ],
+                          builder: (context) => CompleteProfileScreen(
+                            email: _emailController.text,
+                            password: _passwordController.text,
+                          ),
                         ),
                       );
                     }

@@ -5,14 +5,6 @@ import 'package:Taskapp/view/projects/myProjects/project_assigned.dart';
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 
-class Project {
-  final String name;
-  final String category;
-  final String details;
-
-  Project(this.name, this.category, this.details);
-}
-
 class ProjectDashScreen extends StatefulWidget {
   @override
   _ProjectDashScreenState createState() => _ProjectDashScreenState();

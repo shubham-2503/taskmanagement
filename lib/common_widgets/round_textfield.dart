@@ -5,7 +5,7 @@ import '../utils/app_colors.dart';
 class RoundTextField extends StatelessWidget {
   final TextEditingController? textEditingController;
   final String hintText;
-  final String icon;
+  final String? icon;
   final TextInputType? textInputType;
   final bool isReadOnly;
   final bool isObscureText;
@@ -18,7 +18,7 @@ class RoundTextField extends StatelessWidget {
     Key? key,
     this.textEditingController,
     required this.hintText,
-    required this.icon,
+    this.icon,
     this.textInputType,
     this.isObscureText = false,
     this.rightIcon,
@@ -32,6 +32,7 @@ class RoundTextField extends StatelessWidget {
   Widget build(BuildContext context) {
 
     return Container(
+      width: MediaQuery.of(context).size.width * 0.8,
       decoration: BoxDecoration(
         color: AppColors.lightGrayColor,
         borderRadius: BorderRadius.circular(15),
@@ -53,12 +54,19 @@ class RoundTextField extends StatelessWidget {
             alignment: Alignment.center,
             width: 20,
             height: 20,
+            child:icon != null && icon!.isNotEmpty // Check if icon is provided and not empty
+          ? Container(
+            alignment: Alignment.center,
+            width: 20,
+            height: 20,
             child: Image.asset(
-              icon,
+              icon!,
               width: 20,
               height: 20,
               fit: BoxFit.contain,
             ),
+          )
+              : null,
           ),
           suffixIcon: rightIcon,
           hintStyle: TextStyle(fontSize: 12, color: AppColors.grayColor),

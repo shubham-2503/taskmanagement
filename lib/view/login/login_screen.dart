@@ -3,6 +3,7 @@ import 'package:Taskapp/view/login/forgetpassword/forgetpassword_mailScreen.dart
 import 'package:Taskapp/view/login/phoneNumber.dart';
 import 'package:Taskapp/view/login/true_caller_auth_services.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
@@ -27,6 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   TruecallerAuthServices truecallerAuthServices = TruecallerAuthServices();
+  bool _isPasswordVisible = false;
 
   String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
@@ -56,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  void login(String email, password) async {
+  void login(String email, String password, BuildContext context) async {
     try {
       final Uri loginUri = Uri.parse('http://43.205.97.189:8000/api/UserAuth/login');
       final Uri requestUri = loginUri.replace(queryParameters: {
@@ -68,36 +70,75 @@ class _LoginScreenState extends State<LoginScreen> {
 
       print("Email: $email");
       print("Password: $password");
+      print("API response: ${response.body}");
       print("StatusCode: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
         if (data['status']) {
           var userId = data['data']['user_id'];
-          var jwtToken = data['data']['jwttOken'];
+          var orgId = data['data']['org_id'];
+          var roleId = data['data']['role_id'];
           print('User ID: $userId');
-          print('JWT Token: $jwtToken');
+          print('Org ID: $orgId');
+          print('Role ID: $roleId');
           print('Login successful');
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('userId', userId);
-          if (jwtToken != null) {
-            await prefs.setString('jwtToken', jwtToken);
+          await prefs.setString('roleId', roleId);
+          if (orgId != null) {
+            await prefs.setString('org_id', orgId);
           }
+
+          String errorMessage = "OTP sent successfully";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage,style: TextStyle(
+                  color: Colors.black54
+              ),),
+              backgroundColor: AppColors.primaryColor1,
+            ),
+          );
 
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => OTPVerificationScreen(userId: userId),
+              builder: (context) => OTPVerificationScreen(userId: userId,roleId: roleId,orgId: orgId,email: email,),
             ),
           );
         } else {
           print('Login failed');
+          String errorMessage = "Login Failed";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage,style: TextStyle(
+                  color: Colors.black54
+              ),),
+              backgroundColor: AppColors.primaryColor1,
+            ),
+          );
         }
       } else {
-        print('Request failed');
+        print('Request failed.');
+        String errorMessage = "Request Failed.";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage,style: TextStyle(
+                color: Colors.black54
+            ),),
+            backgroundColor: AppColors.primaryColor1,
+          ),
+        );
       }
     } catch (e) {
       print('Error: $e');
+      Fluttertoast.showToast(
+        msg: "Error: $e",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.CENTER,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
     }
   }
 
@@ -234,17 +275,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         hintText: "Password",
                         icon: "assets/icons/lock_icon.png",
                         textInputType: TextInputType.text,
-                        isObscureText: true,
+                        isObscureText: !_isPasswordVisible, // Password visibility is toggled based on the state variable
                         textEditingController: _passwordController,
                         validator: validatePassword,
                         rightIcon: TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible; // Toggle password visibility on icon tap
+                            });
+                          },
                           child: Container(
                             alignment: Alignment.center,
                             width: 20,
                             height: 20,
                             child: Image.asset(
-                              "assets/icons/hide_pwd_icon.png",
+                              _isPasswordVisible
+                                  ? "assets/icons/show.png" // Show eye icon when password is visible
+                                  : "assets/icons/hide_pwd_icon.png", // Show crossed eye icon when password is hidden
                               width: 20,
                               height: 20,
                               fit: BoxFit.contain,
@@ -275,8 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (_formKey.currentState!.validate()) {
                     login(
                       _emailController.text.toString(),
-                      _passwordController.text.toString(),
-                    );
+                      _passwordController.text.toString(), context);
                   }
                 },
               ),

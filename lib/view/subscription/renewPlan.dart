@@ -1,37 +1,67 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:Taskapp/common_widgets/round_gradient_button.dart';
 import 'package:flutter/material.dart';
 
 import '../../utils/app_colors.dart';
+import 'chooseplan.dart';
 
-class UpgradePlanScreen extends StatefulWidget {
+class RenewPlanScreen extends StatefulWidget {
   @override
-  _UpgradePlanScreenState createState() => _UpgradePlanScreenState();
+  _RenewPlanScreenState createState() => _RenewPlanScreenState();
 }
 
-class _UpgradePlanScreenState extends State<UpgradePlanScreen> {
+class _RenewPlanScreenState extends State<RenewPlanScreen> {
   int selectedPlanIndex = 0; // Index of the selected plan
   bool isCheck = false;
-  List<Map<String, dynamic>> plans = [
-    {
-      'name': 'Premium Plan',
-      'price': '\$19.99/month',
-      'features': [
-        'Feature 1',
-        'Feature 2',
-        'Feature 3',
-        'Feature 4',
-        'Feature 5',
-      ],
-    },
-  ];
+  List<SubscriptionPlan> plans = [];
+
+  Future<void> fetchSubscriptionPlans() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
+        headers: {'accept': '*/*'},
+      );
+
+      print('API Response: ${response.body}');
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        print('Decoded Data: $data');
+        setState(() {
+          plans = data.map((plan) => SubscriptionPlan.fromJson(plan)).toList();
+        });
+      } else {
+        print('API Error: ${response.statusCode}');
+        // Handle the error and display an error message to the user
+      }
+    } catch (e) {
+      print('Exception: $e');
+      // Handle the error and display an error message to the user
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchSubscriptionPlans(); // Fetch the subscription plans from the API
+  }
 
   @override
   Widget build(BuildContext context) {
+    final premiumPlan =
+        plans.where((plan) => plan.name == 'Premium Plan').toList();
     return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+      ),
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage("assets/images/background.png"), // Replace with your background image
+            image: AssetImage(
+                "assets/images/background.png"), // Replace with your background image
             fit: BoxFit.cover,
           ),
         ),
@@ -45,17 +75,16 @@ class _UpgradePlanScreenState extends State<UpgradePlanScreen> {
               style: TextStyle(
                   fontSize: 24.0,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.secondaryColor2
-              ),
+                  color: AppColors.secondaryColor2),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 20,),
+            SizedBox(
+              height: 20,
+            ),
             Text(
               'Find simple plans for comprehensive automations',
-              style: TextStyle(
-                  fontSize: 12.0,
-                  color: AppColors.secondaryColor1
-              ),
+              style:
+                  TextStyle(fontSize: 12.0, color: AppColors.secondaryColor1),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 40.0),
@@ -67,70 +96,82 @@ class _UpgradePlanScreenState extends State<UpgradePlanScreen> {
                 ),
                 borderRadius: BorderRadius.circular(10.0),
               ),
-              child: Column(
-                children: List.generate(plans.length, (index) {
-                  return ListTile(
-                    leading: Radio(
-                      value: index,
-                      groupValue: selectedPlanIndex,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedPlanIndex = value!;
-                        });
-                      },
-                    ),
-                    title: Text(
-                      plans[index]['name'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Text(plans[index]['price']),
-                    trailing: IconButton(
-                      icon: Icon(Icons.info_outline),
-                      onPressed: () {
-                        // Show plan details or perform any action
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return AlertDialog(
-                              title: Text(plans[index]['name']),
-                              content: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('Features:'),
-                                  SizedBox(height: 8.0),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: List.generate(plans[index]['features'].length, (index) {
-                                      return Text('• ${plans[index]['features'][index]}');
-                                    }),
-                                  ),
-                                ],
+              child: Padding(
+                padding: EdgeInsets.all(8.0),
+                child: premiumPlan
+                        .isEmpty // Check if the premiumPlan list is empty
+                    ? Center(
+                        child: Text('No premium plans available'),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: premiumPlan.length,
+                        itemBuilder: (context, index) {
+                          final plan = premiumPlan[index];
+                          return ListTile(
+                            leading: Radio(
+                              value: index,
+                              groupValue: selectedPlanIndex,
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedPlanIndex = value!;
+                                });
+                              },
+                            ),
+                            title: Text(
+                              plan.name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
                               ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
+                            ),
+                            subtitle: Text(plan.price),
+                            trailing: IconButton(
+                              icon: Icon(Icons.info_outline),
+                              onPressed: () {
+                                // Show plan details or perform any action
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: Text(plan.name),
+                                      content: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(plan.features),
+                                          SizedBox(height: 8.0),
+                                        ],
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                          child: Text('Close'),
+                                        ),
+                                      ],
+                                    );
                                   },
-                                  child: Text('Close'),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  );
-                }),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
               ),
             ),
-            SizedBox(height: 50,),
-            RoundGradientButton(title: "Renew Plan", onPressed: (){
-              renewPlan();
-            }),
-            SizedBox(height: 20,),
+            SizedBox(
+              height: 50,
+            ),
+            RoundGradientButton(
+                title: "Renew Plan",
+                onPressed: () {
+                  renewPlan();
+                }),
+            SizedBox(
+              height: 20,
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
@@ -168,4 +209,3 @@ class _UpgradePlanScreenState extends State<UpgradePlanScreen> {
     // Make API call to upgrade the plan
   }
 }
-

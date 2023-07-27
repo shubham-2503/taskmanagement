@@ -1,18 +1,19 @@
 class Team {
-  String teamId;
-  String teamName;
+  final String id;
+  final String teamName;
+  final List<String>? users;
 
-  Team({required this.teamId, required this.teamName});
+  Team({
+    required this.teamName,
+    required this.id,
+    this.users,
+  });
 
   factory Team.fromJson(Map<String, dynamic> json) {
-    final List<dynamic>? rawUsers = json['users'];
-    final List<String> users = rawUsers != null
-        ? List<String>.from(rawUsers.whereType<String>()) // Filter out non-String entries
-        : [];
-
     return Team(
-      teamId: json['teamID'] ?? '',
       teamName: json['teamName'] ?? '',
+      id: json['teamId'] ?? '',
+      users: List<String>.from(json['users'] ?? []),
     );
   }
 }

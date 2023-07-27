@@ -41,6 +41,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
         final List<dynamic> responseData = jsonDecode(response.body);
         final List<Task> fetchedTasks = responseData.map((taskData) {
           return Task(
+            taskId: taskData['id'],
             taskName: taskData['task_name'] ?? '', // Changed to 'task_name'
             assignedTo: taskData['assignee'] ?? '', // Changed to 'assignee'
             status: taskData['status'] ?? '',
@@ -260,8 +261,9 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                                                   MaterialPageRoute(
                                                     builder: (context) =>
                                                         TaskDetailsScreen(
-                                                      taskTitle: '',
-                                                      assignee: '',
+                                                          taskId: task.taskId,
+                                                          taskTitle: task.taskName,
+                                                         assignee: task.assignedTo,
                                                     ),
                                                   ),
                                                 );

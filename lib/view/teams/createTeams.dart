@@ -1,25 +1,12 @@
 import 'dart:convert';
-import 'package:Taskapp/View_model/api_services.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../common_widgets/round_button.dart';
 import '../../common_widgets/round_textfield.dart';
-import '../../models/user.dart';
+import '../../models/fetch_user_model.dart';
+import '../../models/project_team_model.dart';
 import '../../utils/app_colors.dart';
-
-class Team {
-  String teamName;
-  List<String> teamMembers;
-  DateTime createdOn;
-
-  Team({
-    required this.teamName,
-    required this.teamMembers,
-    required this.createdOn,
-  });
-}
 
 class TeamCreationPage extends StatefulWidget {
   @override
@@ -27,7 +14,6 @@ class TeamCreationPage extends StatefulWidget {
 }
 
 class _TeamCreationPageState extends State<TeamCreationPage> {
-  ApiRepo apiRepo = ApiRepo();
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _teamNameController;
   List<User> users = [];
@@ -48,12 +34,95 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
 
   Future<List<User>> fetchUsers() async {
     try {
-      // Call the fetchUsers function from api_service.dart
-      final users = await apiRepo.fetchUsers();
-      return users ?? []; // If users is null, return an empty list
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+
+      final response = await http.get(
+        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers'),
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $storedData',
+        },
+      );
+
+      print("Stored: $storedData");
+      print("API response: ${response.body}");
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final responseBody = response.body;
+        if (responseBody != null && responseBody.isNotEmpty) {
+          final List<dynamic> data = jsonDecode(responseBody);
+          final List<User> users = data.map((userJson) => User.fromJson(userJson)).toList();
+
+          for (User user in users) {
+            print('User ID: ${user.userId}');
+            print('User Name: ${user.userName}');
+          }
+          return users;
+        } else {
+          print('Failed to fetch users: Response body is null or empty');
+          throw Exception('Failed to fetch users');
+        }
+      } else {
+        print('Failed to fetch users: StatusCode: ${response.statusCode}');
+        throw Exception('Failed to fetch users');
+      }
     } catch (e) {
-      print('Error while fetching users: $e');
-      return []; // Return an empty list in case of an error
+      print('Error: $e');
+      throw Exception('Failed to fetch users');
+    }
+  }
+
+  Future<List<Team>> fetchTeams() async {
+    List<Team> teams = [];
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+
+      final response = await http.get(
+        Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers'), // Update the API endpoint URL
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $storedData',
+        },
+      );
+
+      print("Stored: $storedData");
+      print("API response: ${response.body}");
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final responseBody = response.body;
+        if (responseBody != null && responseBody.isNotEmpty) {
+          try {
+            final List<dynamic> data = jsonDecode(responseBody);
+            if (data != null) {
+              final List<Team> teams = data
+                  .map((teamJson) => Team.fromJson(teamJson as Map<String, dynamic>))
+                  .toList();
+
+              for (var team in teams) {
+                print("Team Name: ${team.teamName}");
+                print("Team ID: ${team.id}");
+                print("Users: ${team.users}");
+                print("----------------------");
+              }
+
+              return teams;
+            }
+          } catch (e) {
+            print('Error decoding JSON: $e');
+          }
+        }
+      } else {
+        print('Error: ${response.statusCode}');
+      }
+      return teams;
+
+    } catch (e) {
+      print('Error: $e');
+      throw Exception('Failed to fetch teams');
     }
   }
 
@@ -127,9 +196,9 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
   Future<void> _createTeam() async {
     if (_formKey.currentState!.validate()) {
       Team newTeam = Team(
+        id: "",
         teamName: _teamNameController.text,
-        teamMembers: _selectedMembers,
-        createdOn: DateTime.now(),
+        users: _selectedMembers,
       );
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -145,7 +214,7 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
         };
         final body = jsonEncode({
           "name": newTeam.teamName,
-          "user_id": newTeam.teamMembers,
+          "user_id": newTeam.users,
         });
 
         final response = await http.post(Uri.parse(apiUrl), headers: headers, body: body);

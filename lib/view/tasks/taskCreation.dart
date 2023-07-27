@@ -1,37 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:Taskapp/common_widgets/round_button.dart';
-import 'package:Taskapp/view/tasks/tasks.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import '../../common_widgets/date_widget.dart';
 import '../../common_widgets/round_textfield.dart';
-import '../../models/user.dart';
+import '../../common_widgets/snackbar.dart';
+import '../../models/fetch_user_model.dart';
+import '../../models/project_model.dart';
+import '../../models/project_team_model.dart';
 import '../../utils/app_colors.dart';
-
-
-class Team {
-  final String id;
-  final String teamName;
-  final List<String> users;
-
-  Team({
-    required this.teamName,
-    required this.id,
-    required this.users,
-  });
-
-  factory Team.fromJson(Map<String, dynamic> json) {
-    return Team(
-      teamName: json['teamName'] ?? '',
-      id: json['teamId'] ?? '',
-      users: List<String>.from(json['users'] ?? []),
-    );
-  }
-}
-
 
 class MisTaskCreationScreen extends StatefulWidget {
 
@@ -41,7 +22,7 @@ class MisTaskCreationScreen extends StatefulWidget {
 
 class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
   late String _taskTitle;
-  late String _taskDescription;
+  late String _taskDescription = '';
   late String _attachment = '';
   List<String> _selectedMembers = [];
   List<String> _selectedTeams = [];
@@ -56,6 +37,8 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
   List<Team> teams = [];
   List<dynamic> statuses = [];
   String? _selectedStatus;
+  List<Project> projects = [];
+  String? _selectedProject;
 
   @override
   void initState() {
@@ -63,6 +46,72 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     _attachmentController.text = _attachment;
     fetchPriorities();
     fetchStatusData();
+    fetchUsers();
+    fetchTeams();
+    fetchMyProjects();
+  }
+
+  Future<void> fetchMyProjects() async {
+    try {
+      final url = 'http://43.205.97.189:8000/api/Project/myProjects';
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+      };
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> responseData = jsonDecode(response.body);
+        final List<Project> fetchedProjects = responseData.map((projectData) {
+          // Convert the 'status' field to a string representation
+          String status = projectData['status'] == true ? 'Active' : 'In-Active';
+          String projectId = projectData['project_id'] ?? '';
+
+          return Project(
+            id: projectId,
+            name: projectData['projectName'] ?? '',
+            owner: projectData['created_by'] ?? '',
+            status: status,
+            dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
+            // tasks: tasks,
+            teams: teams,
+            // users: users,
+          );
+        }).toList();
+
+        // Create a default "NA" project for users who don't want to add project-tasks
+        final Project naProject = Project(
+          id: 'NA',
+          name: 'NA (No Project)',
+          owner: '',
+          status: 'Active',
+          dueDate: null,
+          teams: [], // You can set teams and other fields as needed
+        );
+
+        setState(() {
+          projects = [naProject, ...fetchedProjects];
+        });
+
+        // Check if projects list is not empty
+        if (projects.isNotEmpty) {
+          // Initialize _selectedProject to the first project ID in the list
+          _selectedProject = projects[0].id;
+        } else {
+          // If projects list is empty, set _selectedProject to null
+          _selectedProject = null;
+        }
+      } else {
+        print('Error fetching projects: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching projects: $e');
+    }
   }
 
   Future<void> fetchStatusData() async {
@@ -71,6 +120,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     if (response.statusCode == 200) {
       setState(() {
         statuses = json.decode(response.body);
+        _selectedStatus = statuses[0]['id'];
       });
     } else {
       print('Failed to fetch status. Status code: ${response.statusCode}');
@@ -227,7 +277,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       final storedData = prefs.getString('jwtToken');
 
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers'), // Update the API endpoint URL
+        Uri.parse('http://43.205.97.189:8000/api/Team/myTeams'), // Update the API endpoint URL
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -258,6 +308,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
               return teams;
             }
           } catch (e) {
+            print('Response Body: $responseBody');
             print('Error decoding JSON: $e');
           }
         }
@@ -368,6 +419,47 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: <Widget>[
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.lightGrayColor,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedProject,
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 15,
+                              horizontal: 15,
+                            ),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            hintText: "Project",
+                            hintStyle: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                            icon: Padding(
+                              padding: const EdgeInsets.only(left: 16.0),
+                              child: Image.asset(
+                                "assets/images/pri.png",
+                                width: 20,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                          items: projects.map<DropdownMenuItem<String>>((project) {
+                            return DropdownMenuItem<String>(
+                              value: project.id,
+                              child: Text(project.name),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedProject = value; // Update the selected project here
+                            });
+                          },
+                        ),
+                      ),
                       SizedBox(height: 16.0),
                       RoundTextField(
                         hintText: "Task Title",
@@ -569,40 +661,80 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
   }
 
   void _selectStartDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 365)),
-    );
-    if (picked != null) {
+    DateTime? startDate = await DatePickerUtils.selectStartDate(context);
+    if (startDate != null) {
       setState(() {
-        _startDate = picked;
+        _startDate = startDate;
       });
     }
   }
 
   void _selectEndDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: _startDate ?? DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 365)),
-    );
-    if (picked != null) {
+    // Use DatePickerUtils.selectEndDate instead of showDatePicker directly
+    DateTime? endDate = await DatePickerUtils.selectEndDate(context, _startDate);
+    if (endDate != null) {
       setState(() {
-        _endDate = picked;
+        _endDate = endDate;
       });
     }
   }
 
   void createTask() async {
-    // Fetch the necessary data from the form fields
+    if (_taskTitle.isEmpty) {
+      DialogUtils.showSnackbar(context, 'Task Title is required.');
+      return;
+    }
+
+    if (_taskDescription.isEmpty) {
+      DialogUtils.showSnackbar(context, 'Task Description is required.');
+      return;
+    }
+
+    // if (_attachment.isEmpty) {
+    // DialogUtils.showSnackbar(context, 'Attachment is required.');
+    //   return;
+    // }
+
+    if (_selectedMembers.isEmpty) {
+      DialogUtils.showSnackbar(context, 'Assignee Members is required.');
+      return;
+    }
+
+    // if (_selectedTeams.isEmpty) {
+    //   DialogUtils.showSnackbar(context, 'AssigneeTeam is required.');
+    //   return;
+    // }
+
+    if (_startDate == null) {
+      DialogUtils.showSnackbar(context, 'Start Date is required.');
+      return;
+    }
+
+    if (_endDate == null) {
+      DialogUtils.showSnackbar(context, 'End Date is required.');
+      return;
+    }
+
+    if (_priority.isEmpty) {
+      DialogUtils.showSnackbar(context, 'Task Priority is required.');
+      return;
+    }
+
+    if (_selectedStatus == null) {
+      DialogUtils.showSnackbar(context, 'Status is required.');
+      return;
+    }
+
+    if (_selectedProject == null) {
+      DialogUtils.showSnackbar(context, 'Project is required.');
+      return;
+    }
+
     String taskTitle = _taskTitle;
     String taskDescription = _taskDescription;
     String attachment = _attachment;
-    List<String> assignedMembers = _selectedMembers;
-    List<String> assignedTeams = _selectedTeams;
+    List<String> assignedMembers = users.map((user) => user.userId).toList();
+    List<String> assignedTeams = teams.map((team) => team.id).toList();
     String priority = _priority;
 
     // Get the current timestamp
@@ -615,20 +747,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     String? startDate = _startDate?.toUtc().toIso8601String();
     String? endDate = _endDate?.toUtc().toIso8601String();
 
-    // Get the GUID value of the selected status
-    String? selectedStatusId;
-    for (var status in statuses) {
-      if (status['id'].toString() == _selectedStatus) {
-        selectedStatusId = status['id'].toString();
-        break;
-      }
-    }
-
-    if (selectedStatusId == null) {
-      print('Selected status ID not found in the status data.');
-      return; // You might want to handle this case appropriately
-    }
-
     // Create a map representing the task data
     Map<String, dynamic> taskData = {
       "name": taskTitle,
@@ -639,8 +757,14 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       "end_date": endDate,
       "assigned_user": assignedMembers,
       "assigned_team": assignedTeams,
-      "status": selectedStatusId, // Use the GUID value of the selected status
+      "status": _selectedStatus, // Replace with the appropriate status ID
     };
+
+    if (_selectedProject != "NA") {
+      taskData["project_id"] = _selectedProject;
+    } else {
+      taskData["project_id"] = null; // Set project_id to null for the "NA" project
+    }
 
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -662,12 +786,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
 
       if (response.statusCode == 200) {
         // Task creation successful
-        print('Task created successfully');
-        // Proceed to the next screen or perform any additional actions if needed
-        var responseData = json.decode(response.body);
-        print('Task ID: ${responseData['id']}');
-        print('Task Name: ${responseData['name']}');
-        // ...
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -679,7 +797,9 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                   style: TextStyle(color: Colors.black),
                   children: [
                     TextSpan(
-                      text: _taskTitle.isNotEmpty ? _taskTitle : '',
+                      text: taskTitle.isNotEmpty
+                          ? taskTitle
+                          : '',
                       style: TextStyle(
                         color: Colors.black, // Set the desired color here
                         fontWeight: FontWeight.bold,
@@ -693,17 +813,29 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                   ],
                 ),
               ),
+              actions: [
+                InkWell(
+                    onTap: (){
+                      Navigator.pop(context);
+                    },
+                    child: Text("OK",style: TextStyle(
+                        color: AppColors.blackColor,
+                        fontSize: 20
+                    ),))
+              ],
             );
           },
         );
+        print('Task created successfully');
+
+        // Proceed to the next screen or perform any additional actions if needed
+
       } else {
         // Task creation failed
         print('Failed to create task: ${response.statusCode}');
-        // Show an error message or handle the failure accordingly
       }
     } catch (e) {
       print('Error while creating task: $e');
-      // Show an error message or handle the exception accordingly
     }
   }
 }

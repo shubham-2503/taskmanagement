@@ -28,6 +28,7 @@ class _UpgradePlanScreenState extends State<UpgradePlanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(),
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(

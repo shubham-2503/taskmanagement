@@ -91,15 +91,6 @@ class _EditTeamProjectPageState extends State<EditTeamProjectPage> {
     print("StatusCode: ${response.statusCode}");
     print("Response: ${response.body}");
     if (response.statusCode == 200) {
-      // Success, show a dialog with the success message
-      // final updatedProjectData = Project(
-      //   name: editedTitle,
-      //   owner: editedAssignedTo,
-      //   status: editedStatus,
-      //   dueDate: editedDueDate,
-      // );
-      // Navigator.pop(context, updatedProjectData);
-
       _showUpdatedDialog();
     } else {
       // Error, show a dialog with an error message

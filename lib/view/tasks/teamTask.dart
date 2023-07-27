@@ -5,26 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../../common_widgets/round_button.dart';
+import '../../models/task_model.dart';
 import '../../utils/app_colors.dart';
-
-class Task {
-  final String taskName; // Changed "title" to "taskName"
-  final String assignedTo;
-  final String? assignedTeam;
-  final String status;
-  final String description;
-  final String priority;
-  String? dueDate;
-
-  Task({
-    required this.taskName,
-    required this.assignedTo,
-    this.assignedTeam,
-    required this.status,
-    required this.description,
-    required this.priority, required this.dueDate,
-  });
-}
 
 
 class TeamTaskScreen extends StatefulWidget {
@@ -59,6 +41,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
         final List<Task> fetchedTasks = responseData.map((taskData) {
           print("Raw Date String: ${taskData['dueDate']}");
           return Task(
+            taskId: taskData['id'],
             taskName: taskData['task_name'] ?? '',
             assignedTo: taskData['assignee'] ?? '',
             status: taskData['status'] ?? '',
@@ -262,7 +245,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (context) =>
-                                                    TaskDetailsScreen(taskTitle: '', assignee: '',),
+                                                    TaskDetailsScreen(taskId: task.taskId,taskTitle: task.taskName,assignee: task.assignedTo,),
                                               ),
                                             );
                                           }),
