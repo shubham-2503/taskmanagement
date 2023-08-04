@@ -1,19 +1,17 @@
 import 'dart:convert';
 import 'package:Taskapp/models/project_model.dart';
-import 'package:Taskapp/view/activity/activity_screen.dart';
+import 'package:Taskapp/organization_proivider.dart';
 import 'package:Taskapp/view/projects/projectCreation.dart';
 import 'package:Taskapp/view/reports/reports.dart';
 import 'package:Taskapp/view/signup/inviteTeammates.dart';
-import 'package:Taskapp/view/subscription/chooseplan.dart';
 import 'package:Taskapp/view/subscription/subscriptions.dart';
 import 'package:Taskapp/view/tasks/completedTasks.dart';
 import 'package:Taskapp/view/tasks/openTasks.dart';
-import 'package:Taskapp/view/tasks/taskDetails.dart';
-import 'package:Taskapp/view/projects/taskcreation.dart';
 import 'package:Taskapp/view/tasks/tasks.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/teams/teamList.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_button.dart';
 import '../../models/project_team_model.dart';
@@ -22,7 +20,7 @@ import '../../models/user.dart';
 import '../notification/notification_screen.dart';
 import 'package:http/http.dart' as http;
 import '../projects/projectDashScreen.dart';
-import '../tasks/taskCreation.dart';
+import '../tasks/MistaskCreation.dart';
 import '../teams/createTeams.dart';
 
 
@@ -44,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isTasksFetched = false;
   bool isTasksCompleted = false;
   String userName="";
-  bool _isMounted = false;
+  String orgId= "";
 
   @override
   void initState() {
@@ -57,10 +55,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> fetchMyProjects() async {
     try {
-      final url = 'http://43.205.97.189:8000/api/Project/myProjects';
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      String? orgId = prefs.getString("selectedOrgId") ?? "";
+      print("OrgId: $orgId");
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+      final url = 'http://43.205.97.189:8000/api/Project/myProjects?org_id=$orgId';
+
+
 
       final headers = {
         'accept': '*/*',
@@ -76,6 +81,14 @@ class _HomeScreenState extends State<HomeScreen> {
           String status = projectData['status'] == true ? 'Active' : 'In-Active';
           String projectId = projectData['project_id'] ?? '';
 
+          // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
+          List<Team> teams = (projectData['teams'] as List<dynamic>).map((teamData) {
+            return Team(
+              id: teamData['teamId'] ?? '',
+              teamName: teamData['teamName'] ?? '',
+            );
+          }).toList();
+
           List<User> users = (projectData['users'] as List<dynamic>).map((userData) {
             return User.fromJson(userData); // Create User object from JSON data
           }).toList();
@@ -87,15 +100,14 @@ class _HomeScreenState extends State<HomeScreen> {
             status: status,
             dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
             // tasks: tasks,
-            // teams: teams,
+            teams: teams,
             users: users,
           );
         }).toList();
         setState(() {
-          totalMyProjects = responseData.length;
-          isProjectsFetched = true;
+          totalMyProjects = fetchedProjects.length;
+          // Other code remains the same
         });
-
       } else {
         print('Error fetching projects: ${response.statusCode}');
       }
@@ -106,10 +118,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> fetchUserName() async {
     try {
-      final url = 'http://43.205.97.189:8000/api/User/myProfile';
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      String? orgId = prefs.getString("selectedOrgId") ?? "";
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
+      final url = 'http://43.205.97.189:8000/api/User/myProfile';
+
 
       final headers = {
         'accept': '*/*',
@@ -124,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final Map<String, dynamic> userData = responseData[0];
           setState(() {
             userName = userData['name'] ?? 'Admin'; // Set the value of userName in the class scope
+            orgId = orgId ?? "";
           });
         }
       } else {
@@ -136,10 +156,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> fetchMyTasks() async {
     try {
-      final url = 'http://43.205.97.189:8000/api/Task/myTasks';
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      String? orgId = prefs.getString("selectedOrgId") ?? "";
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
+      final url = 'http://43.205.97.189:8000/api/Task/myTasks?org_id=$orgId';
+
 
       final headers = {
         'accept': '*/*',
@@ -153,19 +180,26 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
         final List<Task> fetchedTasks = responseData.map((taskData) {
+          final List<dynamic> users = taskData['users'];
+          final List<String> assignedUsers = users.isNotEmpty
+              ? users.map((user) => user['user_name'] as String).toList()
+              : [];
+          final List<String> assignedTo = assignedUsers;
           return Task(
-            taskName: taskData['task_name'] ?? '', // Changed to 'task_name'
-            assignedTo: taskData['assignee'] ?? '', // Changed to 'assignee'
+            taskName: taskData['task_name'] ?? '',
+            assignedTo: assignedTo, // Update key from 'assignee' to 'created_by'
             status: taskData['status'] ?? '',
             description: taskData['description'] ?? '',
             priority: taskData['priority'] ?? '',
-            dueDate: taskData['dueDate'], // 'dueDate' remains the same
+            dueDate: taskData['dueDate'],
           );
         }).toList();
         setState(() {
           tasks = fetchedTasks;
           totalMyTasks = responseData.length;
-          totalCompletedTasks = tasks.where((task) => task.status == 'Completed').length;
+          totalCompletedTasks = tasks.where((task) => task.status.toLowerCase() == 'completed').length;
+          print('Total My Tasks: $totalMyTasks');
+          print('Total Completed Tasks: $totalCompletedTasks');
           isTasksFetched = true;
           isTasksCompleted = true;
         });
@@ -177,13 +211,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-    var media = MediaQuery
-        .of(context)
-        .size;
+    final organizationProvider = Provider.of<OrganizationProvider>(context);
+    final _selectedOrganizationIndex = organizationProvider.selectedOrganizationIndex;
+    final _organizationList = organizationProvider.organizationList;
+    var media = MediaQuery.of(context).size;
+
+    fetchMyProjects();
+    fetchMyTasks();
+    fetchUserName();
 
     return Scaffold(
       appBar: PreferredSize(
@@ -236,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fontFamily: "Poppins",
                                 fontWeight: FontWeight.w700,
                               ),
-                            )
+                            ),
                           ],
                         ),
                       ],
@@ -288,6 +325,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     GestureDetector(
                       onTap: () async{
+                        Navigator.push(context, MaterialPageRoute(builder: (context)=>TeamsFormedScreen(),));
+                      },
+                      child: Column(
+                        children: [
+                          Container(
+                            height: 50,
+                            width:  50,
+                            decoration: BoxDecoration(
+                                color: AppColors.primaryColor1,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xffE0E0E0))),
+                            child: Center(
+                              child: Image.asset(
+                                "assets/images/group.png",
+                                color: AppColors.secondaryColor2,
+                                width:35,
+                                height:35,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 11,),
+                          Text("My Teams",style: TextStyle(
+                            color: AppColors.secondaryColor2,
+                            fontSize: 12,
+                          ),),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () async{
                         Navigator.push(context, MaterialPageRoute(builder: (context)=>ProjectDashScreen(),));
                       },
                       child: Column(
@@ -310,36 +377,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 11,),
                           Text("Total Projects",style: TextStyle(
-                            color: AppColors.secondaryColor2,
-                            fontSize: 12,
-                          ),),
-                        ],
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=>CompletedTaskScreen()));
-                      },
-                      child: Column(
-                        children: [
-                          Container(
-                            height: 50,
-                            width:  50,
-                            decoration: BoxDecoration(
-                                color: AppColors.primaryColor1,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: const Color(0xffE0E0E0))),
-                            child: Center(
-                              child: Image.asset(
-                                "assets/images/completed-task.png",
-                                color: AppColors.secondaryColor2,
-                                width:35,
-                                height:35,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 11,),
-                          Text("Completed Task",style: TextStyle(
                             color: AppColors.secondaryColor2,
                             fontSize: 12,
                           ),),
@@ -384,27 +421,56 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: BoxDecoration(
                       color: AppColors.primaryColor1.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(15)),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
                     children: [
-                      Text(
-                        "Open Tasks",
-                        style: TextStyle(
-                          color: AppColors.blackColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Open Tasks",
+                            style: TextStyle(
+                              color: AppColors.blackColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 75,
+                            height: 30,
+                            child: RoundButton(
+                              title: "check",
+                              type: RoundButtonType.primaryBG,
+                              onPressed: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context)=>OpenTaskScreen()));
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(
-                        width: 75,
-                        height: 30,
-                        child: RoundButton(
-                          title: "check",
-                          type: RoundButtonType.primaryBG,
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context)=>OpenTaskScreen()));
-                          },
-                        ),
+                      SizedBox(height: 20,),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Completed Tasks",
+                            style: TextStyle(
+                              color: AppColors.blackColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 75,
+                            height: 30,
+                            child: RoundButton(
+                              title: "check",
+                              type: RoundButtonType.primaryBG,
+                              onPressed: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context)=>CompletedTaskScreen()));
+                              },
+                            ),
+                          ),
+                        ],
                       )
                     ],
                   ),

@@ -21,6 +21,7 @@ class _ChoosePlanState extends State<ChoosePlan> {
 
   Future<void> fetchSubscriptionPlans() async {
     try {
+
       final response = await http.get(
         Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
         headers: {'accept': '*/*'},

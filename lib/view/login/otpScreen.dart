@@ -147,7 +147,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 backgroundColor: AppColors.primaryColor1,
               ),
             );
-            Navigator.pushReplacementNamed(context, DashboardScreen.routeName);
+            // Clear the navigation stack and go to DashboardScreen
+            Navigator.pushNamedAndRemoveUntil(context, DashboardScreen.routeName, (route) => false);
+
             print('OTP verification successful!');
           } } else {
           // OTP verification failed

@@ -12,17 +12,7 @@ class _UpgradePlanScreenState extends State<UpgradePlanScreen> {
   int selectedPlanIndex = 0; // Index of the selected plan
   bool isCheck = false;
   List<Map<String, dynamic>> plans = [
-    {
-      'name': 'Premium Plan',
-      'price': '\$19.99/month',
-      'features': [
-        'Feature 1',
-        'Feature 2',
-        'Feature 3',
-        'Feature 4',
-        'Feature 5',
-      ],
-    },
+    {},
   ];
 
   @override

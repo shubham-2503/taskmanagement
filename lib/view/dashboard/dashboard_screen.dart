@@ -1,8 +1,8 @@
 import 'dart:io';
+import 'package:Taskapp/user.dart';
 import 'package:Taskapp/utils/app_colors.dart';
-import 'package:Taskapp/view/activity/activity_screen.dart';
 import 'package:Taskapp/view/profile/user_profile.dart';
-import 'package:Taskapp/view/spaces/mySpaces.dart';
+import 'package:Taskapp/view/reports/reports.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
@@ -25,8 +25,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   final List<Widget> _widgetOptions = <Widget>[
     const HomeScreen(),
-    const MySpaces(),
-    const ActivityScreen(),
+    const InviteScreen(),
+    ReportScreen(),
     const UserProfile(),
   ];
 
@@ -140,7 +140,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }),
               const SizedBox(width: 40),
               TabButton(
-                  title: "Activity",
+                  title: "Reports",
                   icon: "assets/icons/activity_icon.png",
                   selectIcon: "assets/icons/activity_select_icon.png",
                   isActive: selectTab == 2,

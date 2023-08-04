@@ -6,113 +6,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-import '../../common_widgets/date_widget.dart';
 import '../../common_widgets/round_textfield.dart';
 import '../../common_widgets/snackbar.dart';
-import '../../models/fetch_user_model.dart';
-import '../../models/project_model.dart';
 import '../../models/project_team_model.dart';
+import 'package:Taskapp/models/fetch_user_model.dart';
 import '../../utils/app_colors.dart';
 
-class MisTaskCreationScreen extends StatefulWidget {
+class ProjectTaskCreationScreen extends StatefulWidget {
+  final String ProjectId;
+  final String ProjectName;
 
+  const ProjectTaskCreationScreen({super.key, required this.ProjectId, required this.ProjectName});
   @override
-  _MisTaskCreationScreenState createState() => _MisTaskCreationScreenState();
+  _ProjectTaskCreationScreenState createState() => _ProjectTaskCreationScreenState();
 }
 
-class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
+class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
   late String _taskTitle;
-  late String _taskDescription = '';
-  late String _attachment = '';
-  List<String> _selectedMembers = [];
-  List<String> _selectedTeams = [];
+  late String _taskDescription;
+  late String _attachment = '';// Updated to store Team objects
   DateTime? _startDate;
   DateTime? _endDate;
   List<dynamic> priorities = [];
-  late String _priority = " ";
+  late String _priority;
   TextEditingController _assigneeMembersController = TextEditingController();
   TextEditingController _assigneeTeamsController = TextEditingController();
   TextEditingController _attachmentController = TextEditingController();
-  List<User> users =[];
+  TextEditingController projectNameController = TextEditingController();
+  List<User> users = [];
   List<Team> teams = [];
+  List<String> _selectedMembers = [];
+  List<String> _selectedTeams = [];
   List<dynamic> statuses = [];
   String? _selectedStatus;
-  List<Project> projects = [];
-  String? _selectedProject;
 
   @override
   void initState() {
     super.initState();
+    projectNameController = TextEditingController(text: widget.ProjectName);
     _attachmentController.text = _attachment;
     fetchPriorities();
-    fetchStatusData();
-    fetchUsers();
     fetchTeams();
-    fetchMyProjects();
+    fetchUsers();
+    fetchStatusData();
   }
 
-  Future<void> fetchMyProjects() async {
-    try {
-      final url = 'http://43.205.97.189:8000/api/Project/myProjects';
-
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
-
-      final headers = {
-        'accept': '*/*',
-        'Authorization': 'Bearer $storedData',
-      };
-
-      final response = await http.get(Uri.parse(url), headers: headers);
-
-      if (response.statusCode == 200) {
-        final List<dynamic> responseData = jsonDecode(response.body);
-        final List<Project> fetchedProjects = responseData.map((projectData) {
-          // Convert the 'status' field to a string representation
-          String status = projectData['status'] == true ? 'Active' : 'In-Active';
-          String projectId = projectData['project_id'] ?? '';
-
-          return Project(
-            id: projectId,
-            name: projectData['projectName'] ?? '',
-            owner: projectData['created_by'] ?? '',
-            status: status,
-            dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
-            // tasks: tasks,
-            teams: teams,
-            // users: users,
-          );
-        }).toList();
-
-        // Create a default "NA" project for users who don't want to add project-tasks
-        final Project naProject = Project(
-          id: 'NA',
-          name: 'NA (No Project)',
-          owner: '',
-          status: 'Active',
-          dueDate: null,
-          teams: [], // You can set teams and other fields as needed
-        );
-
-        setState(() {
-          projects = [naProject, ...fetchedProjects];
-        });
-
-        // Check if projects list is not empty
-        if (projects.isNotEmpty) {
-          // Initialize _selectedProject to the first project ID in the list
-          _selectedProject = projects[0].id;
-        } else {
-          // If projects list is empty, set _selectedProject to null
-          _selectedProject = null;
-        }
-      } else {
-        print('Error fetching projects: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error fetching projects: $e');
-    }
-  }
 
   Future<void> fetchStatusData() async {
     final response = await http.get(Uri.parse('http://43.205.97.189:8000/api/Platform/getStatus'));
@@ -127,7 +65,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     }
   }
 
- void fetchPriorities() async {
+  void fetchPriorities() async {
     final response = await http.get(Uri.parse('http://43.205.97.189:8000/api/Platform/getPriorities'));
 
     if (response.statusCode == 200) {
@@ -158,13 +96,81 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     }
   }
 
+  Future<List<Team>> fetchTeams() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final response = await http.get(
+        Uri.parse('http://43.205.97.189:8000/api/Team/myTeams?org_id=$orgId'), // Update the API endpoint URL
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $storedData',
+        },
+      );
+
+      print("Stored: $storedData");
+      print("API response: ${response.body}");
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final responseBody = response.body;
+        if (responseBody != null && responseBody.isNotEmpty) {
+          try {
+            final List<dynamic> data = jsonDecode(responseBody);
+            if (data != null) {
+              final List<Team> teams = data
+                  .map((teamJson) => Team.fromJson(teamJson as Map<String, dynamic>))
+                  .toList();
+
+              for (var team in teams) {
+                print("Team Name: ${team.teamName}");
+                print("Team ID: ${team.id}");
+                print("Users: ${team.users}");
+                print("----------------------");
+              }
+
+              return teams;
+            }
+          } catch (e) {
+            print('Response Body: $responseBody');
+            print('Error decoding JSON: $e');
+          }
+        }
+      } else {
+        print('Error: ${response.statusCode}');
+      }
+      return teams;
+
+    } catch (e) {
+      print('Error: $e');
+      throw Exception('Failed to fetch teams');
+    }
+  }
+
   Future<List<User>> fetchUsers() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      if (storedData == null || storedData.isEmpty) {
+        // Handle the case when storedData is null or empty
+        print('Stored token is null or empty. Cannot make API request.');
+        throw Exception('Failed to fetch users: Stored token is null or empty.');
+      }
 
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers'),
+        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -181,10 +187,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
           final List<dynamic> data = jsonDecode(responseBody);
           final List<User> users = data.map((userJson) => User.fromJson(userJson)).toList();
 
-          // Process the teams data as needed
-          // For example, you can store them in a state variable or display them in a dropdown menu
-
-          // Print the team names for testing
           for (User user in users) {
             print('User ID: ${user.userId}');
             print('User Name: ${user.userName}');
@@ -232,9 +234,13 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                             onChanged: (value) {
                               setState(() {
                                 if (value == true) {
-                                  _selectedMembers.add(user.userId);
+                                  if (!_selectedMembers.contains(user.userId)) {
+                                    _selectedMembers.add(user.userId);
+                                  }
                                 } else {
-                                  _selectedMembers.remove(user.userId);
+                                  if (_selectedMembers.contains(user.userId)) {
+                                    _selectedMembers.remove(user.userId);
+                                  }
                                 }
                               });
                             },
@@ -260,7 +266,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                       // Set the value of the desired field
                       _assigneeMembersController.text = selectedMembersText.join(', ');
                     });
-                    Navigator.of(context).pop(); // Close the dialog
+                    Navigator.pop(context);
                   },
                 ),
               ],
@@ -269,58 +275,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
         );
       },
     );
-  }
-
-  Future<List<Team>> fetchTeams() async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
-
-      final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Team/myTeams'), // Update the API endpoint URL
-        headers: {
-          'accept': '*/*',
-          'Authorization': 'Bearer $storedData',
-        },
-      );
-
-      print("Stored: $storedData");
-      print("API response: ${response.body}");
-      print("StatusCode: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final responseBody = response.body;
-        if (responseBody != null && responseBody.isNotEmpty) {
-          try {
-            final List<dynamic> data = jsonDecode(responseBody);
-            if (data != null) {
-              final List<Team> teams = data
-                  .map((teamJson) => Team.fromJson(teamJson as Map<String, dynamic>))
-                  .toList();
-
-              for (var team in teams) {
-                print("Team Name: ${team.teamName}");
-                print("Team ID: ${team.id}");
-                print("Users: ${team.users}");
-                print("----------------------");
-              }
-
-              return teams;
-            }
-          } catch (e) {
-            print('Response Body: $responseBody');
-            print('Error decoding JSON: $e');
-          }
-        }
-      } else {
-        print('Error: ${response.statusCode}');
-      }
-      return teams;
-
-    } catch (e) {
-      print('Error: $e');
-      throw Exception('Failed to fetch teams');
-    }
   }
 
   void _showTeamsDialog() {
@@ -396,11 +350,15 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final projectId = widget.ProjectId;
+    final projectName = widget.ProjectName;
+    print("Id: $projectId");
+    print("Name: $projectName");
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
       appBar: AppBar(
         title: Text(
-          'Task Creation',
+          'Task Creation With Project',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: AppColors.blackColor,
@@ -419,46 +377,11 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: <Widget>[
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGrayColor,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedProject,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 15,
-                              horizontal: 15,
-                            ),
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            hintText: "Project",
-                            hintStyle: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                            icon: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: Image.asset(
-                                "assets/images/pri.png",
-                                width: 20,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ),
-                          items: projects.map<DropdownMenuItem<String>>((project) {
-                            return DropdownMenuItem<String>(
-                              value: project.id,
-                              child: Text(project.name),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedProject = value; // Update the selected project here
-                            });
-                          },
-                        ),
+                      RoundTextField(
+                        hintText: "Project Name",
+                        icon: "assets/icons/naa.png",
+                       isReadOnly: true,
+                        textEditingController: projectNameController,
                       ),
                       SizedBox(height: 16.0),
                       RoundTextField(
@@ -646,10 +569,12 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                         width: 100,
                         child: RoundButton(
                           title: "Create Task",
-                          onPressed: createTask,
+                          onPressed: (){
+                            createTask();
+                          },
                         ),
                       ),
-  ],
+                    ],
                   ),
                 ),
               ),
@@ -661,75 +586,79 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
   }
 
   void _selectStartDate(BuildContext context) async {
-    DateTime? startDate = await DatePickerUtils.selectStartDate(context);
-    if (startDate != null) {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+    );
+    if (picked != null) {
       setState(() {
-        _startDate = startDate;
+        _startDate = picked;
       });
     }
   }
 
   void _selectEndDate(BuildContext context) async {
-    // Use DatePickerUtils.selectEndDate instead of showDatePicker directly
-    DateTime? endDate = await DatePickerUtils.selectEndDate(context, _startDate);
-    if (endDate != null) {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: _startDate ?? DateTime.now(),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+    );
+    if (picked != null) {
       setState(() {
-        _endDate = endDate;
+        _endDate = picked;
       });
     }
   }
 
+  void showSnackbar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: TextStyle(
+            color: Colors.black54,
+          ),
+        ),
+        backgroundColor: AppColors.primaryColor1,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   void createTask() async {
     if (_taskTitle.isEmpty) {
-      DialogUtils.showSnackbar(context, 'Task Title is required.');
-      return;
+      showSnackbar(context, "Title is required");
     }
 
     if (_taskDescription.isEmpty) {
-      DialogUtils.showSnackbar(context, 'Task Description is required.');
-      return;
+      showSnackbar(context, "Description is required");
     }
 
-    // if (_attachment.isEmpty) {
-    // DialogUtils.showSnackbar(context, 'Attachment is required.');
-    //   return;
-    // }
-
-    if (_selectedMembers.isEmpty) {
-      DialogUtils.showSnackbar(context, 'Assignee Members is required.');
-      return;
-    }
-
-    // if (_selectedTeams.isEmpty) {
-    //   DialogUtils.showSnackbar(context, 'AssigneeTeam is required.');
-    //   return;
-    // }
 
     if (_startDate == null) {
-      DialogUtils.showSnackbar(context, 'Start Date is required.');
-      return;
+      showSnackbar(context, "Start Date is required");
     }
 
     if (_endDate == null) {
-      DialogUtils.showSnackbar(context, 'End Date is required.');
-      return;
+      showSnackbar(context, "End date is required");
     }
 
     if (_priority.isEmpty) {
-      DialogUtils.showSnackbar(context, 'Task Priority is required.');
-      return;
+      showSnackbar(context, "Priority is required");
     }
 
     if (_selectedStatus == null) {
-      DialogUtils.showSnackbar(context, 'Status is required.');
-      return;
+      showSnackbar(context, "Status is required");
     }
 
-    if (_selectedProject == null) {
-      DialogUtils.showSnackbar(context, 'Project is required.');
-      return;
+    if (projectNameController == null) {
+      showSnackbar(context, "Project is required");
     }
 
+    // String projectname = projectNameController.text;
     String taskTitle = _taskTitle;
     String taskDescription = _taskDescription;
     String attachment = _attachment;
@@ -739,9 +668,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
 
     // Get the current timestamp
     DateTime currentTimestamp = DateTime.now();
-
-    // Format the timestamp as a string
-    String creationTimestamp = currentTimestamp.toIso8601String();
 
     // Convert the start_date and end_date to UTC before sending
     String? startDate = _startDate?.toUtc().toIso8601String();
@@ -760,19 +686,23 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       "status": _selectedStatus, // Replace with the appropriate status ID
     };
 
-    if (_selectedProject != "NA") {
-      taskData["project_id"] = _selectedProject;
-    } else {
-      taskData["project_id"] = null; // Set project_id to null for the "NA" project
-    }
+    print("Data: $taskData");
 
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
 
-      // Send the HTTP POST request to create the task
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+
+      String apiUrl = 'http://43.205.97.189:8000/api/Task/tasks?project_id=${widget.ProjectId}&org_id=$orgId';
+
+      // Send the HTTP POST request to create the task with the project_id as a query parameter
       final response = await http.post(
-        Uri.parse('http://43.205.97.189:8000/api/Task/tasks'),
+        Uri.parse(apiUrl),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData', // Replace with the actual access token
@@ -780,7 +710,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
         },
         body: json.encode(taskData),
       );
-
       print("Response: ${response.body}");
       print("StatusCode: ${response.statusCode}");
 
@@ -838,4 +767,5 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       print('Error while creating task: $e');
     }
   }
+
 }

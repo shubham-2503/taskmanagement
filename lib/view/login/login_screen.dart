@@ -29,6 +29,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   TruecallerAuthServices truecallerAuthServices = TruecallerAuthServices();
   bool _isPasswordVisible = false;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
 
   String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
@@ -93,9 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
           String errorMessage = "OTP sent successfully";
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorMessage,style: TextStyle(
-                  color: Colors.black54
-              ),),
+              content: Text(errorMessage, style: TextStyle(color: Colors.black54)),
               backgroundColor: AppColors.primaryColor1,
             ),
           );
@@ -103,17 +103,35 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => OTPVerificationScreen(userId: userId,roleId: roleId,orgId: orgId,email: email,),
+              builder: (context) => OTPVerificationScreen(userId: userId, roleId: roleId, orgId: orgId, email: email),
             ),
           );
         } else {
-          print('Login failed');
-          String errorMessage = "Login Failed";
+          print('Login failed - Email or Password is incorrect');
+          String errorMessage = "Email or Password is incorrect";
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorMessage,style: TextStyle(
-                  color: Colors.black54
-              ),),
+              content: Text(errorMessage, style: TextStyle(color: Colors.black54)),
+              backgroundColor: AppColors.primaryColor1,
+            ),
+          );
+        }
+      } else if (response.statusCode == 404) {
+        var data = jsonDecode(response.body);
+        if (data['message'] != null) {
+          String errorMessage = data['message'];
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage, style: TextStyle(color: Colors.black54)),
+              backgroundColor: AppColors.primaryColor1,
+            ),
+          );
+        } else {
+          print('Email not registered');
+          String errorMessage = "Email not registered. Check your email.";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage, style: TextStyle(color: Colors.black54)),
               backgroundColor: AppColors.primaryColor1,
             ),
           );
@@ -123,9 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
         String errorMessage = "Request Failed.";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage,style: TextStyle(
-                color: Colors.black54
-            ),),
+            content: Text(errorMessage, style: TextStyle(color: Colors.black54)),
             backgroundColor: AppColors.primaryColor1,
           ),
         );
@@ -167,9 +183,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> signInWithGoogle() async {
+    print("Google-Sign_in Started");
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser != null) {
         print("Successfully logged in");

@@ -34,7 +34,15 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
 
   Future<void> fetchRoles() async {
     try {
-      final url = Uri.parse('http://43.205.97.189:8000/api/Platform/getRoles');
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final url = Uri.parse('http://43.205.97.189:8000/api/Platform/getRoles?org_id=$orgId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -98,12 +106,19 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
       // Get the token or user ID from local storage
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId'); // Use the locally saved _selectedOrgId
+      print("Selected OrgId: $orgId");
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
       List<Map<String, dynamic>> requestBody = [];
 
       for (var teammate in teammates) {
         String name = teammate.nameController.text;
         String email = teammate.emailController.text;
-        String phone = teammate.phoneController.text;
+        String phone = selectedCountryCode + teammate.phoneController.text;
         String? roleId = teammate.selectedRole;
 
         Map<String, dynamic> teammateData = {
@@ -116,7 +131,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
         requestBody.add(teammateData);
       }
 
-      final Uri url = Uri.parse('http://43.205.97.189:8000/api/User/inviteUsers');
+      final Uri url = Uri.parse('http://43.205.97.189:8000/api/User/inviteUsers?org_id=$orgId');
       final response = await http.post(
         url,
         headers: {

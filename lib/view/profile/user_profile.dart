@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'package:Taskapp/view/profile/editProfile.dart';
-import 'package:Taskapp/view/subscription/chooseplan.dart';
 import 'package:Taskapp/view/subscription/subscriptions.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
-import 'package:Taskapp/common_widgets/round_gradient_button.dart';
 import 'package:Taskapp/view/subscription/renewPlan.dart';
 import 'package:animated_toggle_switch/animated_toggle_switch.dart';
 import 'package:Taskapp/utils/app_colors.dart';
@@ -11,9 +9,10 @@ import 'package:Taskapp/view/profile/widgets/setting_row.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../common_widgets/round_button.dart';
+import '../../organization_proivider.dart';
 import '../login/login_screen.dart';
 
 class UserProfile extends StatefulWidget {
@@ -29,13 +28,15 @@ class _UserProfileState extends State<UserProfile> {
   Map<String, dynamic> userProfileData = {};
   Map<String, dynamic> latestSubscription = {};
   Map<String, dynamic>? organization;
+  int selectedOrganizationIndex = -1; // Or any other default value based on your application's logic
+  String selectedOrganizationName = '';
+  String selectOrganizationAdd = "";
 
   List otherArr = [
     {"image": "assets/icons/p_contact.png", "name": "Contact Us", "tag": "5"},
     {"image": "assets/icons/p_privacy.png", "name": "Privacy Policy", "tag": "6"},
     {"image": "assets/icons/p_setting.png", "name": "Setting", "tag": "7"},
   ];
-
 
   Future<Map<String, dynamic>> fetchUserProfile() async {
     final url = 'http://43.205.97.189:8000/api/User/myProfile';
@@ -56,10 +57,14 @@ class _UserProfileState extends State<UserProfile> {
     if (response.statusCode == 200) {
       final List<dynamic> responseData = jsonDecode(response.body);
       if (responseData.isNotEmpty) {
-        return responseData[0] as Map<String, dynamic>;
+        // Get the first organization as the default organization
+        final Map<String, dynamic> userProfileData = responseData[0] as Map<String, dynamic>;
+        return userProfileData;
       }
     }
-    return {}; // Return an empty map if there's an error or no data
+
+    // Return an empty map if there's an error or no data
+    return {};
   }
 
   void _logOut() async {
@@ -73,6 +78,8 @@ class _UserProfileState extends State<UserProfile> {
   void initState() {
     super.initState();
     _getAppVersion();
+    // Call fetchOrganizationList() when the screen is built
+    Provider.of<OrganizationProvider>(context, listen: false).fetchOrganizationList();
     fetchUserProfile().then((data) {
       setState(() {
         userProfileData = data;
@@ -98,12 +105,44 @@ class _UserProfileState extends State<UserProfile> {
     });
   }
 
+  // Future<void> fetchOrganizationList() async {
+  //   final SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   final storedData = prefs.getString('jwtToken');
+  //
+  //   final url = 'http://43.205.97.189:8000/api/Organization/MyOrganizations';
+  //   try {
+  //     final headers = {
+  //       'accept': '*/*',
+  //       'Authorization': 'Bearer $storedData',
+  //     };
+  //
+  //     final response = await http.get(Uri.parse(url), headers: headers);
+  //
+  //     print('Response: ${response.body}');
+  //     print('Status: ${response.statusCode}');
+  //
+  //     if (response.statusCode == 200) {
+  //       // If the server returns a successful response, parse the JSON
+  //       final List<dynamic> data = json.decode(response.body);
+  //       setState(() {
+  //         _organizationList = data.cast<Map<String, dynamic>>();
+  //       });
+  //     } else {
+  //       throw Exception('Failed to load organization list');
+  //     }
+  //   } catch (e) {
+  //     print('Error fetching organization list: $e');
+  //     throw Exception('Failed to load organization list');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
-    var media = MediaQuery
-        .of(context)
-        .size;
+    final organizationProvider = Provider.of<OrganizationProvider>(context);
+    final _selectedOrganizationIndex = organizationProvider.selectedOrganizationIndex;
+    final _organizationList = organizationProvider.organizationList;
+    print('Organization List Length: ${_organizationList}');
+
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
       appBar: AppBar(
@@ -216,12 +255,136 @@ class _UserProfileState extends State<UserProfile> {
                             ],
                           ),
                         ),
+                        RichText(
+                          text: TextSpan(
+                            text: "Organization: ",
+                            style: TextStyle(
+                                color: AppColors.secondaryColor2,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold
+                            ),
+                            children: [
+                              TextSpan(
+                                text: "$selectedOrganizationName",
+                                style: TextStyle(
+                                  // Add any specific styles for the plan name here, if needed
+                                  color: AppColors.blackColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
               SizedBox(height: 20,),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                decoration: BoxDecoration(
+                  color: AppColors.whiteColor,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "My Organization",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.secondaryColor2,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: (_organizationList.length * 38.0) + 80, // Height calculation
+                      child: GridView.builder(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2, // Number of columns in the GridView
+                          crossAxisSpacing: 10.0, // Spacing between columns
+                          mainAxisSpacing: 10.0, // Spacing between rows
+                        ),
+                        itemCount: _organizationList.length,
+                        itemBuilder: (context, index) {
+                          print('Building item for index $index');
+                          final org = _organizationList[index];
+                          return GestureDetector(
+                            onTap: () {
+                              organizationProvider.switchOrganization(index);
+                              // Switch the organization in the provider and refresh the screen
+                              setState(() {
+                                selectedOrganizationName = org['name'];
+                                selectOrganizationAdd = org['address'];
+                              });
+                              _showNotification('Organization switched to ${org['name']}'); // Show notification
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _selectedOrganizationIndex == index
+                                    ? AppColors.secondaryColor2 // Selected organization color
+                                    : AppColors.whiteColor,
+                                borderRadius: BorderRadius.circular(15),
+                                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    org["name"],
+                                    style: TextStyle(
+                                      color: _selectedOrganizationIndex == index
+                                          ? Colors.white // Selected organization text color
+                                          : AppColors.blackColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    org["address"],
+                                    style: TextStyle(
+                                      color: _selectedOrganizationIndex == index
+                                          ? Colors.white // Selected organization text color
+                                          : AppColors.blackColor,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                  RichText(
+                                    text: TextSpan(
+                                      text: "Employee: ",
+                                      style: TextStyle(
+                                          color: AppColors.blackColor,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: "${org['employees']}",
+                                          style: TextStyle(
+                                            color: AppColors.blackColor,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(
+                height: 45,
+              ),
               Container(
                 padding:
                 const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
@@ -291,8 +454,8 @@ class _UserProfileState extends State<UserProfile> {
                                     children: [
                                       TextSpan(
                                         text: "${userProfileData.containsKey('name')
-                                      ? userProfileData['name']
-                                      : 'John'}",
+                                            ? userProfileData['name']
+                                            : 'John'}",
                                         style: TextStyle(
                                           // Add any specific styles for the plan name here, if needed
                                           color: AppColors.blackColor,
@@ -314,8 +477,8 @@ class _UserProfileState extends State<UserProfile> {
                                     children: [
                                       TextSpan(
                                         text: "${userProfileData.containsKey('phone')
-                                      ? userProfileData['phone']
-                                          : 'No Phone'}",
+                                            ? userProfileData['phone']
+                                            : 'No Phone'}",
                                         style: TextStyle(
                                           color: AppColors.blackColor,
                                           fontSize: 12,
@@ -360,9 +523,7 @@ class _UserProfileState extends State<UserProfile> {
                                     ),
                                     children: [
                                       TextSpan(
-                                        text: organization != null && organization!.containsKey('org_name')
-                                      ? organization!['org_name']
-                                      : 'No Organization',
+                                        text: "$selectedOrganizationName",
                                         style: TextStyle(
                                           color: AppColors.blackColor,
                                           fontSize: 12,
@@ -382,9 +543,7 @@ class _UserProfileState extends State<UserProfile> {
                                     ),
                                     children: [
                                       TextSpan(
-                                        text:  organization != null && organization!.containsKey('address')
-                                            ? organization!['address']
-                                            : 'NA',
+                                        text: "$selectOrganizationAdd",
                                         style: TextStyle(
                                           color: AppColors.blackColor,
                                           fontSize: 12,
@@ -401,19 +560,19 @@ class _UserProfileState extends State<UserProfile> {
                     ),
                     SizedBox(height: 10,),
                     SizedBox(
-                      height: 30,
-                      width: 70,
-                      child:RoundButton(
-                        onPressed: (){
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditProfileScreen(userProfileData: userProfileData),
-                            ),
-                          );
-                        },
-                        title: "Edit",
-                      )
+                        height: 30,
+                        width: 70,
+                        child:RoundButton(
+                          onPressed: (){
+                            // Navigator.push(
+                            //   context,
+                            //   MaterialPageRoute(
+                            //     builder: (context) => EditProfileScreen(userProfileData: userProfileData),
+                            //   ),
+                            // );
+                          },
+                          title: "Edit",
+                        )
                     )
                   ],
                 ),
@@ -495,9 +654,9 @@ class _UserProfileState extends State<UserProfile> {
                                   text: TextSpan(
                                     text: "Plan name: ",
                                     style: TextStyle(
-                                      color: AppColors.secondaryColor2,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold
+                                        color: AppColors.secondaryColor2,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold
                                     ),
                                     children: [
                                       TextSpan(
@@ -506,8 +665,8 @@ class _UserProfileState extends State<UserProfile> {
                                             : 'No Subscription'}",
                                         style: TextStyle(
                                           // Add any specific styles for the plan name here, if needed
-                                            color: AppColors.blackColor,
-                                            fontSize: 12,
+                                          color: AppColors.blackColor,
+                                          fontSize: 12,
                                         ),
                                       ),
                                     ],
@@ -547,10 +706,10 @@ class _UserProfileState extends State<UserProfile> {
                                     children: [
                                       TextSpan(
                                         text: "${
-                                      latestSubscription.containsKey('startDate')
-                                      ? _formatDate(latestSubscription['startDate'])
-                                          : 'N/A'
-                                      }",
+                                            latestSubscription.containsKey('startDate')
+                                                ? _formatDate(latestSubscription['startDate'])
+                                                : 'N/A'
+                                        }",
                                         style: TextStyle(
                                           // Add any specific styles for the plan name here, if needed
                                           color: AppColors.blackColor,
@@ -784,7 +943,20 @@ class _UserProfileState extends State<UserProfile> {
       ),
     );
   }
+
+  void _showNotification(String message) {
+    Fluttertoast.showToast(
+      msg: message,
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.TOP, // Show toast at the top
+      timeInSecForIosWeb: 2,
+      backgroundColor: AppColors.secondaryColor2,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
+  }
 }
+
 
 String _formatDate(String dateString) {
   final inputFormat = DateFormat('yyyy-MM-ddTHH:mm:ss'); // Replace with the actual format of your input date string

@@ -23,10 +23,15 @@ class _AssignedToMeState extends State<AssignedToMe> {
 
   Future<void> fetchMyProjects() async {
     try {
-      final url = 'http://43.205.97.189:8000/api/Project/myProjects';
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+      final url = 'http://43.205.97.189:8000/api/Project/myProjects?org_id=$orgId';
+
 
       final headers = {
         'accept': '*/*',
@@ -38,8 +43,6 @@ class _AssignedToMeState extends State<AssignedToMe> {
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
         final List<Future<Project>> fetchedProjects = responseData.map((projectData) async {
-          // Convert the 'status' field to a string representation
-          String status = projectData['status'] == true ? 'Active' : 'In-Active';
           String projectId = projectData['project_id'] ?? '';
 
           // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
@@ -58,11 +61,10 @@ class _AssignedToMeState extends State<AssignedToMe> {
             id: projectId,
             name: projectData['projectName'] ?? '',
             owner: projectData['created_by'] ?? '',
-            status: status,
             dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
             // tasks: tasks,
             teams: teams,
-            users: users,
+            users: users, status: projectData['status'] ?? " ",
           );
         }).toList();
 
@@ -88,7 +90,6 @@ class _AssignedToMeState extends State<AssignedToMe> {
   @override
   void initState() {
     super.initState();
-    // Sort the projects based on status
     fetchMyProjects();
     projects.sort((a, b) {
       return _getStatusOrder(a.status).compareTo(_getStatusOrder(b.status));
@@ -98,12 +99,16 @@ class _AssignedToMeState extends State<AssignedToMe> {
   int _getStatusOrder(String status) {
     // Define the order of statuses based on your requirements
     switch (status) {
-      case 'Active':
+      case 'ToDo':
         return 1;
-      case 'In-Active':
+      case 'InProgress':
         return 2;
-      default:
+      case 'Completed':
         return 3;
+      case 'Transferred':
+        return 4;
+      default:
+        return 5;
     }
   }
 
@@ -277,6 +282,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                                       dueDate: formatDate(project.dueDate) ?? '',
                                                       createdBy: project.owner,
                                                       assigneeTeam: project.teams!.map((user) => user.teamName).join(', '),
+                                                      attachments: [],
                                                     ),
                                                   ),
                                                 );

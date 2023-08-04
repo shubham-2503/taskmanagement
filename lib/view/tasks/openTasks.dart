@@ -23,10 +23,15 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
 
   Future<void> fetchOpenTasks() async {
     try {
-      final url = 'http://43.205.97.189:8000/api/Task/myTasks'; // Replace this with the correct API endpoint for fetching all tasks
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final url = 'http://43.205.97.189:8000/api/Task/myTasks?org_id=$orgId'; // Replace this with the correct API endpoint for fetching all tasks
 
       final headers = {
         'accept': '*/*',
@@ -40,9 +45,14 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
         List<Task> fetchedTasks = responseData.map((taskData) {
+          final List<dynamic> users = taskData['users'];
+          final List<String> assignedUsers = users.isNotEmpty
+              ? users.map((user) => user['user_name'] as String).toList()
+              : [];
+          final List<String> assignedTo = assignedUsers;
           return Task(
             taskName: taskData['task_name'] ?? '',
-            assignedTo: taskData['assignee'] ?? '',
+            assignedTo: assignedTo, // Update key from 'assignee' to 'created_by'
             status: taskData['status'] ?? '',
             description: taskData['description'] ?? '',
             priority: taskData['priority'] ?? '',
@@ -70,7 +80,6 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
       print('Error fetching tasks: $e');
     }
   }
-
 
   @override
   void initState() {
@@ -183,7 +192,7 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
                                               fontWeight: FontWeight.bold),
                                         ),
                                         Text(
-                                          task.assignedTo ?? 'N/A',
+                                            task.assignedTo.join(', '),
                                           style: TextStyle(
                                               color: AppColors.blackColor,
                                               fontSize: 14,
@@ -272,8 +281,9 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
                                                   MaterialPageRoute(
                                                     builder: (context) =>
                                                         TaskDetailsScreen(
+                                                          taskId: " ",
                                                           taskTitle: '',
-                                                          assignee: '',
+                                                          assignedTo: '',
                                                         ),
                                                   ),
                                                 );

@@ -1,26 +1,26 @@
-import 'dart:convert';
-import 'package:Taskapp/View_model/api_services.dart';
 import 'package:http/http.dart' as http;
 import 'package:Taskapp/common_widgets/round_button.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../models/teams.dart';
-import '../../../models/user.dart';
+import '../../../View_model/fetchApiSrvices.dart';
+import '../../../View_model/updateApiSevices.dart';
+import '../../../models/fetch_user_model.dart';
+import '../../../models/project_team_model.dart';
 import '../../../utils/app_colors.dart';
 
 class EditMyProjectPage extends StatefulWidget {
+  final String projectId;
   final String initialTitle;
   final String initialAssignedTo;
-  final String initialAssignedTeam;
+  final String? initialAssignedTeam;
   final String initialStatus;
   final String initialDueDate;
 
   EditMyProjectPage({
     required this.initialTitle,
     required this.initialAssignedTo,
-    required this.initialAssignedTeam,
+    this.initialAssignedTeam,
     required this.initialStatus,
-    required this.initialDueDate,
+    required this.initialDueDate, required this.projectId,
   });
 
   @override
@@ -34,45 +34,11 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
   late TextEditingController statusController;
   late TextEditingController dueDateController;
   late DateTime selectedDueDate;
-  ApiRepo apiRepo = ApiRepo();
   List<User> users =[];
   List<Team> teams = [];
-
-
-  Future<void> _updateProject() async {
-    try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
-      final projectId = prefs.getStringList('projectIds');// Replace with your locally stored ProjectId
-
-      final url = 'http://43.205.97.189:8000/api/Project/updateProject/$projectId';
-
-      final headers = {
-        'accept': '*/*',
-        'Authorization': 'Bearer $storedData',
-        'Content-Type': 'application/json',
-      };
-
-      final body = jsonEncode({
-        "name": titleController.text,
-        "end_date": dueDateController.text,
-        "team_id": assignedTeamController.text,
-        "user_id": assignedToController.text,
-      });
-
-      final response = await http.patch(Uri.parse(url), headers: headers, body: body);
-
-      if (response.statusCode == 200) {
-        // Show a success dialog
-        _showUpdatedDialog();
-      } else {
-        print('Error updating project: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error updating project: $e');
-    }
-  }
-
+  late bool isActive;
+  List<String> _selectedMembers = [];
+  List<String> _selectedTeams = [];
 
   @override
   void initState() {
@@ -84,21 +50,90 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
 
     try {
       selectedDueDate = DateTime.parse(widget.initialDueDate);
+      isActive = selectedDueDate.isAfter(DateTime.now()); // Initialize isActive based on the initial due date
     } catch (e) {
       // Handle invalid date format gracefully, defaulting to today's date
       selectedDueDate = DateTime.now();
+      isActive = true; // Default to active status when the initial due date is invalid
     }
     dueDateController = TextEditingController(text: widget.initialDueDate);
   }
 
-  Future<List<User>> fetchUsers() async {
+  Future<void> updateProject(String projectId, bool status) async {
     try {
-      // Call the fetchUsers function from api_service.dart
-      final users = await apiRepo.fetchUsers();
-      return users ?? []; // If users is null, return an empty list
+      // Get the required data from the widget's state
+      String title = titleController.text;
+      String assignedTo = assignedToController.text;
+      String? assignedTeam = assignedTeamController.text;
+      String status = statusController.text;
+      String dueDate = dueDateController.text;
+
+      // Call the static method from ProjectApi to update the project
+      String message = await UpdateApiServices.updateProject(projectId, title, assignedTo, assignedTeam, status, dueDate, users, teams,);
+
+      // Show a dialog to inform the user about the successful update
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Changes Saved'),
+            content: Text('Your changes have been updated successfully.\n$message'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  // Optionally, you can navigate back to the previous screen or perform any other action here
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
     } catch (e) {
-      print('Error while fetching users: $e');
-      return []; // Return an empty list in case of an error
+      print('Error updating project: $e');
+      // Show an error dialog to inform the user about the update failure
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Error'),
+            content: Text('$e'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  Future<List<User>> _fetchUsers() async {
+    try {
+      ApiServices apiServices = ApiServices();
+      List<User> fetchedUsers = await apiServices.fetchUsers();
+      return fetchedUsers;
+    } catch (error) {
+      print('Error fetching users: $error');
+      // Handle error if necessary
+      return [];
+    }
+  }
+
+  Future<List<Team>> _fetchTeams() async {
+    try {
+      ApiServices apiServices = ApiServices();
+      List<Team> fetchedTeams = await apiServices.fetchTeams();
+      return fetchedTeams;
+    } catch (error) {
+      print('Error fetching teams: $error');
+      // Handle error if necessary
+      return [];
     }
   }
 
@@ -111,7 +146,7 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
             return AlertDialog(
               title: Text('Assignee Members'),
               content: FutureBuilder<List<User>>(
-                future: fetchUsers(),
+                future: _fetchUsers(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return CircularProgressIndicator();
@@ -122,17 +157,21 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
                     return SingleChildScrollView(
                       child: Column(
                         children: users.map((user) {
-                          bool isSelected = users.contains(user);
+                          bool isSelected = _selectedMembers.contains(user.userId);
 
                           return CheckboxListTile(
                             title: Text(user.userName),
-                            value: users.contains(user), // Check if the user is already in the users list
+                            value: isSelected,
                             onChanged: (value) {
                               setState(() {
                                 if (value == true) {
-                                  users.add(user); // Add the user to the list if the checkbox is checked
+                                  if (!_selectedMembers.contains(user.userId)) {
+                                    _selectedMembers.add(user.userId);
+                                  }
                                 } else {
-                                  users.remove(user); // Remove the user from the list if the checkbox is unchecked
+                                  if (_selectedMembers.contains(user.userId)) {
+                                    _selectedMembers.remove(user.userId);
+                                  }
                                 }
                               });
                             },
@@ -150,9 +189,15 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
                   child: Text('Add'),
                   onPressed: () {
                     setState(() {
-                      // Close the dialog
-                      Navigator.of(context).pop();
+                      // Perform any desired actions with the selected members
+                      // For example, you can add them to a list or display them in a text field
+                      List<String> selectedMembersText = _selectedMembers
+                          .map((id) => users.firstWhere((user) => user.userId == id).userName.toString())
+                          .toList();
+                      // Set the value of the desired field
+                      assignedToController.text = selectedMembersText.join(', ');
                     });
+                    Navigator.pop(context);
                   },
                 ),
               ],
@@ -161,17 +206,6 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
         );
       },
     );
-  }
-
-  Future<List<Team>> fetchTeams() async {
-    try {
-      // Call the fetchTeams function from api_service.dart
-      final teams = await apiRepo.fetchTeams();
-      return teams ?? []; // If teams is null, return an empty list
-    } catch (e) {
-      print('Error while fetching teams: $e');
-      return []; // Return an empty list in case of an error
-    }
   }
 
   void _showTeamsDialog() {
@@ -183,7 +217,7 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
             return AlertDialog(
               title: Text('Assignee Teams'),
               content: FutureBuilder<List<Team>>(
-                future: fetchTeams(),
+                future: _fetchTeams(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return CircularProgressIndicator();
@@ -194,20 +228,20 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
                     return SingleChildScrollView(
                       child: Column(
                         children: teams.map((team) {
-                          bool isSelected = teams.contains(team);
+                          bool isSelected = _selectedTeams.contains(team.id);
 
                           return CheckboxListTile(
-                            title: Text(team.name),
+                            title: Text(team.teamName),
                             value: isSelected,
                             onChanged: (value) {
                               setState(() {
                                 if (value == true) {
-                                  if (!teams.contains(team)) {
-                                    teams.add(team);
+                                  if (!_selectedTeams.contains(team.id)) {
+                                    _selectedTeams.add(team.id);
                                   }
                                 } else {
-                                  if (teams.contains(team)) {
-                                    teams.remove(team);
+                                  if (_selectedTeams.contains(team.id)) {
+                                    _selectedTeams.remove(team.id);
                                   }
                                 }
                               });
@@ -226,9 +260,15 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
                   child: Text('Add'),
                   onPressed: () {
                     setState(() {
-                      // Close the dialog
-                      Navigator.of(context).pop();
+                      // Perform any desired actions with the selected teams
+                      // For example, you can add them to a list or display them in a text field
+                      List<String> selectedTeamsText = _selectedTeams
+                          .map((id) => teams.firstWhere((team) => team.id == id).teamName.toString())
+                          .toList();
+                      // Set the value of the desired field
+                      assignedTeamController.text = selectedTeamsText.join(', ');
                     });
+                    Navigator.of(context).pop(); // Close the dialog
                   },
                 ),
               ],
@@ -250,39 +290,6 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
     super.dispose();
   }
 
-
-  void _showUpdatedDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Changes Saved'),
-          content: Text('Your changes have been updated successfully.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the dialog
-
-                // Pass the updated project data back to the AssignedToMe screen
-                // Navigator.pop(
-                //   context,
-                //   Project(
-                //     title: titleController.text,
-                //     assignedTo: assignedToController.text,
-                //     assignedTeam: assignedTeamController.text,
-                //     status: statusController.text,
-                //     dueDate: dueDateController.text,
-                //   ),
-                // );
-              },
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _selectDueDate() async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -300,7 +307,10 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final projectId = widget.projectId;
+    print("Id: $projectId");
     return Scaffold(
       appBar: AppBar(
         title: Text('Edit Project'),
@@ -326,11 +336,16 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
                 ),
                 onTap: _showMembersDialog,
               ),
-              TextField(
-                controller: assignedTeamController,
-                decoration: InputDecoration(
-                  labelText: 'Assigned Team',
-                  labelStyle: TextStyle(fontSize: 12, color: AppColors.grayColor),
+              Visibility(
+                visible: widget.initialAssignedTeam != null && widget.initialAssignedTeam!.isNotEmpty,
+                child: TextField(
+                  controller: assignedTeamController,
+                  decoration: InputDecoration(
+                    labelText: 'Assigned Team',
+                    labelStyle: TextStyle(fontSize: 12, color: AppColors.grayColor),
+                  ),
+                  enabled: widget.initialAssignedTeam != null && widget.initialAssignedTeam!.isNotEmpty,
+                  onTap: widget.initialAssignedTeam != null && widget.initialAssignedTeam!.isNotEmpty ? _showTeamsDialog : null,
                 ),
               ),
               TextField(
@@ -356,7 +371,12 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
               SizedBox(
                 height: 30,
                 width: 60,
-                child: RoundButton(title: "Save Changes", onPressed: _updateProject),
+                child: RoundButton(
+                  title: "Save Changes",
+                  onPressed: () {
+                    updateProject(projectId, isActive); // Pass the isActive variable as the status value
+                  },
+                ),
               ),
             ],
           ),

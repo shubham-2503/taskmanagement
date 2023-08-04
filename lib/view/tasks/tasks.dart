@@ -3,10 +3,11 @@ import 'package:Taskapp/view/projects/myTeamProjects/my_team_projects.dart';
 import 'package:Taskapp/view/projects/projectCreation.dart';
 import 'package:Taskapp/view/projects/myProjects/project_assigned.dart';
 import 'package:Taskapp/view/tasks/myTasks.dart';
-import 'package:Taskapp/view/tasks/taskCreation.dart';
+import 'package:Taskapp/view/tasks/MistaskCreation.dart';
 import 'package:Taskapp/view/tasks/teamTask.dart';
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
+import 'allTasks.dart';
 
 
 class TaskScreen extends StatefulWidget {
@@ -23,8 +24,10 @@ class _TaskScreenState extends State<TaskScreen> {
         return TeamTaskScreen();
       case 'MyTask':
         return MyTaskScreen();
+      case 'AllTask':
+        return AllTaskScreen();
       default:
-        return TeamTaskScreen();
+        return AllTaskScreen();
     }
   }
 
@@ -49,6 +52,18 @@ class _TaskScreenState extends State<TaskScreen> {
                   //   Navigator.pop(context);
                   // }, icon: Icon(Icons.arrow_back_ios,color: AppColors.secondaryColor2,)),
                   SizedBox(width: 10),
+                  SizedBox(
+                    height: 50,
+                    width: 100,
+                    child: RoundButton(
+                      title: "All Task",
+                      onPressed: () {
+                        setState(() {
+                          selectedOption = 'AllTask';
+                        });
+                      },),
+                  ),
+                  SizedBox(width: 30),
                   SizedBox(
                     height: 50,
                     width: 100,

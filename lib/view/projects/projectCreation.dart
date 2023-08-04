@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:Taskapp/View_model/api_services.dart';
 import 'package:Taskapp/common_widgets/round_textfield.dart';
 import 'package:Taskapp/models/fetch_user_model.dart';
 import 'package:file_picker/file_picker.dart';
@@ -11,7 +10,7 @@ import 'package:search_choices/search_choices.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
+import '../../View_model/fetchApiSrvices.dart';
 import '../../common_widgets/round_button.dart';
 import '../../models/project_team_model.dart';
 import '../../utils/app_colors.dart';
@@ -27,6 +26,10 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   bool value = false;
+  List<dynamic> statuses = [];
+  String? _selectedStatus;
+  List<dynamic> priorities = [];
+  String? _selectedPriority;
   TextEditingController _titleController = TextEditingController();
   TextEditingController _documentsController = TextEditingController();
   List<User> users =[];
@@ -35,14 +38,18 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
   List<String> _selectedTeams = [];
   TextEditingController _assigneeMembersController = TextEditingController();
   TextEditingController _assigneeTeamsController = TextEditingController();
-  ApiRepo apiRepo = ApiRepo();
 
   void createProject() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
 
-      final url = 'http://43.205.97.189:8000/api/Project/addProjects';
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final url = 'http://43.205.97.189:8000/api/Project/addProjects?org_id=$orgId';
 
       final headers = {
         'accept': '*/*',
@@ -54,6 +61,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
         "name": _projectTitle,
         "start_date": _startDate?.toUtc().toIso8601String(),
         "end_date": _endDate?.toUtc().toIso8601String(),
+        "status" : _selectedStatus,
         "team_id": _selectedTeams, // Remove the square brackets here
         "user_id": _selectedMembers, // Remove the square brackets here
       });
@@ -102,6 +110,19 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                     ],
                   ),
                 ),
+                actions: [
+                  InkWell(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        "OK",
+                        style: TextStyle(
+                            color: AppColors.blackColor,
+                            fontSize: 20),
+                      ))
+                ],
               );
             },
           );
@@ -134,103 +155,67 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
     }
   }
 
-  Future<List<User>> fetchUsers() async {
+  Future<List<User>> _fetchUsers() async {
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
-
-      if (storedData == null || storedData.isEmpty) {
-        // Handle the case when storedData is null or empty
-        print('Stored token is null or empty. Cannot make API request.');
-        throw Exception('Failed to fetch users: Stored token is null or empty.');
-      }
-
-      final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers'),
-        headers: {
-          'accept': '*/*',
-          'Authorization': 'Bearer $storedData',
-        },
-      );
-
-      print("Stored: $storedData");
-      print("API response: ${response.body}");
-      print("StatusCode: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final responseBody = response.body;
-        if (responseBody != null && responseBody.isNotEmpty) {
-          final List<dynamic> data = jsonDecode(responseBody);
-          final List<User> users = data.map((userJson) => User.fromJson(userJson)).toList();
-
-          for (User user in users) {
-            print('User ID: ${user.userId}');
-            print('User Name: ${user.userName}');
-          }
-          return users;
-        } else {
-          print('Failed to fetch users: Response body is null or empty');
-          throw Exception('Failed to fetch users');
-        }
-      } else {
-        print('Failed to fetch users: StatusCode: ${response.statusCode}');
-        throw Exception('Failed to fetch users');
-      }
-    } catch (e) {
-      print('Error: $e');
-      throw Exception('Failed to fetch users');
+      ApiServices apiServices = ApiServices();
+      List<User> fetchedUsers = await apiServices.fetchUsers();
+      return fetchedUsers;
+    } catch (error) {
+      print('Error fetching users: $error');
+      // Handle error if necessary
+      return [];
     }
   }
 
-  Future<List<Team>> fetchTeams() async {
-    List<Team> teams = [];
+  Future<List<Team>> _fetchTeams() async {
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
+      ApiServices apiServices = ApiServices();
+      List<Team> fetchedTeams = await apiServices.fetchTeams();
+      return fetchedTeams;
+    } catch (error) {
+      print('Error fetching teams: $error');
+      // Handle error if necessary
+      return [];
+    }
+  }
 
-      final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers'), // Update the API endpoint URL
-        headers: {
-          'accept': '*/*',
-          'Authorization': 'Bearer $storedData',
-        },
-      );
-
-      print("Stored: $storedData");
-      print("API response: ${response.body}");
-      print("StatusCode: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final responseBody = response.body;
-        if (responseBody != null && responseBody.isNotEmpty) {
-          try {
-            final List<dynamic> data = jsonDecode(responseBody);
-            if (data != null) {
-              final List<Team> teams = data
-                  .map((teamJson) => Team.fromJson(teamJson as Map<String, dynamic>))
-                  .toList();
-
-              for (var team in teams) {
-                print("Team Name: ${team.teamName}");
-                print("Team ID: ${team.id}");
-                print("Users: ${team.users}");
-                print("----------------------");
-              }
-
-              return teams;
-            }
-          } catch (e) {
-            print('Error decoding JSON: $e');
-          }
+  Future<void> fetchPriorities() async {
+    try {
+      List<dynamic> fetchedPriorities = await ApiServices.fetchPriorities();
+      setState(() {
+        priorities = fetchedPriorities;
+        // Check if priorities list is not empty
+        if (priorities.isNotEmpty) {
+          // Initialize _selectedPriority to the first priority ID in the list
+          _selectedPriority = priorities[0]['id'];
+        } else {
+          // If priorities list is empty, set _selectedPriority to null
+          _selectedPriority = null;
         }
-      } else {
-        print('Error: ${response.statusCode}');
-      }
-      return teams;
-
+      });
     } catch (e) {
-      print('Error: $e');
-      throw Exception('Failed to fetch teams');
+      print('Error fetching priorities: $e');
+      // Handle error if necessary
+    }
+  }
+
+  Future<void> fetchStatusData() async {
+    try {
+      List<dynamic> fetchedStatuses = await ApiServices.fetchStatusData();
+      setState(() {
+        statuses = fetchedStatuses;
+        // Check if statuses list is not empty
+        if (statuses.isNotEmpty) {
+          // Initialize _selectedStatus to the first status ID in the list
+          _selectedStatus = statuses[0]['id'].toString();
+        } else {
+          // If statuses list is empty, set _selectedStatus to null
+          _selectedStatus = null;
+        }
+      });
+    } catch (e) {
+      print('Error fetching statuses: $e');
+      // Handle error if necessary
     }
   }
 
@@ -243,7 +228,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
             return AlertDialog(
               title: Text('Assignee Members'),
               content: FutureBuilder<List<User>>(
-                future: fetchUsers(),
+                future: _fetchUsers(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return CircularProgressIndicator();
@@ -314,7 +299,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
             return AlertDialog(
               title: Text('Assignee Teams'),
               content: FutureBuilder<List<Team>>(
-                future: fetchTeams(),
+                future: _fetchTeams(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return CircularProgressIndicator();
@@ -380,16 +365,22 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
   void dispose() {
     _titleController.dispose();
     _documentsController.dispose();
+    _assigneeMembersController.dispose();
+    _assigneeTeamsController.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    fetchTeams();
-    fetchUsers();
+    _fetchTeams();
+    _fetchUsers();
+    fetchPriorities();
+    fetchStatusData();
     _titleController = TextEditingController();
     _documentsController = TextEditingController();
+    _assigneeMembersController = TextEditingController();
+    _assigneeTeamsController = TextEditingController();
   }
 
   @override
@@ -535,27 +526,46 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                               ),
                             ),
                           ),
-                          // Expanded(
-                          //   child: RoundTextField(
-                          //     hintText: "End Date",
-                          //     icon: "assets/icons/calendar_icon.png",
-                          //     isReadOnly: true,
-                          //     textInputType: TextInputType.datetime,
-                          //     onTap: () {
-                          //       _selectEndDate(context);
-                          //     },
-                          //     textEditingController: TextEditingController(
-                          //       text: _endDate != null
-                          //           ? DateFormat('yyyy-MM-dd').format(_endDate!)
-                          //           : '',
-                          //     ),
-                          //     onChanged: (value) {
-                          //       setState(() {
-                          //         _selectEndDate(context); // Updated here
-                          //       });
-                          //     },
-                          //   ),
-                          // ),
+                        ],
+                      ),
+                      SizedBox(height: 20.0),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 150,
+                            decoration: BoxDecoration(
+                              color: AppColors.lightGrayColor,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedStatus,
+                              decoration: InputDecoration(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 15,
+                                  horizontal: 15,
+                                ),
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                hintText: "Status",
+                                hintStyle: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              items: statuses.map<DropdownMenuItem<String>>((status) {
+                                return DropdownMenuItem<String>(
+                                  value: status['id'].toString(), // Assuming 'id' is of type String or can be converted to String
+                                  child: Text(status['name']),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedStatus = value; // Call the callback function with the selected value
+                                });
+                              },
+                            ),
+                          ),
                         ],
                       ),
                       SizedBox(height: 40.0),

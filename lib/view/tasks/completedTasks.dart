@@ -23,10 +23,15 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
 
   Future<void> fetchCompletedTasks() async {
     try {
-      final url = 'http://43.205.97.189:8000/api/Task/myTasks'; // Replace this with the correct API endpoint for fetching all tasks
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final url = 'http://43.205.97.189:8000/api/Task/myTasks?org_id=$orgId'; // Replace this with the correct API endpoint for fetching all tasks
 
       final headers = {
         'accept': '*/*',
@@ -40,13 +45,27 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
         List<Task> fetchedTasks = responseData.map((taskData) {
+          final List<dynamic> users = taskData['users'];
+          final List<String> assignedUsers = users.isNotEmpty
+              ? users.map((user) => user['user_name'] as String).toList()
+              : [];
+          final List<String> assignedTo = assignedUsers;
+
+          // Extract the team name from the "teams" list.
+          final List<dynamic> teams = taskData['teams'];
+          final String assignedTeam =
+          teams.isNotEmpty ? teams[0]['teamName'] as String : '';
+
           return Task(
+            taskId: taskData['id'],
             taskName: taskData['task_name'] ?? '',
-            assignedTo: taskData['assignee'] ?? '',
+            assignedTo: assignedTo,
             status: taskData['status'] ?? '',
             description: taskData['description'] ?? '',
             priority: taskData['priority'] ?? '',
-            dueDate: taskData['dueDate'],
+            dueDate: taskData['due_Date'],
+            createdBy: taskData['created_by'] ?? '',
+            assignedTeam: assignedTeam, // New field containing the team name
           );
         }).toList();
 
@@ -172,22 +191,23 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
                                       height: 5,
                                     ),
                                     Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Assignee: ',
                                           style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                         Text(
-                                          task.assignedTo ?? 'N/A',
+                                          task.assignedTo.join(', '),// Join the assignee names with commas
                                           style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500),
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -270,11 +290,17 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        TaskDetailsScreen(
-                                                          taskTitle: '',
-                                                          assignee: '',
-                                                        ),
+                                                    builder: (context) => TaskDetailsScreen(
+                                                      taskId: task.taskId ?? "", // Provide a default value if taskId is null
+                                                      taskTitle: task.taskName ?? "", // Provide a default value if taskName is null
+                                                      assignedTo: task.assignedTo.join('\n') ?? "", // Provide a default value if assignedTo is null
+                                                      assignedTeam: task.assignedTeam ?? "", // Provide a default value if assignedTeam is null
+                                                      priority: task.priority ?? "", // Provide a default value if priority is null
+                                                      description: task.description ?? "", // Provide a default value if description is null
+                                                      dueDate: task.dueDate ?? "",
+                                                      status: task.status ?? " ",
+                                                      owner: task.createdBy ?? " ",// Provide a default value if dueDate is null
+                                                    ),
                                                   ),
                                                 );
                                               }),

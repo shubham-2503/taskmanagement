@@ -33,26 +33,11 @@ class _ProjectTaskDetailsScreenState extends State<ProjectTaskDetailsScreen> {
   TextEditingController _commentController = TextEditingController();
   String? _selectedStatus;
 
-  final List<String> activityLog = [
-    'Aman changes the Status',
-    'Aman updates summary',
-    'Aman created the task',
-  ];
+  final List<String> activityLog = [];
 
-  List<String> comments = [
-    'Looking forward to the next update.',
-    'I have a suggestion for improvement.',
-    'Well done! Keep up the good work.',
-  ];
+  List<String> comments = [];
 
-  List<Map<String, String>> All = [
-    {'type': 'Comment', 'text': 'Well done! Keep up the good work.'},
-    {'type': 'History', 'text': 'Aman changes the Status'},
-    {'type': 'Comment', 'text': 'I have a suggestion for improvement.'},
-    {'type': 'Comment', 'text': 'Looking forward to the next update.'},
-    {'type': 'History', 'text': 'Aman updates summary'},
-    {'type': 'History', 'text': 'Aman created the task'},
-  ];
+  List<Map<String, String>> All = [];
 
   Color getCircleAvatarColor(String entry) {
     if (entry.contains('Comment:')) {

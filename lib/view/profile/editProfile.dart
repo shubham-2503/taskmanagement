@@ -1,16 +1,19 @@
 import 'dart:convert';
-
-import 'package:Taskapp/utils/app_colors.dart';
+import 'package:Taskapp/View_model/updateApiSevices.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import '../../models/role_model.dart';
+import '../../utils/app_colors.dart';
 
 
 class EditProfileScreen extends StatefulWidget {
-  final Map<String, dynamic> userProfileData;
+  final String? id;
+  final String? name;
+  final String? email;
+  final String? mobile;
+  final String? roleName;
 
-  EditProfileScreen({required this.userProfileData});
+  EditProfileScreen({this.name, this.email, this.mobile, this.roleName, this.id});
 
   @override
   _EditProfileScreenState createState() => _EditProfileScreenState();
@@ -20,19 +23,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   TextEditingController _nameController = TextEditingController();
   TextEditingController _emailController = TextEditingController(text: '');
   TextEditingController _mobileController = TextEditingController(text: '');
-  List<Role> _roles = [];
-  String _selectedRoleId = '';
+  TextEditingController _roleController = TextEditingController(text: '');
 
   @override
   void initState() {
     super.initState();
-    _nameController.text = widget.userProfileData['name'];
-    _emailController = TextEditingController(text: widget.userProfileData['email'] ?? '');
-    _mobileController = TextEditingController(text: widget.userProfileData['mobile'] ?? '');
+    _nameController.text = widget.name!;
+    _emailController = TextEditingController(text: widget.email);
+    _mobileController = TextEditingController(text: widget.mobile);
     fetchRoles();
-    _selectedRoleId = widget.userProfileData['role_id']?.toString() ?? '';
+    _roleController = TextEditingController(text: widget.roleName);
   }
 
+  List<Role> _roles = [];
+  String _selectedRoleId = '';
 
   Future<void> fetchRoles() async {
     try {
@@ -43,7 +47,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         final List<dynamic> rolesData = json.decode(response.body);
         setState(() {
           _roles = rolesData.map<Role>((role) => Role.fromJson(role)).toList();
-          _selectedRoleId = widget.userProfileData['role_id'].toString();
+          _selectedRoleId = getRoleIdFromName(widget.roleName!)!; // Set the selected role ID initially
         });
       } else {
         throw Exception('Failed to fetch roles');
@@ -53,12 +57,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  String? getRoleIdFromName(String? roleName) {
+    Role? selectedRole = _roles.firstWhere((role) => role.name == roleName,);
+    return selectedRole?.id;
+  }
+
+
   void _saveChanges() {
     String updatedName = _nameController.text;
     String updatedEmail = _emailController.text;
     String updatedMobile = _mobileController.text;
-    String updatedRoleId = _selectedRoleId ?? ""; // Use null-aware operator to provide default value
-
+    String updatedRoleId =getRoleIdFromName(_roleController.text)!; // Use null-aware operator to provide default value
 
     // Instead of modifying directly, create a new User object
     Map<String, dynamic> updatedUser = {
@@ -66,24 +75,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       'email': updatedEmail,
       'mobile': updatedMobile,
       'role_id': updatedRoleId,
+      'user_id': widget.id, // Assuming 'user_id' is present in userProfileData
     };
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Profile Updated'),
-        content: Text('Your profile has been updated successfully.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context, updatedUser); // Pass the updated user data here
-            },
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
+    // Call the editProfile API function with the updated user data
+    try {
+      UpdateApiServices updateApiServices = UpdateApiServices();
+      updateApiServices.editProfile(updatedUser);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Profile Updated'),
+          content: Text('Your profile has been updated successfully.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context, updatedUser); // Pass the updated user data here
+              },
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (error) {
+      print('Error updating profile: $error');
+      // Handle the error and show an error message if necessary
+    }
   }
 
   @override
@@ -111,38 +129,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 decoration: InputDecoration(labelText: 'Mobile'),
               ),
               SizedBox(height: 16),
-              // Container(
-              //   decoration: BoxDecoration(
-              //     color: AppColors.lightGrayColor,
-              //     borderRadius: BorderRadius.circular(15),
-              //   ),
-              //   child: DropdownButtonFormField<String>(
-              //     value: _selectedRoleId,
-              //     onChanged: (String? newValue) {
-              //       setState(() {
-              //         _selectedRoleId = newValue ?? ""; // Use null-aware operator to provide default value
-              //       });
-              //     },
-              //     items: [
-              //       // Add a default option with null value
-              //       DropdownMenuItem<String>(
-              //         value: null,
-              //         child: Text('Select Role'),
-              //       ),
-              //       // Add the roles as dropdown items
-              //       ..._roles.map<DropdownMenuItem<String>>((Role role) {
-              //         return DropdownMenuItem<String>(
-              //           value: role.id,
-              //           child: Text(role.name),
-              //         );
-              //       }).toList(),
-              //     ],
-              //     decoration: InputDecoration(
-              //       labelText: 'Role',
-              //       border: OutlineInputBorder(),
-              //     ),
-              //   ),
-              // ),
+              TextFormField(
+                controller: _roleController,
+                decoration: InputDecoration(labelText: 'Role'),
+              ),
               SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _saveChanges,

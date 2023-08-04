@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:Taskapp/common_widgets/round_gradient_button.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_colors.dart';
 import 'chooseplan.dart';
@@ -18,9 +19,16 @@ class _RenewPlanScreenState extends State<RenewPlanScreen> {
 
   Future<void> fetchSubscriptionPlans() async {
     try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
       final response = await http.get(
         Uri.parse(
-            'http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
+            'http://43.205.97.189:8000/api/Platform/getSubscriptionPlans?org_id=$orgId'),
         headers: {'accept': '*/*'},
       );
 

@@ -17,8 +17,15 @@ class _SubscriptionsPlanState extends State<SubscriptionsPlan> {
 
   Future<void> fetchSubscriptionPlans() async {
     try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
+        Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans?org_id=$orgId'),
         headers: {'accept': '*/*'},
       );
 

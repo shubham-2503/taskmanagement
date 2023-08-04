@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:Taskapp/view/login/otpScreen.dart';
+import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:truecaller_sdk/truecaller_sdk.dart';
@@ -30,7 +30,7 @@ class TruecallerAuthServices{
           String firstName = truecallerSdkCallback.profile!.firstName;
           String? lastName = truecallerSdkCallback.profile!.lastName;
           String phNo = truecallerSdkCallback.profile!.phoneNumber;
-          // Navigator.push(context, MaterialPageRoute(builder: (context)=>OTPVerificationScreen(),));
+          Navigator.push(context, MaterialPageRoute(builder: (context)=>DashboardScreen(),));
           break;
         case TruecallerSdkCallbackResult.failure:
           print("Truecaller auth failed");

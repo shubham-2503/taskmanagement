@@ -17,16 +17,20 @@ class MyTaskScreen extends StatefulWidget {
 }
 
 class _MyTaskScreenState extends State<MyTaskScreen> {
-  TextEditingController _mentionController = TextEditingController();
   List<Task> filteredMyTasks = [];
   List<Task> mytasks = [];
 
   Future<void> fetchMyTasks() async {
     try {
-      final url = 'http://43.205.97.189:8000/api/Task/myTasks';
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final url = 'http://43.205.97.189:8000/api/Task/myTasks?org_id=$orgId';
 
       final headers = {
         'accept': '*/*',
@@ -40,16 +44,34 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
         final List<Task> fetchedTasks = responseData.map((taskData) {
+          // Extract the user's name from the "users" list.
+          final List<dynamic> users = taskData['users'];
+          final List<String> assignedUsers = users.isNotEmpty
+              ? users.map((user) => user['user_name'] as String).toList()
+              : [];
+          final List<String> assignedTo = assignedUsers; // Use List<String> instead of String
+
+
+          // Extract the team name from the "teams" list.
+          final List<dynamic> teams = taskData['teams'];
+          final String assignedTeam =
+          teams.isNotEmpty ? teams[0]['teamName'] as String : '';
+          // Assuming the 'assignedTo' and 'assignedTeam' properties of 'task' are either List<String> or comma-separated strings.
+
+
           return Task(
             taskId: taskData['id'],
-            taskName: taskData['task_name'] ?? '', // Changed to 'task_name'
-            assignedTo: taskData['assignee'] ?? '', // Changed to 'assignee'
+            taskName: taskData['task_name'] ?? '',
+            assignedTo: assignedTo,
             status: taskData['status'] ?? '',
             description: taskData['description'] ?? '',
             priority: taskData['priority'] ?? '',
-            dueDate: taskData['dueDate'], // 'dueDate' remains the same
+            dueDate: taskData['due_Date'],
+            createdBy: taskData['created_by'] ?? '',
+            assignedTeam: assignedTeam, // New field containing the team name
           );
         }).toList();
+
         setState(() {
           mytasks = fetchedTasks;
           filteredMyTasks = fetchedTasks;
@@ -110,7 +132,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                     Color priorityColor = Colors.grey; // Default color
                     switch (task.priority) {
                       case 'High':
-                        priorityColor = AppColors.primaryColor2;
+                        priorityColor = Color(0xFFE1B297);
                         break;
                       case 'Low':
                         priorityColor = Colors.green;
@@ -119,7 +141,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                         priorityColor = Colors.red;
                         break;
                       case 'Medium':
-                        priorityColor = Colors.blue;
+                        priorityColor = Colors.yellow;
                         break;
                     // Add more cases for different priorities if needed
                     }
@@ -165,14 +187,14 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                                           MainAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Assignee: ',
+                                          'Owner: ',
                                           style: TextStyle(
                                               color: AppColors.blackColor,
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold),
                                         ),
                                         Text(
-                                          task.assignedTo ?? 'N/A',
+                                          task.createdBy!,
                                           style: TextStyle(
                                               color: AppColors.blackColor,
                                               fontSize: 14,
@@ -253,181 +275,41 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                                         SizedBox(
                                           width: 100,
                                           height: 30,
-                                          child: RoundButton(
-                                              title: "View More",
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        TaskDetailsScreen(
-                                                          taskId: task.taskId,
-                                                          taskTitle: task.taskName,
-                                                         assignee: task.assignedTo,
-                                                    ),
-                                                  ),
-                                                );
-                                              }),
-                                        ),
+                                          child:RoundButton(
+                                      title: "View More",
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => TaskDetailsScreen(
+                                              taskId: task.taskId ?? "", // Provide a default value if taskId is null
+                                              taskTitle: task.taskName ?? "", // Provide a default value if taskName is null
+                                              assignedTo: task.assignedTo.join('\n') ?? "", // Provide a default value if assignedTo is null
+                                              assignedTeam: task.assignedTeam ?? "", // Provide a default value if assignedTeam is null
+                                              priority: task.priority ?? "", // Provide a default value if priority is null
+                                              description: task.description ?? "", // Provide a default value if description is null
+                                              dueDate: task.dueDate ?? "",
+                                              status: task.status ?? " ",
+                                              owner: task.createdBy ?? " ",// Provide a default value if dueDate is null
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                              ),
                                         SizedBox(
                                           width: 30,
                                         ),
                                         SizedBox(
-                                          width: 100,
+                                          width: 120,
                                           height: 30,
                                           child: RoundButton(
-                                              title: "Comments",
-                                              onPressed: () {
-                                                showDialog(
-                                                  context: context,
-                                                  builder:
-                                                      (BuildContext context) {
-                                                    return AlertDialog(
-                                                      contentPadding:
-                                                          EdgeInsets.fromLTRB(
-                                                              16.0,
-                                                              12.0,
-                                                              16.0,
-                                                              16.0), // Adjust content padding
-                                                      title:
-                                                          Text('Task Details'),
-                                                      content:
-                                                          SingleChildScrollView(
-                                                        child: Column(
-                                                          crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .start,
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          children: [
-                                                            Text(task.taskName),
-                                                            // Text(task.description),
-                                                            SizedBox(
-                                                                height: 14.0),
-                                                            Text(
-                                                              'Comments:',
-                                                              style: TextStyle(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold),
-                                                            ),
-                                                            SizedBox(
-                                                                height: 8.0),
-                                                            Column(
-                                                              children: [
-                                                                CommentWidget(
-                                                                  commenter:
-                                                                      'John',
-                                                                  comment:
-                                                                      'This is a comment',
-                                                                  timestamp:
-                                                                      'July 6, 2023',
-                                                                  addSubCommentCallback:
-                                                                      (String
-                                                                          subComment) {
-                                                                    // Handle adding the sub-comment to the main comment
-                                                                    // You can perform any necessary actions with the sub-comment text here
-                                                                    print(
-                                                                        'Added sub-comment: $subComment');
-                                                                  },
-                                                                ),
-                                                                SizedBox(
-                                                                    height:
-                                                                        16.0),
-                                                                Padding(
-                                                                  padding: EdgeInsets
-                                                                      .only(
-                                                                          left:
-                                                                              16.0),
-                                                                  child:
-                                                                      CommentWidget(
-                                                                    commenter:
-                                                                        'Alice',
-                                                                    comment:
-                                                                        'This is a sub-comment',
-                                                                    timestamp:
-                                                                        'July 7, 2023',
-                                                                    addSubCommentCallback:
-                                                                        (String
-                                                                            subComment) {
-                                                                      // Handle adding the sub-comment to the main comment
-                                                                      // You can perform any necessary actions with the sub-comment text here
-                                                                      print(
-                                                                          'Added sub-comment: $subComment');
-                                                                    },
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            SizedBox(
-                                                                height: 20.0),
-                                                            RoundTextField(
-                                                              hintText:
-                                                                  "Add comments",
-                                                              icon:
-                                                                  "assets/images/comments.png",
-                                                              textInputType:
-                                                                  TextInputType
-                                                                      .text,
-                                                              onChanged:
-                                                                  (value) {
-                                                                if (value
-                                                                    .contains(
-                                                                        '@')) {
-                                                                  String
-                                                                      mentionedUser =
-                                                                      value.substring(
-                                                                          value.indexOf('@') +
-                                                                              1);
-                                                                  // TODO: Implement logic to search for suggested users based on the mentionedUser value
-                                                                  // You can use a FutureBuilder or any other method to fetch and display the suggested users
-                                                                  List<String>
-                                                                      suggestedUsers =
-                                                                      [
-                                                                    'Samridhi',
-                                                                    'Aman'
-                                                                  ]; // Dummy list of suggested users
-
-                                                                  // Show suggestions if there are any
-                                                                  if (suggestedUsers
-                                                                      .isNotEmpty) {
-                                                                    showUserSuggestions(
-                                                                        context,
-                                                                        mentionedUser,
-                                                                        suggestedUsers,
-                                                                        _mentionController);
-                                                                  }
-
-                                                                  _mentionController
-                                                                          .text =
-                                                                      value;
-                                                                }
-                                                              },
-                                                            ),
-                                                            SizedBox(
-                                                                height: 12.0),
-                                                            Center(
-                                                              child: SizedBox(
-                                                                height: 30,
-                                                                width: 70,
-                                                                child:
-                                                                    RoundButton(
-                                                                        title:
-                                                                            "Send",
-                                                                        onPressed:
-                                                                            () {
-                                                                          Navigator.pop(
-                                                                              context);
-                                                                        }),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                );
-                                              }),
+                                            title: "Assigned To",
+                                            onPressed: () {
+                                              String assignedToUsers = task.assignedTo.join('\n'); // Join the list into a single string with line breaks
+                                              _showViewMembersDialog(context, assignedToUsers, task.assignedTeam ?? "");
+                                            },
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -451,38 +333,100 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
   }
 }
 
-void showUserSuggestions(BuildContext context, String query,
-    List<String> suggestedUsers, TextEditingController _mentionController) {
+void _showViewMembersDialog(BuildContext context, String assignedToUsers, String assignedTeam) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
-        scrollable: true,
-        insetPadding: EdgeInsets.symmetric(vertical: 10),
-        title: Text('User Suggestions'),
-        content: Container(
-          width: 300, // Adjust the width value as needed
-          height: 100,
+        content: SingleChildScrollView(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: ListView.builder(
+              // Display the "Assigned To" users
+              Text(
+                'Assigned To User:',
+                style: TextStyle(
+                  color: AppColors.secondaryColor2,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              if (assignedToUsers.isNotEmpty)
+                ListView.builder(
                   shrinkWrap: true,
-                  itemCount: suggestedUsers.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final user = suggestedUsers[index];
+                  itemCount: assignedToUsers.split(',').length,
+                  itemBuilder: (context, index) {
+                    String user = assignedToUsers.split(',')[index].trim();
                     return ListTile(
-                      title: Text(user),
-                      onTap: () {
-                        // Replace the text in the comment field with the selected user
-                        _mentionController.text = user;
-                        Navigator.pop(context);
-                      },
+                      title: Row(
+                        children: [
+                          Text(
+                            user,
+                            style: TextStyle(
+                              color: AppColors.primaryColor2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          InkWell(
+                            onTap: () {
+                              // Implement the logic to remove the user
+                            },
+                            child: Icon(
+                              Icons.remove_circle,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                   },
                 ),
-              ),
+              SizedBox(height: 16),
+              if (assignedTeam.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Assigned Team:',
+                      style: TextStyle(
+                        color: AppColors.secondaryColor2,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    ListTile(
+                      title: Row(
+                        children: [
+                          Text(
+                            assignedTeam,
+                            style: TextStyle(
+                              color: AppColors.primaryColor2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          InkWell(
+                            onTap: () {
+                              // Implement the logic to remove the team
+                            },
+                            child: Icon(
+                              Icons.remove_circle,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -501,127 +445,7 @@ String formatDate(String? dateString) {
     final formattedDate = DateFormat('yyyy-MM-dd').format(dateTime);
     return formattedDate;
   } catch (e) {
+    print('Error parsing date: $e');
     return 'Invalid Date'; // Return a placeholder for invalid date formats
-  }
-}
-
-class CommentWidget extends StatefulWidget {
-  final String commenter;
-  final String comment;
-  final String timestamp;
-  final Function(String) addSubCommentCallback;
-
-  CommentWidget({
-    required this.commenter,
-    required this.comment,
-    required this.timestamp,
-    required this.addSubCommentCallback,
-  });
-
-  @override
-  _CommentWidgetState createState() => _CommentWidgetState();
-}
-
-class _CommentWidgetState extends State<CommentWidget> {
-  bool isAddingSubComment = false;
-  TextEditingController subCommentController = TextEditingController();
-  List<String> subComments = [];
-
-  @override
-  void dispose() {
-    subCommentController.dispose();
-    super.dispose();
-  }
-
-  void toggleAddSubComment() {
-    setState(() {
-      isAddingSubComment = !isAddingSubComment;
-    });
-  }
-
-  void addSubComment() {
-    String subCommentText = subCommentController.text;
-    if (subCommentText.isNotEmpty) {
-      widget.addSubCommentCallback(subCommentText);
-      subCommentController.clear();
-      toggleAddSubComment();
-    }
-  }
-
-  void openSubCommentDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Add Sub-Comment'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: subCommentController,
-                decoration: InputDecoration(
-                  labelText: 'Sub-Comment',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16.0),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Close the dialog
-                    },
-                    child: Text('Cancel'),
-                  ),
-                  SizedBox(width: 8.0),
-                  ElevatedButton(
-                    onPressed: () {
-                      addSubComment();
-                      Navigator.of(context).pop(); // Close the dialog
-                    },
-                    child: Text('Send'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              widget.commenter,
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(width: 4.0),
-            Text(widget.timestamp),
-          ],
-        ),
-        SizedBox(height: 4.0),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(widget.comment),
-          if (!isAddingSubComment)
-            GestureDetector(
-              onTap: () {},
-              child: Text(
-                'Reply',
-                style: TextStyle(
-                  color: Colors.deepPurple,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-        ]),
-      ],
-    );
   }
 }

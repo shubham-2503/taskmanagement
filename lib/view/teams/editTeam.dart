@@ -46,6 +46,13 @@ class _EditTeamPageState extends State<EditTeamPage> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
 
       if (storedData == null || storedData.isEmpty) {
         // Handle the case when storedData is null or empty
@@ -54,7 +61,7 @@ class _EditTeamPageState extends State<EditTeamPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers'),
+        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -170,6 +177,13 @@ class _EditTeamPageState extends State<EditTeamPage> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedToken = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
 
       if (storedToken == null || storedToken.isEmpty) {
         // Handle the case when storedToken is null or empty
@@ -177,7 +191,7 @@ class _EditTeamPageState extends State<EditTeamPage> {
         return;
       }
 
-      final url = 'http://43.205.97.189:8000/api/Team/team/${widget.teamId}';
+      final url = 'http://43.205.97.189:8000/api/Team/team?team_id=${widget.teamId}&org_id=$orgId';
       final headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $storedToken',

@@ -18,7 +18,7 @@ class StartScreen extends StatefulWidget {
 }
 
 class _StartScreenState extends State<StartScreen> {
-  NotificationServices notificationServices = NotificationServices();
+  // NotificationServices notificationServices = NotificationServices();
 
   Future<bool> checkSession() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -32,13 +32,13 @@ class _StartScreenState extends State<StartScreen> {
     // TODO: implement initState
     super.initState();
     startSplashScreen();
-    notificationServices.requestNotification();
-    notificationServices.firebaseinit(context);
-    notificationServices.isTokenRefresh();
-    notificationServices.getDeviceToken().then((value) {
-      print("Device token: ");
-      print(value);
-    });
+    // notificationServices.requestNotification();
+    // notificationServices.firebaseinit(context);
+    // notificationServices.isTokenRefresh();
+    // notificationServices.getDeviceToken().then((value) {
+    //   print("Device token: ");
+    //   print(value);
+    // });
   }
 
   startSplashScreen() {

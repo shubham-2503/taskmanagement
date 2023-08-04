@@ -36,9 +36,16 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
 
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers'),
+        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -79,9 +86,16 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
 
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers'), // Update the API endpoint URL
+        Uri.parse('http://43.205.97.189:8000/api/Team/teamUser?orgId=$orgId'), // Update the API endpoint URL
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -203,10 +217,18 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+      print("OrgId: $orgId");
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
 
       try {
         // API endpoint and payload
-        final apiUrl = 'http://43.205.97.189:8000/api/Team/team';
+        final apiUrl = 'http://43.205.97.189:8000/api/Team/team?orgId=$orgId';
         final headers = {
           'accept': '*/*',
           'Content-Type': 'application/json',
@@ -233,6 +255,8 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
                   TextButton(
                     onPressed: () {
                       _resetForm();
+                      Navigator.pop(context);
+                      Navigator.pop(context);
                       Navigator.pop(context);
                     },
                     child: Text('OK'),

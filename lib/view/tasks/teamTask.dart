@@ -22,10 +22,17 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
 
   Future<void> fetchTeamTasks() async {
     try {
-      final url = 'http://43.205.97.189:8000/api/Task/teamsTask';
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+
+      print("OrgId: $orgId");
+      final url = 'http://43.205.97.189:8000/api/Task/teamsTask?org_id=$orgId';
 
       final headers = {
         'accept': '*/*',
@@ -39,15 +46,30 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
         final List<Task> fetchedTasks = responseData.map((taskData) {
-          print("Raw Date String: ${taskData['dueDate']}");
+          // Extract the user's name from the "users" list.
+          final List<dynamic> users = taskData['users'];
+          final List<String> assignedUsers = users.isNotEmpty
+              ? users.map((user) => user['user_name'] as String).toList()
+              : [];
+          final List<String> assignedTo = assignedUsers; // Use List<String> instead of String
+
+          // Extract the team name from the "teams" list.
+          final List<dynamic> teams = taskData['teams'];
+          final String assignedTeam =
+          teams.isNotEmpty ? teams[0]['teamName'] as String : '';
+          // Assuming the 'assignedTo' and 'assignedTeam' properties of 'task' are either List<String> or comma-separated strings.
+
+
           return Task(
             taskId: taskData['id'],
             taskName: taskData['task_name'] ?? '',
-            assignedTo: taskData['assignee'] ?? '',
+            owner: taskData['created_by'] ?? '',
+            assignedTo:assignedTo,
+            assignedTeam: assignedTeam,
             status: taskData['status'] ?? '',
             description: taskData['description'] ?? '',
             priority: taskData['priority'] ?? '',
-            dueDate: taskData['dueDate'] is bool ? null : taskData['dueDate'],
+            dueDate: taskData['due_Date'] is bool ? null : taskData['due_Date'],
           );
         }).toList();
 
@@ -113,7 +135,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                     Color priorityColor = Colors.grey; // Default color
                     switch (task.priority) {
                       case 'High':
-                        priorityColor = AppColors.primaryColor2;
+                        priorityColor = Color(0xFFE1B297);
                         break;
                       case 'Low':
                         priorityColor = Colors.green;
@@ -122,7 +144,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                         priorityColor = Colors.red;
                         break;
                       case 'Medium':
-                        priorityColor = Colors.blue;
+                        priorityColor = Colors.yellow;
                         break;
                     // Add more cases for different priorities if needed
                     }
@@ -162,14 +184,14 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                                       mainAxisAlignment: MainAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Assignee: ',
+                                          'Owner: ',
                                           style: TextStyle(
                                               color: AppColors.blackColor,
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold),
                                         ),
                                         Text(
-                                            task.assignedTo ?? 'N/A',
+                                            task.owner!,
                                           style: TextStyle(
                                               color: AppColors.blackColor,
                                               fontSize: 14,
@@ -235,21 +257,47 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                                       ],
                                     ),
                                     SizedBox(height: 10,),
-                                    SizedBox(
-                                      width: 100,
-                                      height: 30,
-                                      child: RoundButton(
-                                          title: "View More",
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    TaskDetailsScreen(taskId: task.taskId,taskTitle: task.taskName,assignee: task.assignedTo,),
-                                              ),
-                                            );
-                                          }),
-                                    )
+                                    Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 100,
+                                          height: 30,
+                                          child: RoundButton(
+                                              title: "View More",
+                                              onPressed: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        TaskDetailsScreen(
+                                                          taskId: task.taskId ?? "", // Provide a default value if taskId is null
+                                                          taskTitle: task.taskName ?? "", // Provide a default value if taskName is null
+                                                          assignedTo: task.assignedTo.join('\n') ?? "", // Provide a default value if assignedTo is null
+                                                          assignedTeam: task.assignedTeam ?? "", // Provide a default value if assignedTeam is null
+                                                          priority: task.priority ?? "", // Provide a default value if priority is null
+                                                          description: task.description ?? "", // Provide a default value if description is null
+                                                          dueDate: task.dueDate ?? "",
+                                                        status: task.status ?? " ",
+                                                        owner: task.owner ?? " ",),
+                                                  ),
+                                                );
+                                              }),
+                                        ),
+                                        SizedBox(
+                                          width: 30,
+                                        ),
+                                        SizedBox(
+                                          width: 120,
+                                          height: 30,
+                                          child: RoundButton(
+                                              title: "Assigned To",
+                                              onPressed: () {
+                                                String assignedToUsers = task.assignedTo.join('\n'); // Join the list into a single string with line breaks
+                                                _showViewMembersDialog(context, assignedToUsers, task.assignedTeam ?? "");
+                                              }),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
@@ -268,6 +316,73 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
       ),
     );
   }
+}
+
+void _showViewMembersDialog(BuildContext context,String assignedToUsers, String assignedTeam) async {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Display the "Assigned To" users
+              Text(
+                'Assigned To User:',
+                style: TextStyle(
+                  color: AppColors.secondaryColor2,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              ListTile(
+                title: InkWell(
+                  onTap: (){
+
+                  },
+                  child: Text(
+                    assignedToUsers,
+                    style: TextStyle(
+                      color: AppColors.primaryColor2,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              if (assignedTeam.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Assigned Team:',
+                      style: TextStyle(
+                        color: AppColors.secondaryColor2,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    ListTile(
+                      title: Text(
+                        assignedTeam,
+                        style: TextStyle(
+                          color: AppColors.primaryColor2,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 String? formatDate(String? dateString) {

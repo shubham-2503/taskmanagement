@@ -55,9 +55,18 @@ android {
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         manifestPlaceholders += [
-                'appAuthRedirectScheme': 'com.googleusercontent.apps.<710909420759-8l5hnjat5uib5g44ltcn8db83itgpcgh.apps.googleusercontent.com>'
+                'appAuthRedirectScheme': 'com.googleusercontent.apps.<668236869238-ioua25o9r4ncigtnaut9e2shcbqtu2g3.apps.googleusercontent.com>'
         ]
     }
+
+//    signingConfig {
+//        debug{
+//            keyAlias 'androiddebugkey'
+//            keyPassword 'android'
+//            storeFile file('mykey.jks')
+//            storePaassword 'android'
+//        }
+//    }
 
     buildTypes {
         release {

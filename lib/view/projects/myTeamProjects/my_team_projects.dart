@@ -23,10 +23,15 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
 
   Future<void> fetchTeamProjects() async {
     try {
-      final url = 'http://43.205.97.189:8000/api/Project/myTeamProjects';
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+      final url = 'http://43.205.97.189:8000/api/Project/myTeamProjects?org_id=$orgId';
+
 
       final headers = {
         'accept': '*/*',
@@ -98,10 +103,14 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
   int _getStatusOrder(String status) {
     // Define the order of statuses based on your requirements
     switch (status) {
-      case 'Active':
+      case 'ToDo':
         return 1;
-      case 'In-Active':
+      case 'InProgress':
         return 2;
+      case 'Completed':
+        return 3;
+      case 'Transferred':
+        return 4;
       default:
         return 5;
     }
@@ -241,6 +250,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                                     dueDate: formatDate(project.dueDate) ?? '',
                                                     createdBy: project.owner,
                                                     assigneeTeam: project.teams?.map((user) => user.teamName).join(', ') ?? '',
+                                                    attachments: [],
                                                   ),
                                                 ),
                                               );

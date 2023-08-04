@@ -30,9 +30,16 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('selectedOrgId');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
 
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers'),
+        Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers?org_id=$orgId'),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -79,6 +86,13 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
       print("TeamIds: $teamId");
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
 
       if (storedData == null || storedData.isEmpty) {
         // Handle the case when storedData is null or empty
@@ -93,7 +107,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
       };
 
       final response = await http.patch(
-        Uri.parse("http://43.205.97.189:8000/api/Team/team/$teamId"),
+        Uri.parse("http://43.205.97.189:8000/api/Team/team/$teamId?org_id=$orgId"),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -140,6 +154,13 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
 
       if (storedData == null || storedData.isEmpty) {
         // Handle the case when storedData is null or empty
@@ -148,7 +169,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
       }
 
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers'),
+        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -193,7 +214,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
         builder: (BuildContext context) {
           return AlertDialog(
             title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this task?'),
+            content: Text('Are you sure you want to delete this team?'),
             actions: [
               TextButton(
                 child: Text('Cancel'),
@@ -208,9 +229,16 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                     SharedPreferences prefs =
                     await SharedPreferences.getInstance();
                     final storedData = prefs.getString('jwtToken');
+                    final String? orgId = prefs.getString('org_id');
+
+                    if (orgId == null) {
+                      throw Exception('orgId not found locally');
+                    }
+
+                    print("OrgId: $orgId");
 
                     final response = await http.delete(
-                      Uri.parse('http://43.205.97.189:8000/api/Team/team/$teamId'),
+                      Uri.parse('http://43.205.97.189:8000/api/Team/team/$teamId?org_id=$orgId'),
                       headers: {
                         'accept': '*/*',
                         'Authorization': "Bearer $storedData",
@@ -229,8 +257,10 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                             content: Text("Team deleted successfully."),
                             actions: [
                               InkWell(
-                                  onTap: () {
+                                  onTap: () async {
                                     Navigator.pop(context);
+                                    Navigator.pop(context);
+                                    setState(() {});
                                   },
                                   child: Text(
                                     "OK",
@@ -574,6 +604,60 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     );
   }
 
+  String findUserIdByUserName(String userName) {
+    User? user = _selectedUsers.firstWhere((user) => user.userName == userName,);
+    return user?.userId ?? '';
+  }
+
+
+  Future<String> getUserIdByUsername(String username) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      final String? orgId = prefs.getString('org_id');
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      print("OrgId: $orgId");
+
+      final response = await http.get(
+        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $storedData',
+        },
+      );
+
+      print('API Response: ${response.body}');
+      print('Status Code: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> users = jsonDecode(response.body);
+        final user = users.firstWhere(
+              (user) => user['name'].toLowerCase() == username.toLowerCase(),
+          orElse: () => null,
+        );
+
+        if (user != null) {
+          final String userId = user['id'];
+          return userId;
+        } else {
+          // User not found with the given username
+          throw Exception('User not found');
+        }
+      } else {
+        // Failed to fetch users from the API
+        throw Exception('Failed to fetch users');
+      }
+    } catch (e) {
+      // Handle any exceptions that may occur during the API call
+      print('Error: $e');
+      throw Exception('Failed to get userId by username');
+    }
+  }
+
   void _showViewTeamDialog(MyTeam team) async {
     showDialog(
       context: context,
@@ -616,8 +700,98 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                       Icons.remove_circle,
                       color: AppColors.secondaryColor2,
                     ),
-                    onPressed: () async {},
-                  ),
+                      onPressed: () async {
+                        try {
+                          // Show a confirmation dialog for deleting the task
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('Confirm Delete'),
+                                content: Text('Are you sure you want to delete this User?'),
+                                actions: [
+                                  TextButton(
+                                    child: Text('Cancel'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop();
+                                      try {
+                                        SharedPreferences prefs = await SharedPreferences.getInstance();
+                                        final storedData = prefs.getString('jwtToken');
+                                        final String? orgId = prefs.getString('org_id');
+
+                                        if (orgId == null) {
+                                          throw Exception('orgId not found locally');
+                                        }
+
+                                        print("OrgId: $orgId");
+
+                                        final String teamId = team.teamId;
+                                        final String userName = user; // Replace 'user' with the actual userName of the user you want to delete
+
+                                        final userId = await getUserIdByUsername(user); // Make the userId nullable
+
+                                        print("Userid: $userId");
+
+                                        // Get the teamId and userId of the user to delete
+                                        final String apiUrl = "http://43.205.97.189:8000/api/Team/deleteTeamUser?teamId=${team.teamId}&userId=$userId&org_id=$orgId";
+
+                                        // Prepare the query parameters
+                                        final Map<String, String> queryParams = {
+                                          "teamId": teamId,
+                                          "userId":userId,
+                                        };
+
+                                        print("Body: $queryParams"); // Print the request body to debug
+
+                                        // Make the HTTP DELETE request
+                                        final response = await http.delete(
+                                          Uri.parse(apiUrl),
+                                          headers: {
+                                            'accept': '*/*',
+                                            'Authorization': "Bearer $storedData",
+                                            // Add any necessary authorization or authentication headers here
+                                          },
+                                          body: json.encode(queryParams), // Convert the queryParams to JSON
+                                        );
+
+                                        print("Response Body: ${response.body}");
+                                        print("Statuscode: ${response.statusCode}");
+
+                                        // Check the response status and handle accordingly
+                                        if (response.statusCode == 200) {
+                                          // Deletion successful
+                                          print("User deleted successfully.");
+                                          // You can also update the local data to reflect the deleted user, if necessary.
+                                        } else if (response.statusCode == 401) {
+                                          // Unauthorized
+                                          print("Unauthorized to perform the delete operation.");
+                                        } else if (response.statusCode == 403) {
+                                          // Forbidden
+                                          print("Forbidden to perform the delete operation.");
+                                        } else {
+                                          // Handle other response status codes if needed
+                                          print("An error occurred: ${response.statusCode}");
+                                        }
+                                      } catch (e) {
+                                        print("Error: $e");
+                                      }
+                                    },
+                                    child: Text('Delete'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        } catch (e) {
+                          print('Error showing delete confirmation dialog: $e');
+                        }
+                      }
+                  )
                 )),
               ],
             ),
@@ -625,4 +799,5 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
         );
       },
     );
-  }}
+  }
+}
