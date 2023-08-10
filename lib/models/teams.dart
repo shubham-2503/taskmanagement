@@ -38,12 +38,12 @@ class Team {
 }
 
 class MyTeam {
-  final String teamId;
+  final String? teamId;
   final String teamName;
   final List<String>? users;
 
   MyTeam({
-    required this.teamId,
+    this.teamId,
     required this.teamName,
     this.users,
   });

@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'package:Taskapp/common_widgets/round_textfield.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+
 import '../../models/fetch_user_model.dart';
 import '../../models/teams.dart';
 import '../../utils/app_colors.dart';
@@ -13,12 +16,14 @@ class TeamsFormedScreen extends StatefulWidget {
 }
 
 class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
-  final List<MyTeam> _teams = [];
+  late List<MyTeam> _teams = [];
   List<User> _selectedUsers = [];
+  late List<MyTeam> filteredTeams = [];
 
   void initState() {
     super.initState();
     fetchMyTeams();
+    filteredTeams = _teams;
   }
 
   @override
@@ -26,17 +31,22 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     super.dispose();
   }
 
-  Future<List<MyTeam>> fetchMyTeams() async {
+  Future<void> fetchMyTeams() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('selectedOrgId');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
       }
-
-      print("OrgId: $orgId");
 
       final response = await http.get(
         Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers?org_id=$orgId'),
@@ -64,35 +74,37 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
         }
 
         setState(() {
-          _teams.addAll(teams);
+          _teams = teams; // Update the _teams list with the fetched data
+          filteredTeams = List.from(_teams); // Set _filteredTeams to a copy of _teams
         });
-        return teams;
+      } else {
+        print('Failed to fetch teams');
+        throw Exception('Failed to fetch teams');
       }
-
-      print('Failed to fetch teams');
-      throw Exception('Failed to fetch teams');
     } catch (e) {
       print('Error: $e');
       throw Exception('Failed to fetch teams');
     }
   }
 
-  Future<void> updateTeamWithMembersAndName(
-      String teamId,
-      String newTeamName,
-      List<String> userIds,
-      ) async {
+  Future<void> updateTeamWithMembersAndName(String teamId, String newTeamName, List<String> userIds,) async {
     try {
       print("TeamIds: $teamId");
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
       }
-
-      print("OrgId: $orgId");
 
       if (storedData == null || storedData.isEmpty) {
         // Handle the case when storedData is null or empty
@@ -123,6 +135,9 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
         print('Team updated successfully with new members and name.');
         String message = "Team updated successfully with new members and name.";
         _showDialog(message);
+
+        // After successful update, fetch the latest teams data
+        await fetchMyTeams();
       } else {
         print('Failed to update team with new members and name.');
         String message = "Failed to update team with new members and name.";
@@ -142,8 +157,11 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Login"),
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: Text("Ok"),
           ),
         ],
       ),
@@ -154,13 +172,19 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
       }
-
-      print("OrgId: $orgId");
 
       if (storedData == null || storedData.isEmpty) {
         // Handle the case when storedData is null or empty
@@ -206,6 +230,15 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     }
   }
 
+  void filterTeams(String query) {
+    print("Filtering with query: $query");
+    setState(() {
+      // Update filteredTeams based on query
+      filteredTeams = _teams.where((team) =>
+          team.teamName.toLowerCase().contains(query.toLowerCase())).toList();
+    });
+  }
+
   void _deleteTeam(String teamId) async {
     try {
       // Show a confirmation dialog for deleting the task
@@ -229,13 +262,19 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                     SharedPreferences prefs =
                     await SharedPreferences.getInstance();
                     final storedData = prefs.getString('jwtToken');
-                    final String? orgId = prefs.getString('org_id');
+                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+                    if (orgId == null) {
+                      // If the user hasn't switched organizations, use the organization ID obtained during login time
+                      orgId = prefs.getString('org_id') ?? "";
+                    }
+
+                    print("OrgId: $orgId");
+
 
                     if (orgId == null) {
                       throw Exception('orgId not found locally');
                     }
-
-                    print("OrgId: $orgId");
 
                     final response = await http.delete(
                       Uri.parse('http://43.205.97.189:8000/api/Team/team/$teamId?org_id=$orgId'),
@@ -258,7 +297,6 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                             actions: [
                               InkWell(
                                   onTap: () async {
-                                    Navigator.pop(context);
                                     Navigator.pop(context);
                                     setState(() {});
                                   },
@@ -297,7 +335,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     }
   }
 
-  void _showUserListBottomSheet(String teamId,String teamName) async {
+  void _showUserListBottomSheet(String teamId, String teamName) async {
     TextEditingController teamNameController = TextEditingController(text: teamName);
 
     showModalBottomSheet(
@@ -308,149 +346,155 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
             return FutureBuilder<List<User>>(
               future: fetchUsers(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else {
-                  List<User> userList = snapshot.data ?? [];
-                  return Container(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Edit Team Name:', // Updated text here
-                          style: TextStyle(
-                            color: AppColors.secondaryColor2,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        TextFormField(
-                          controller: teamNameController,
-                          style: TextStyle(
-                            color: AppColors.primaryColor2,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(),
-                            hintText: 'Enter Team Name',
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Select User',
-                          style: TextStyle(
-                            color: AppColors.secondaryColor2,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: userList.length,
-                            itemBuilder: (context, index) {
-                              User user = userList[index];
-                              bool isSelected = _selectedUsers.contains(user);
-                              return ListTile(
-                                title: Text(
-                                  user.userName,
-                                  style: TextStyle(
-                                    color: AppColors.primaryColor2,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                trailing: IconButton(
-                                  icon: Icon(
-                                    isSelected
-                                        ? Icons.remove_circle
-                                        : Icons.add_circle,
-                                    color: AppColors.secondaryColor2,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      if (isSelected) {
-                                        _selectedUsers.remove(user);
-                                      } else {
-                                        _selectedUsers.add(user);
-                                      }
-                                    });
-                                  },
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        // Display the selected users
-                        if (_selectedUsers.isNotEmpty)
-                          Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: AppColors.secondaryColor2,
-                                width: 1,
-                              ),
-                              borderRadius: BorderRadius.circular(5),
+                try {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    print('Error fetching users: ${snapshot.error}');
+                    return Center(child: Text('Error fetching users'));
+                  } else {
+                    List<User> userList = snapshot.data ?? [];
+                    return Container(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit Team Name:', // Updated text here
+                            style: TextStyle(
+                              color: AppColors.secondaryColor2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Selected Users:',
-                                  style: TextStyle(
-                                    color: AppColors.secondaryColor2,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                          ),
+                          SizedBox(height: 8),
+                          TextFormField(
+                            controller: teamNameController,
+                            style: TextStyle(
+                              color: AppColors.primaryColor2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: 'Enter Team Name',
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Select User',
+                            style: TextStyle(
+                              color: AppColors.secondaryColor2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: userList.length,
+                              itemBuilder: (context, index) {
+                                User user = userList[index];
+                                bool isSelected = _selectedUsers.contains(user);
+                                return ListTile(
+                                  title: Text(
+                                    user.userName,
+                                    style: TextStyle(
+                                      color: AppColors.primaryColor2,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  children: _selectedUsers.map((user) {
-                                    return Chip(
-                                      label: Text(user.userName),
-                                      onDeleted: () {
-                                        setState(() {
+                                  trailing: IconButton(
+                                    icon: Icon(
+                                      isSelected
+                                          ? Icons.remove_circle
+                                          : Icons.add_circle,
+                                      color: AppColors.secondaryColor2,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        if (isSelected) {
                                           _selectedUsers.remove(user);
-                                        });
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
+                                        } else {
+                                          _selectedUsers.add(user);
+                                        }
+                                      });
+                                    },
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                        SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              child: Text('Cancel'),
+                          SizedBox(height: 16),
+                          // Display the selected users
+                          if (_selectedUsers.isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: AppColors.secondaryColor2,
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Selected Users:',
+                                    style: TextStyle(
+                                      color: AppColors.secondaryColor2,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    children: _selectedUsers.map((user) {
+                                      return Chip(
+                                        label: Text(user.userName),
+                                        onDeleted: () {
+                                          setState(() {
+                                            _selectedUsers.remove(user);
+                                          });
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
                             ),
-                            TextButton(
-                              onPressed: () async {
-                                String newTeamName = teamNameController.text;
-                                List<String> selectedUserIds = _selectedUsers.map((user) => user.userId).toList();
-                                await updateTeamWithMembersAndName(teamId, newTeamName, selectedUserIds);
-                                Navigator.pop(context);
-                                Navigator.pop(context);
-                              },
-                              child: Text('Save'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
+                          SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  String newTeamName = teamNameController.text;
+                                  List<String> selectedUserIds = _selectedUsers.map((user) => user.userId).toList();
+                                  await updateTeamWithMembersAndName(teamId, newTeamName, selectedUserIds);
+                                  Navigator.pop(context);
+                                  Navigator.pop(context);
+                                },
+                                child: Text('Save'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  print('Error in FutureBuilder: $e');
+                  return Center(child: Text('An error occurred'));
                 }
               },
             );
@@ -463,7 +507,16 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('My Teams')),
+      appBar: AppBar(title: Text('My Teams'),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: SizedBox(height: 50,width: 150,child:  RoundTextField(
+            onChanged: (query) => filterTeams(query), hintText: 'Search',
+            icon: "assets/images/search_icon.png",
+          ),),
+        )
+      ],),
       body: Container(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -471,9 +524,9 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
             children: [
               Expanded(
                 child: ListView.builder(
-                  itemCount: _teams.length,
+                  itemCount: filteredTeams.length, // Use _filteredTeams here
                   itemBuilder: (context, index) {
-                    MyTeam team = _teams[index];
+                    MyTeam team = filteredTeams[index];
                     return Stack(
                       children: [
                         Container(
@@ -507,7 +560,8 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                       Text(
                                         team.teamName,
                                         style: TextStyle(
-                                            color: AppColors.secondaryColor2,
+                                            color: AppColors
+                                                .secondaryColor2,
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold),
                                       ),
@@ -521,9 +575,11 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                           Text(
                                             'No. of Members: ',
                                             style: TextStyle(
-                                                color: AppColors.blackColor,
+                                                color: AppColors
+                                                    .blackColor,
                                                 fontSize: 14,
-                                                fontWeight: FontWeight.bold),
+                                                fontWeight: FontWeight
+                                                    .bold),
                                           ),
                                           Text(
                                             team.users!.length.toString(),
@@ -531,7 +587,8 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                                 color:
                                                 AppColors.secondaryColor2,
                                                 fontSize: 14,
-                                                fontWeight: FontWeight.bold),
+                                                fontWeight: FontWeight
+                                                    .bold),
                                           ),
                                         ],
                                       ),
@@ -565,18 +622,14 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                     color: AppColors.secondaryColor2,
                                   ),
                                   onPressed: () {
-                                    _deleteTeam(team.teamId);
+                                    _deleteTeam(team.teamId!);
                                   },
                                 ),
                                 IconButton(
                                   onPressed: () {
-                                    _showUserListBottomSheet(team.teamId,team.teamName);
-                                    // _showEditTeamDialog(
-                                    //     team,
-                                    //     _selectedUsers); // Pass the selectedUsers list to the _showEditTeamDialog method
+                                    _showEditTeamDialog(team.teamId!,team.teamName, _selectedUsers);
                                   },
-                                  icon: Icon(Icons.edit,
-                                      color: AppColors.secondaryColor2),
+                                  icon: Icon(Icons.edit, color: AppColors.secondaryColor2),
                                 ),
                               ]),
                             ],
@@ -593,14 +646,213 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Add your logic for the floating action button here
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => TeamCreationPage()),
-          );
+         _navigateToCreateTeamScreen();
         },
         child: Icon(Icons.add),
       ),
+    );
+  }
+
+  Future<List<String>> fetchTeamUserIds() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final storedData = prefs.getString('jwtToken');
+    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+    if (orgId == null) {
+      // If the user hasn't switched organizations, use the organization ID obtained during login time
+      orgId = prefs.getString('org_id') ?? "";
+    }
+
+    print("OrgId: $orgId");
+
+    if (orgId == null) {
+      throw Exception('orgId not found locally');
+    }
+
+    final response = await http.get(
+      Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers?org_id=$orgId'),
+      headers: {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+      },
+    );
+
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+      final List<dynamic> users = jsonData['users'];
+      return users.map((user) => user['user_id']).cast<String>().toList();
+    } else {
+      throw Exception('Failed to fetch team users');
+    }
+  }
+
+  Future<void> _showEditTeamDialog(String teamId,String teamName, List<User> selectedUsers) async {
+    TextEditingController teamNameController = TextEditingController(text: teamName);
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return FutureBuilder<List<User>>(
+              future: fetchUsers(),
+              builder: (context, snapshot) {
+                try {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    print('Error fetching users: ${snapshot.error}');
+                    return Center(child: Text('Error fetching users'));
+                  } else {
+                    List<User> userList = snapshot.data ?? [];
+                    return Container(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit Team Name:', // Updated text here
+                            style: TextStyle(
+                              color: AppColors.secondaryColor2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          TextFormField(
+                            controller: teamNameController,
+                            style: TextStyle(
+                              color: AppColors.primaryColor2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: 'Enter Team Name',
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Select User',
+                            style: TextStyle(
+                              color: AppColors.secondaryColor2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: userList.length,
+                              itemBuilder: (context, index) {
+                                User user = userList[index];
+                                bool isSelected = _selectedUsers.contains(user);
+                                return ListTile(
+                                  title: Text(
+                                    user.userName,
+                                    style: TextStyle(
+                                      color: AppColors.primaryColor2,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: Icon(
+                                      isSelected
+                                          ? Icons.remove_circle
+                                          : Icons.add_circle,
+                                      color: AppColors.secondaryColor2,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        if (isSelected) {
+                                          _selectedUsers.remove(user);
+                                        } else {
+                                          _selectedUsers.add(user);
+                                        }
+                                      });
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          // Display the selected users
+                          if (_selectedUsers.isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: AppColors.secondaryColor2,
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Selected Users:',
+                                    style: TextStyle(
+                                      color: AppColors.secondaryColor2,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    children: _selectedUsers.map((user) {
+                                      return Chip(
+                                        label: Text(user.userName),
+                                        onDeleted: () {
+                                          setState(() {
+                                            _selectedUsers.remove(user);
+                                          });
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  String newTeamName = teamNameController.text;
+                                  List<String> selectedUserIds = _selectedUsers.map((user) => user.userId).toList();
+                                  await updateTeamWithMembersAndName(teamId, newTeamName, selectedUserIds);
+                                  Navigator.pop(context);
+                                  Navigator.pop(context);
+                                },
+                                child: Text('Save'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  print('Error in FutureBuilder: $e');
+                  return Center(child: Text('An error occurred'));
+                }
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -610,17 +862,37 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
   }
 
 
+  void _navigateToCreateTeamScreen() async {
+    final shouldRefresh = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => TeamCreationPage()),
+    );
+
+    if (shouldRefresh == true) {
+      // Refresh the data by calling the fetchMyTeams API
+      fetchMyTeams();
+    }
+  }
+
+
+
   Future<String> getUserIdByUsername(String username) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
       }
-
-      print("OrgId: $orgId");
 
       final response = await http.get(
         Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
@@ -722,15 +994,21 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                       try {
                                         SharedPreferences prefs = await SharedPreferences.getInstance();
                                         final storedData = prefs.getString('jwtToken');
-                                        final String? orgId = prefs.getString('org_id');
+                                        String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+                                        if (orgId == null) {
+                                          // If the user hasn't switched organizations, use the organization ID obtained during login time
+                                          orgId = prefs.getString('org_id') ?? "";
+                                        }
+
+                                        print("OrgId: $orgId");
+
 
                                         if (orgId == null) {
                                           throw Exception('orgId not found locally');
                                         }
 
-                                        print("OrgId: $orgId");
-
-                                        final String teamId = team.teamId;
+                                        final String teamId = team.teamId!;
                                         final String userName = user; // Replace 'user' with the actual userName of the user you want to delete
 
                                         final userId = await getUserIdByUsername(user); // Make the userId nullable
@@ -766,7 +1044,9 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                         if (response.statusCode == 200) {
                                           // Deletion successful
                                           print("User deleted successfully.");
-                                          // You can also update the local data to reflect the deleted user, if necessary.
+                                          _showDialog("User deleted Successfully");
+
+                                          await fetchMyTeams();
                                         } else if (response.statusCode == 401) {
                                           // Unauthorized
                                           print("Unauthorized to perform the delete operation.");

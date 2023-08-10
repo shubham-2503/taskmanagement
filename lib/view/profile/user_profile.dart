@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:Taskapp/view/profile/addOrganization.dart';
+import 'package:Taskapp/view/profile/widgets/confirmationModal.dart';
 import 'package:Taskapp/view/subscription/subscriptions.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_button.dart';
 import '../../organization_proivider.dart';
+import '../dashboard/dashboard_screen.dart';
 import '../login/login_screen.dart';
 
 class UserProfile extends StatefulWidget {
@@ -30,7 +33,9 @@ class _UserProfileState extends State<UserProfile> {
   Map<String, dynamic>? organization;
   int selectedOrganizationIndex = -1; // Or any other default value based on your application's logic
   String selectedOrganizationName = '';
+  String selectedOrgId = "";
   String selectOrganizationAdd = "";
+  List<Map<String, dynamic>> _organizationList = [];
 
   List otherArr = [
     {"image": "assets/icons/p_contact.png", "name": "Contact Us", "tag": "5"},
@@ -39,10 +44,23 @@ class _UserProfileState extends State<UserProfile> {
   ];
 
   Future<Map<String, dynamic>> fetchUserProfile() async {
-    final url = 'http://43.205.97.189:8000/api/User/myProfile';
-
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
+    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+    if (orgId == null) {
+      // If the user hasn't switched organizations, use the organization ID obtained during login time
+      orgId = prefs.getString('org_id') ?? "";
+    }
+
+    print("OrgId: $orgId");
+
+    if (orgId.isEmpty) {
+      throw Exception('orgId not found locally');
+    }
+
+
+    final url = 'http://43.205.97.189:8000/api/User/myProfile?org_id=$orgId';
 
     final headers = {
       'accept': '*/*',
@@ -73,6 +91,73 @@ class _UserProfileState extends State<UserProfile> {
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => LoginScreen()));
   }
 
+  Future<void> deleteOrganizationWithConfirmation(BuildContext context, String orgId) async {
+    print("orgId: $orgId");
+    bool confirmDelete = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete this organization?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            TextButton(
+              child: Text('Delete'),
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmDelete == true) {
+      String apiUrl = "http://43.205.97.189:8000/api/Organization/removeOrganization?org_id=$orgId";
+
+      final response = await http.delete(Uri.parse(apiUrl));
+
+      print("Code: ${response.statusCode}");
+      print("Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        String errorMessage = "Organization delete successfully";
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Success"),
+            content: Text(errorMessage),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("OK"),
+              ),
+            ],
+          ),
+        );
+      } else {
+        String errorMessage = "Failed to delete the organization!!!";
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("OOPs"),
+            content: Text(errorMessage),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -87,10 +172,12 @@ class _UserProfileState extends State<UserProfile> {
             userProfileData['subscription'].isNotEmpty) {
           latestSubscription = userProfileData['subscription'].last;
         }
-        if (userProfileData.containsKey('org') && userProfileData['org'].isNotEmpty) {
+        if (userProfileData.containsKey('org') &&
+            userProfileData['org'].isNotEmpty) {
           organization = userProfileData['org'].last;
         }
 
+        print("subscription: $latestSubscription");
         print("Organization Data: $organization");
       });
     }).catchError((error) {
@@ -105,36 +192,7 @@ class _UserProfileState extends State<UserProfile> {
     });
   }
 
-  // Future<void> fetchOrganizationList() async {
-  //   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  //   final storedData = prefs.getString('jwtToken');
-  //
-  //   final url = 'http://43.205.97.189:8000/api/Organization/MyOrganizations';
-  //   try {
-  //     final headers = {
-  //       'accept': '*/*',
-  //       'Authorization': 'Bearer $storedData',
-  //     };
-  //
-  //     final response = await http.get(Uri.parse(url), headers: headers);
-  //
-  //     print('Response: ${response.body}');
-  //     print('Status: ${response.statusCode}');
-  //
-  //     if (response.statusCode == 200) {
-  //       // If the server returns a successful response, parse the JSON
-  //       final List<dynamic> data = json.decode(response.body);
-  //       setState(() {
-  //         _organizationList = data.cast<Map<String, dynamic>>();
-  //       });
-  //     } else {
-  //       throw Exception('Failed to load organization list');
-  //     }
-  //   } catch (e) {
-  //     print('Error fetching organization list: $e');
-  //     throw Exception('Failed to load organization list');
-  //   }
-  // }
+
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +225,7 @@ class _UserProfileState extends State<UserProfile> {
                 ),
                 PopupMenuItem(
                   value: 1,
-                  child: Text("Manage Subscription"),
+                  child: Text("Manage Organization"),
                 ),
                 PopupMenuItem(
                   value: 2,
@@ -255,134 +313,195 @@ class _UserProfileState extends State<UserProfile> {
                             ],
                           ),
                         ),
-                        RichText(
-                          text: TextSpan(
-                            text: "Organization: ",
-                            style: TextStyle(
-                                color: AppColors.secondaryColor2,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold
-                            ),
-                            children: [
-                              TextSpan(
-                                text: "$selectedOrganizationName",
-                                style: TextStyle(
-                                  // Add any specific styles for the plan name here, if needed
-                                  color: AppColors.blackColor,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),
                 ],
               ),
               SizedBox(height: 20,),
+          // Add this line before using the _organizationList in the GridView
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-                decoration: BoxDecoration(
-                  color: AppColors.whiteColor,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+      decoration: BoxDecoration(
+        color: AppColors.whiteColor,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "My Organization",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.secondaryColor2,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "My Organization",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColors.secondaryColor2,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: (_organizationList.length * 38.0) + 80, // Height calculation
-                      child: GridView.builder(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2, // Number of columns in the GridView
-                          crossAxisSpacing: 10.0, // Spacing between columns
-                          mainAxisSpacing: 10.0, // Spacing between rows
-                        ),
-                        itemCount: _organizationList.length,
-                        itemBuilder: (context, index) {
-                          print('Building item for index $index');
-                          final org = _organizationList[index];
-                          return GestureDetector(
-                            onTap: () {
-                              organizationProvider.switchOrganization(index);
-                              // Switch the organization in the provider and refresh the screen
-                              setState(() {
-                                selectedOrganizationName = org['name'];
-                                selectOrganizationAdd = org['address'];
-                              });
-                              _showNotification('Organization switched to ${org['name']}'); // Show notification
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: _selectedOrganizationIndex == index
-                                    ? AppColors.secondaryColor2 // Selected organization color
-                                    : AppColors.whiteColor,
-                                borderRadius: BorderRadius.circular(15),
-                                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    org["name"],
-                                    style: TextStyle(
-                                      color: _selectedOrganizationIndex == index
-                                          ? Colors.white // Selected organization text color
-                                          : AppColors.blackColor,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    org["address"],
-                                    style: TextStyle(
-                                      color: _selectedOrganizationIndex == index
-                                          ? Colors.white // Selected organization text color
-                                          : AppColors.blackColor,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                  RichText(
-                                    text: TextSpan(
-                                      text: "Employee: ",
-                                      style: TextStyle(
-                                          color: AppColors.blackColor,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text: "${org['employees']}",
-                                          style: TextStyle(
-                                            color: AppColors.blackColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+              ),
+              GestureDetector(
+                onTap: (){
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=>AddOrganization(userId: userProfileData['user_id'])));
+                },
+                child: Image.asset(
+                  "assets/icons/more_icon.png",
+                  width: 12,
+                  height: 12,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: (_organizationList.length * 38.0) + 80, // Height calculation
+            child: GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2, // Number of columns in the GridView
+                crossAxisSpacing: 20.0, // Spacing between columns
+                mainAxisSpacing: 10.0, // Spacing between rows
+              ),
+              itemCount: _organizationList.length,
+              itemBuilder: (context, index) {
+                print('Building item for index $index');
+                final org = _organizationList[index];
+                return GestureDetector(
+                  // Inside the `onTap` method in the GridView builder
+                  onTap: () async {
+                    organizationProvider.switchOrganization(index, context);
 
+                    // Wait for the UI updates to complete
+                    await Future.delayed(Duration(milliseconds: 200)); // Adjust the delay as needed
+
+                    // Update the selected organization information
+                    setState(() {
+                      selectedOrganizationName = org['name'];
+                      selectOrganizationAdd = org['address'];
+                    });
+
+                    // // Navigate to DashboardScreen
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(builder: (context) => DashboardScreen()),
+                    // );
+                    _showNotification('Organization switched to ${org['name']}'); // Show notification
+                  },
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: _selectedOrganizationIndex == index
+                              ? AppColors.secondaryColor2 // Selected organization color
+                              : AppColors.whiteColor,
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              org["name"],
+                              style: TextStyle(
+                                color: _selectedOrganizationIndex == index
+                                    ? Colors.white // Selected organization text color
+                                    : AppColors.blackColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              org["address"],
+                              style: TextStyle(
+                                color: _selectedOrganizationIndex == index
+                                    ? Colors.white // Selected organization text color
+                                    : AppColors.blackColor,
+                                fontSize: 10,
+                              ),
+                            ),
+                            RichText(
+                              text: TextSpan(
+                                text: "Employee: ",
+                                style: TextStyle(
+                                    color: AppColors.blackColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: "${org['employees']}",
+                                    style: TextStyle(
+                                      color: AppColors.blackColor,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          );
-                        },
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(
+                      Positioned(
+                        top: 2,
+                        right: 2,
+                        child: InkWell(
+                          child: PopupMenuButton<int>(
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 0,
+                                child: Text("Edit Organization"),
+                              ),
+                              PopupMenuItem(
+                                value: 1,
+                                child: Text("Delete Organization"),
+                              ),
+                            ],
+                            onSelected: (value) {
+                              switch (value) {
+                                case 0:
+                                // Handle Edit Organization
+                                  break;
+                                case 1:
+                                  print("org: $org");
+                                  if (org != null && org.containsKey("org_id")) { // Use "org_id" key
+                                    showModalBottomSheet(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return DeleteConfirmationModal(
+                                          onConfirm: () {
+                                            deleteOrganizationWithConfirmation(context, org["org_id"]); // Use "org_id" key
+                                            Navigator.pop(context); // Close the modal after deletion
+                                          },
+                                        );
+                                      },
+                                    );
+                                  } else {
+                                    print("Organization data is not available or doesn't contain 'org_id'."); // Adjust the error message
+                                  }
+                                  break;
+                                default:
+                                  break;
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Icon(Icons.more_vert),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+          const SizedBox(
                 height: 45,
               ),
               Container(
@@ -513,45 +632,6 @@ class _UserProfileState extends State<UserProfile> {
                                   ),
                                 ),
                                 SizedBox(height: 5),
-                                RichText(
-                                  text: TextSpan(
-                                    text: "Organization: ",
-                                    style: TextStyle(
-                                      color: AppColors.secondaryColor2,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: "$selectedOrganizationName",
-                                        style: TextStyle(
-                                          color: AppColors.blackColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 5),
-                                RichText(
-                                  text: TextSpan(
-                                    text: "Organization Address: ",
-                                    style: TextStyle(
-                                      color: AppColors.secondaryColor2,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: "$selectOrganizationAdd",
-                                        style: TextStyle(
-                                          color: AppColors.blackColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               ],
                             ),
                           ),
@@ -580,200 +660,203 @@ class _UserProfileState extends State<UserProfile> {
               const SizedBox(
                 height: 45,
               ),
-              Container(
-                padding:
-                const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-                decoration: BoxDecoration(
-                    color: AppColors.primaryColor1,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 2)
-                    ]),
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.center,
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(
-                                "assets/images/renewable-energy.png",
-                                height: 15,
-                                width: 15,
-                                fit: BoxFit.contain,
-                                color: AppColors.secondaryColor2,
-                              ),
-                              SizedBox(width: 10,),
-                              Text(
-                                "My Subscribed Plan",
-                                style: TextStyle(
-                                  color: AppColors.secondaryColor2,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            "You are using the ${latestSubscription.containsKey('name')
-                                ? latestSubscription['name']
-                                : 'No Subscription'}",
-                            style: TextStyle(
-                              color: AppColors.secondaryColor1,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 10,),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        children: [
-                          const SizedBox(
-                            width: 15,
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+              Visibility(
+                visible: latestSubscription != null && latestSubscription.isNotEmpty,
+                child: Container(
+                  padding:
+                  const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                  decoration: BoxDecoration(
+                      color: AppColors.primaryColor1,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 2)
+                      ]),
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.center,
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Center(
-                                  child: Text("Plan Details",
-                                    style: TextStyle(
-                                        color: AppColors.secondaryColor2,
-                                        fontWeight: FontWeight.bold
-                                    ),
-                                  ),
+                                Image.asset(
+                                  "assets/images/renewable-energy.png",
+                                  height: 15,
+                                  width: 15,
+                                  fit: BoxFit.contain,
+                                  color: AppColors.secondaryColor2,
                                 ),
-                                SizedBox(height: 10,),
-                                RichText(
-                                  text: TextSpan(
-                                    text: "Plan name: ",
-                                    style: TextStyle(
-                                        color: AppColors.secondaryColor2,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: "${latestSubscription.containsKey('name')
-                                            ? latestSubscription['name']
-                                            : 'No Subscription'}",
-                                        style: TextStyle(
-                                          // Add any specific styles for the plan name here, if needed
-                                          color: AppColors.blackColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 5),
-                                RichText(
-                                  text: TextSpan(
-                                    text: "Subscription Status: ",
-                                    style: TextStyle(
-                                        color: AppColors.secondaryColor2,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: latestSubscription.containsKey('startDate')
-                                            ? " Active"
-                                            : " Inactive",
-                                        style: TextStyle(
-                                          color: AppColors.blackColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 5),
-                                RichText(
-                                  text: TextSpan(
-                                    text: "Subscription Start Date: ",
-                                    style: TextStyle(
-                                        color: AppColors.secondaryColor2,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: "${
-                                            latestSubscription.containsKey('startDate')
-                                                ? _formatDate(latestSubscription['startDate'])
-                                                : 'N/A'
-                                        }",
-                                        style: TextStyle(
-                                          // Add any specific styles for the plan name here, if needed
-                                          color: AppColors.blackColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 5),
-                                RichText(
-                                  text: TextSpan(
-                                    text: "Subscription Renewal Date: ",
-                                    style: TextStyle(
-                                        color: AppColors.secondaryColor2,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: "${
-                                            latestSubscription.containsKey('endDate')
-                                                ? _formatDate(latestSubscription['endDate'])
-                                                : 'N/A'
-                                        }",
-                                        style: TextStyle(
-                                          // Add any specific styles for the plan name here, if needed
-                                          color: AppColors.blackColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 5),
-                                RichText(
-                                  text: TextSpan(
-                                    text: "Subscription Price: ",
-                                    style: TextStyle(
-                                        color: AppColors.secondaryColor2,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: "${latestSubscription.containsKey('price')
-                                            ? latestSubscription['price']
-                                            : 'NA'}",
-                                        style: TextStyle(
-                                          // Add any specific styles for the plan name here, if needed
-                                          color: AppColors.blackColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
+                                SizedBox(width: 10,),
+                                Text(
+                                  "My Subscribed Plan",
+                                  style: TextStyle(
+                                    color: AppColors.secondaryColor2,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                            Text(
+                              "You are using the ${latestSubscription.containsKey('name')
+                                  ? latestSubscription['name']
+                                  : 'No Subscription'}",
+                              style: TextStyle(
+                                color: AppColors.secondaryColor1,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 10,),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 15,
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Center(
+                                    child: Text("Plan Details",
+                                      style: TextStyle(
+                                          color: AppColors.secondaryColor2,
+                                          fontWeight: FontWeight.bold
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: 10,),
+                                  RichText(
+                                    text: TextSpan(
+                                      text: "Plan name: ",
+                                      style: TextStyle(
+                                          color: AppColors.secondaryColor2,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: "${latestSubscription.containsKey('name')
+                                              ? latestSubscription['name']
+                                              : 'No Subscription'}",
+                                          style: TextStyle(
+                                            // Add any specific styles for the plan name here, if needed
+                                            color: AppColors.blackColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  RichText(
+                                    text: TextSpan(
+                                      text: "Subscription Status: ",
+                                      style: TextStyle(
+                                          color: AppColors.secondaryColor2,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: latestSubscription.containsKey('startDate')
+                                              ? " Active"
+                                              : " Inactive",
+                                          style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  RichText(
+                                    text: TextSpan(
+                                      text: "Subscription Start Date: ",
+                                      style: TextStyle(
+                                          color: AppColors.secondaryColor2,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: "${
+                                              latestSubscription.containsKey('startDate')
+                                                  ? _formatDate(latestSubscription['startDate'])
+                                                  : 'N/A'
+                                          }",
+                                          style: TextStyle(
+                                            // Add any specific styles for the plan name here, if needed
+                                            color: AppColors.blackColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  RichText(
+                                    text: TextSpan(
+                                      text: "Subscription Renewal Date: ",
+                                      style: TextStyle(
+                                          color: AppColors.secondaryColor2,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: "${
+                                              latestSubscription.containsKey('endDate')
+                                                  ? _formatDate(latestSubscription['endDate'])
+                                                  : 'N/A'
+                                          }",
+                                          style: TextStyle(
+                                            // Add any specific styles for the plan name here, if needed
+                                            color: AppColors.blackColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  RichText(
+                                    text: TextSpan(
+                                      text: "Subscription Price: ",
+                                      style: TextStyle(
+                                          color: AppColors.secondaryColor2,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: "${latestSubscription.containsKey('price')
+                                              ? latestSubscription['price']
+                                              : 'NA'}",
+                                          style: TextStyle(
+                                            // Add any specific styles for the plan name here, if needed
+                                            color: AppColors.blackColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               SizedBox(height: 30,),
@@ -956,6 +1039,39 @@ class _UserProfileState extends State<UserProfile> {
     );
   }
 }
+
+void _showMoreOptionsModal(BuildContext context, Map<String, dynamic> org) {
+  showModalBottomSheet(
+    context: context,
+    builder: (context) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                // Handle edit organization logic here
+                Navigator.pop(context); // Close the modal
+              },
+              child: Text('Edit Organization'),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Handle delete organization logic here
+                Navigator.pop(context); // Close the modal
+              },
+              child: Text('Delete Organization'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 
 
 String _formatDate(String dateString) {

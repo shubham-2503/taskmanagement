@@ -52,7 +52,14 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
   Future<void> updateTask(Map<String, dynamic> taskData) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    final String? orgId = prefs.getString('org_id');
+    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+    if (orgId == null) {
+      // If the user hasn't switched organizations, use the organization ID obtained during login time
+      orgId = prefs.getString('org_id') ?? "";
+    }
+
+    print("OrgId: $orgId");
 
     if (orgId == null) {
       throw Exception('orgId not found locally');
@@ -97,7 +104,14 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -145,95 +159,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
       print('Error fetching tasks: $e');
     }
   }
-
-  void _deleteProject(String projectId) async {
-    try {
-      // Show a confirmation dialog for deleting the project
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this Project?'),
-            actions: [
-              TextButton(
-                child: Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  try {
-                    SharedPreferences prefs = await SharedPreferences.getInstance();
-                    final storedData = prefs.getString('jwtToken');
-                    final String? orgId = prefs.getString('org_id');
-
-                    if (orgId == null) {
-                      throw Exception('orgId not found locally');
-                    }
-
-                    final response = await http.delete(
-                      Uri.parse('http://43.205.97.189:8000/api/Project/deleteProject/$projectId'),
-                      headers: {
-                        'accept': '*/*',
-                        'Authorization': "Bearer $storedData",
-                      },
-                    );
-
-                    print("Delete API response: ${response.body}");
-                    print("Delete StatusCode: ${response.statusCode}");
-
-                    if (response.statusCode == 200) {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text('Thank You'),
-                            content: Text("Project deleted successfully."),
-                            actions: [
-                              InkWell(
-                                onTap: () {
-                                  Navigator.pop(context);
-                                },
-                                child: Text(
-                                  "OK",
-                                  style: TextStyle(color: AppColors.blackColor, fontSize: 20),
-                                ),
-                              )
-                            ],
-                          );
-                        },
-                      );
-                      print('Project deleted successfully.');
-                      // Perform any necessary tasks after successful deletion
-                      setState(() {
-                        // Remove the deleted project from the list or navigate back to the previous screen
-                        // If you want to update the UI in the ProjectDetailsScreen, you need to do it there.
-                        // For example, you can trigger a fetchProjectDetails() method to update the project details after deletion.
-                        Navigator.pop(context);
-                        Navigator.pop(context);
-                      });
-                    } else {
-                      print('Failed to delete Project.');
-                      // Handle other status codes, if needed
-                    }
-                  } catch (e) {
-                    print('Error deleting project: $e');
-                  }
-                },
-                child: Text('Delete'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      print('Error showing delete confirmation dialog: $e');
-    }
-  }
-
 
   @override
   Widget build(BuildContext context) {
@@ -286,9 +211,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                           Navigator.push(context, MaterialPageRoute(builder: (context)=>EditMyProjectPage(initialTitle: projectName, initialAssignedTo: assignee,initialAssignedTeam:assigneeteam, initialStatus: _selectedStatus ?? " ", initialDueDate: dueDate ?? "", projectId: ProjectId!, )));
                         }, icon: Icon(Icons.edit,color: AppColors.primaryColor1,)),
                         SizedBox(width: 3,),
-                        IconButton(onPressed: (){
-                          _deleteProject(ProjectId!);
-                        }, icon: Icon(Icons.delete,color: AppColors.secondaryColor2,)),
                         IconButton(
                           onPressed: () {
                             Navigator.push(

@@ -1,37 +1,20 @@
+import 'dart:convert';
 import 'dart:io';
-import 'package:Taskapp/common_widgets/round_button.dart';
-import 'package:Taskapp/common_widgets/round_gradient_button.dart';
-import 'package:f_datetimerangepicker/f_datetimerangepicker.dart';
+import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import 'package:pie_chart/pie_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/report_model.dart';
 import '../../utils/app_colors.dart';
 import 'package:path/path.dart' as path;
+import 'package:intl/intl.dart';
 
-enum ReportType {
-  Day,
-  Weekly,
-  Monthly,
-  Yearly,
-}
-
-enum ViewType {
-  Timeline,
-  Board,
-  Table,
-}
-
-enum CategoryType{
-  MyReports,
-  TeamReports,
-}
-
-enum LegendShape{
-  circle,
-  rectangle,
-}
+import 'myFilter.dart';
 
 class ReportScreen extends StatefulWidget {
   @override
@@ -39,14 +22,23 @@ class ReportScreen extends StatefulWidget {
 }
 
 class _ReportScreenState extends State<ReportScreen> {
-  ReportType _selectedReportType = ReportType.Day;
-  CategoryType _selectedCategoryType = CategoryType.MyReports;
-  DateTime? _selectedStartDate;
-  DateTime? _selectedEndDate;
+  List<Task> filteredTasks = [];
+  List<Task> tasks = [];// Define the Task class structure accordingly
+  List<Project> projects = [];
+  List<Project> filteredProjects = [];
+  int totalTaskCount = 0;
+  int completedTaskCount= 0;
+  int pendingTaskCount= 0;
+  int noProgressTaskCount= 0;
+  int totalProjectCount = 0;
+  int completedProjectCount= 0;
+  int noProgressProjectCount= 0;
+  int offTrackProjectCount= 0;
+
   final projectMap = <String, double>{
-    "Completed": 15,
-    "Pending": 15,
-    "Off-Track": 7,
+    "Completed": 0,
+    "Pending": 0,
+    "Off-Track": 0,
   };
 
   final legendsLabels = <String, String>{
@@ -56,9 +48,9 @@ class _ReportScreenState extends State<ReportScreen> {
   };
 
   final dataMap = <String, double>{
-    "Completed": 15,
-    "Pending": 15,
-    "No Progress": 7,
+    "Completed": 0,
+    "Pending": 0,
+    "No Progress": 0,
   };
 
   final colorList = <Color>[
@@ -75,53 +67,150 @@ class _ReportScreenState extends State<ReportScreen> {
 
   int key = 0;
 
-  Widget _buildReportTypeText() {
-    switch (_selectedReportType) {
-      case ReportType.Day:
-        return Text(
-          "Day Reports",
-          style: TextStyle(
-            color: AppColors.secondaryColor2,
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            fontStyle: FontStyle.italic,
-          ),
-        );
-      case ReportType.Weekly:
-        return Text(
-          "Weekly Reports",
-          style: TextStyle(
-            color: AppColors.secondaryColor2,
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            fontStyle: FontStyle.italic,
-          ),
-        );
-      case ReportType.Monthly:
-        return Text(
-          "Monthly Reports",
-          style: TextStyle(
-            color: AppColors.secondaryColor2,
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            fontStyle: FontStyle.italic,
-          ),
-        );
-      case ReportType.Yearly:
-        return Text(
-          "Yearly Reports",
-          style: TextStyle(
-            color: AppColors.secondaryColor2,
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            fontStyle: FontStyle.italic,
-          ),
-        );
-      default:
-        return SizedBox.shrink();
-    }
+  @override
+  void initState() {
+    super.initState();
+    // Fetch data when the widget initializes
+    fetchData();
   }
 
+  Future<void> fetchData({String? reportType, bool? active, String? onSchedule, String? priority, String? status, String? startDate, String? endDate}) async {
+    print("APi calls");
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final storedData = prefs.getString('jwtToken');
+    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+    if (orgId == null) {
+      // If the user hasn't switched organizations, use the organization ID obtained during login time
+      orgId = prefs.getString('org_id') ?? "";
+    }
+
+
+    print("OrgId: $orgId");
+
+    if (orgId == null) {
+      throw Exception('orgId not found locally');
+    }
+
+    final Url = 'http://43.205.97.189:8000/api/Common/taskReport?org_id=$orgId'; // Replace with your API base URL
+    // By default, set active to true
+    bool active = true;
+
+    // If the status is 'completed', set active to false
+    if (status == 'completed') {
+      active = false;
+    }
+
+    // Construct the query parameters
+    final queryParams = {
+      'org_id': orgId,
+      if (reportType != null) 'report_type': reportType,
+      if (active != null) 'active': active.toString(),
+      if (onSchedule != null) 'on_schedule': onSchedule,
+      if (priority != null) 'priority': priority,
+      if (status != null) 'status': status,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+    };
+
+    // Print the query parameters in JSON format
+    final queryParamsJson = jsonEncode(queryParams);
+    print('Query Parameters: $queryParamsJson');
+
+    final url = Uri.parse(Url).replace(queryParameters: queryParams);
+
+    final headers = {
+      'Authorization': 'Bearer $storedData', // Add the Authorization header with the JWT token
+    };
+
+    try {
+      final response = await http.get(
+        url,
+        headers: headers, // Include the headers in the request
+      );
+      print("StatusCode: ${response.statusCode}");
+      print("Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+
+        List<Task> tasks = [];
+        if (jsonData['tasks'] != null && jsonData['tasks'] is List) {
+          for (var taskData in jsonData['tasks']) {
+            Task task = Task(
+              id: taskData['taskId'] ?? '',
+              taskName: taskData['task_name'] ?? '',
+              status: taskData['status'] ?? '',
+              createdBy: taskData['created_by'] ?? '',
+              description: taskData['description'] ?? '',
+              priority: taskData['priority'] ?? '',
+              dueDate: taskData['dueDate'] != null ? DateTime.parse(taskData['dueDate']) : DateTime.now(),
+            );
+            tasks.add(task);
+          }
+        }
+
+        List<Project> projects = [];
+        if (jsonData['projects'] != null && jsonData['projects'] is List) {
+          for (var projectData in jsonData['projects']) {
+            Project project = Project(id: projectData['id'] ?? '', taskName: projectData['task_name'] ?? '', createdBy: projectData['created_by'] ?? '', status: projectData['status'] ?? '',dueDate: projectData['dueDate'] != null ? DateTime.parse(projectData['dueDate']) : DateTime.now(), type: projectData['type']?? '');
+            projects.add(project);
+          }
+        }
+
+        int totalTaskCount = tasks.length;
+        int completedTaskCount = tasks.where((task) => task.status == 'Completed').length;
+        int pendingTaskCount = tasks.where((task) => task.status == 'ToDo').length;
+        int noProgressTaskCount = tasks.where((task) => task.status == 'InProgress').length;
+
+        int totalProjectCount = projects.length;
+        int completedProjectCount = projects.where((project) => project.status == 'Completed').length;
+        int offTrackProjectCount = projects.where((project) => project.status == 'OffTrack').length;
+        int noProgressProjectCount = projects.where((project) => project.status == 'InProgress').length;
+
+        // Update the projectMap with calculated values
+        projectMap["Completed"] = completedProjectCount.toDouble();
+        projectMap["Pending"] = noProgressProjectCount.toDouble();// Calculate the pending count
+        projectMap["Off-Track"] = offTrackProjectCount.toDouble(); // Calculate the off-track count
+
+
+        // Update the projectMap with calculated values
+        dataMap["Completed"] = completedTaskCount.toDouble();
+        dataMap["Pending"] = pendingTaskCount.toDouble();// Calculate the pending count
+        dataMap["No Progress"] = noProgressTaskCount.toDouble(); // Calculate the off-track count
+
+
+        setState(() {
+          this.totalTaskCount = totalTaskCount;
+          this.completedTaskCount = completedTaskCount;
+          this.pendingTaskCount = pendingTaskCount;
+          this.noProgressTaskCount = noProgressTaskCount;
+
+          this.totalProjectCount = totalProjectCount;
+          this.completedProjectCount = completedProjectCount;
+          this.offTrackProjectCount = offTrackProjectCount;
+          this.noProgressProjectCount = noProgressProjectCount;
+
+          tasks = tasks; // Assign the fetched tasks to the widget's tasks list
+          filteredTasks = tasks;
+          projects = projects; // Assign the fetched projects to the widget's projects list
+          filteredProjects = projects;
+        });
+      } else if (response.statusCode == 401) {
+        print("Failed to fetched the Reports: ${response.statusCode}");
+
+      } else if (response.statusCode == 403) {
+        // Handle forbidden error
+        print("Failed to fetched the Reports: ${response.statusCode}");
+      } else {
+        // Handle other errors
+        print("Failed to fetched the Reports: ${response.statusCode}");
+      }
+    } catch (e) {
+      // Handle network or other errors
+      print("Failed to fetched the Reports: $e");
+    }
+  }
 
   Future<void> _downloadReport() async {
     final pdf = pw.Document();
@@ -175,6 +264,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // print("Reports Section:");
     final chart = Container(
       height: 150,
       width: 400,
@@ -227,6 +317,7 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
           title: Text(
             "Reports",
+            textAlign: TextAlign.center,
             style: TextStyle(
                 color: AppColors.secondaryColor2,
                 fontWeight: FontWeight.bold,
@@ -248,147 +339,31 @@ class _ReportScreenState extends State<ReportScreen> {
                 color: AppColors.secondaryColor2,
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: Container(
-                    height: 35,
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: AppColors.primaryG),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<CategoryType>(
-                        value: _selectedCategoryType,
-                        items: CategoryType.values
-                            .map((name) => DropdownMenuItem(
-                          value: name,
-                          child: Text(
-                            name.toString().split('.').last,
-                            style: const TextStyle(
-                              color: AppColors.blackColor,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ))
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCategoryType = value!;
-                          });
-                        },
-                        icon: Icon(
-                          Icons.expand_more,
-                          color: AppColors.whiteColor,
-                        ),
-                        hint: Text(
-                          "My Reports",
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.whiteColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              ],
-            ),
           ],
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.only(top: 60),
+        padding: const EdgeInsets.only(top: 30),
         child: SingleChildScrollView(
           child: Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: Container(
-                          height: 35,
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: AppColors.primaryG),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<ReportType>(
-                              value: _selectedReportType,
-                              items: ReportType.values
-                                  .map((name) => DropdownMenuItem(
-                                        value: name,
-                                        child: Text(
-                                          name.toString().split('.').last,
-                                          style: const TextStyle(
-                                            color: AppColors.blackColor,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ))
-                                  .toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedReportType = value!;
-                                });
-                              },
-                              icon: Icon(
-                                Icons.expand_more,
-                                color: AppColors.blackColor,
-                              ),
-                              hint: Text(
-                                "Day",
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: AppColors.whiteColor,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
-                  SizedBox(width: 10,),
-                  SizedBox(
-                    height: 35,
-                    width: 70,
-                    child: RoundButton(title: "Filter", onPressed: (){
-                      DateTimeRangePicker(
-                          startText: "From",
-                          endText: "To",
-                          doneText: "Yes",
-                          cancelText: "Cancel",
-                          interval: 5,
-                          initialStartTime: DateTime.now(),
-                          initialEndTime: DateTime.now().add(Duration(days: 20)),
-                          mode: DateTimeRangePickerMode.dateAndTime,
-                          minimumTime: DateTime.now().subtract(Duration(days: 5)),
-                          maximumTime: DateTime.now().add(Duration(days: 25)),
-                          use24hFormat: true,
-                          onConfirm: (start, end) {
-                            print("Start: $start");
-                            print("End: $end");
-                          }).showPicker(context);
-                    }),
-                  ),
+                  GestureDetector(
+                      onTap: (){
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (BuildContext context) => MyFilterOptionsModal(),
+                        );
+                      },
+                      child: Image.asset("assets/images/menu.png", width: 40, height: 40)),
                 ],
               ),
               SizedBox(height: 20,),
               SingleChildScrollView(
                 child: Column(
                     children: [
-                      _buildReportTypeText(),
                      SizedBox(height: 50,),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
@@ -432,7 +407,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 4),
                                         child: Center(
-                                          child: Text("10"),
+                                          child: Text(totalTaskCount.toString()),
                                         ),
                                       )
                                     ],
@@ -464,7 +439,8 @@ class _ReportScreenState extends State<ReportScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 4),
                                         child: Center(
-                                          child: Text("0"),
+                                          child: Text(completedTaskCount.toString()),
+
                                         ),
                                       )
                                     ],
@@ -496,7 +472,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 4),
                                         child: Center(
-                                          child: Text("6"),
+                                          child: Text(pendingTaskCount.toString()),
                                         ),
                                       )
                                     ],
@@ -528,7 +504,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 4),
                                         child: Center(
-                                          child: Text("6"),
+                                          child: Text(noProgressTaskCount.toString()),
                                         ),
                                       )
                                     ],
@@ -577,7 +553,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
                                       child: Center(
-                                        child: Text("10"),
+                                        child: Text(totalProjectCount.toString()),
                                       ),
                                     )
                                   ],
@@ -609,7 +585,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
                                       child: Center(
-                                        child: Text("0"),
+                                        child: Text(completedProjectCount.toString()),
                                       ),
                                     )
                                   ],
@@ -641,7 +617,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
                                       child: Center(
-                                        child: Text("6"),
+                                        child: Text(offTrackProjectCount.toString()),
                                       ),
                                     )
                                   ],
@@ -673,7 +649,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
                                       child: Center(
-                                        child: Text("6"),
+                                        child: Text(noProgressProjectCount.toString()),
                                       ),
                                     )
                                   ],
@@ -778,9 +754,134 @@ class _ReportScreenState extends State<ReportScreen> {
                           );
                         },
                       ),
+                      SizedBox(height: 20),
+                      if (filteredTasks.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            ExpansionTile(
+                              title: Text("Task Reports", style: TextStyle(
+                                color: AppColors.secondaryColor1,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                fontStyle: FontStyle.italic,
+                              ),),
+                              children: [
+                            SizedBox(height: 10),
+                            ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: filteredTasks.length,
+                              itemBuilder: (context, index) {
+                                final task = filteredTasks[index];
+                                Color statusColor = Colors.grey; // Default color
+                                switch (task.status) {
+                                  case 'InProgress':
+                                    statusColor = Colors.blue;
+                                    break;
+                                  case 'Completed':
+                                    statusColor = Colors.red;
+                                    break;
+                                  case 'ToDo':
+                                    statusColor = AppColors.primaryColor2;
+                                    break;
+                                  case 'transferred':
+                                    statusColor = Colors.black54;
+                                    break;
+                                // Add more cases for different statuses if needed
+                                }
+                                return Card(
+                                  child: ListTile(
+                                    title: Center(
+                                      child: Text(
+                                        "Task: ${task.taskName}",
+                                        style: TextStyle(
+                                          color: AppColors.secondaryColor2,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    subtitle: Row(
+                                      children: [
+                                        Text(formatDate(task.dueDate)),
+                                        Spacer(),
+                                        Text(task.createdBy),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      SizedBox(height: 20),
+                      if (filteredProjects.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            ExpansionTile(
+                              title: Text("Project Reports", style: TextStyle(
+                                color: AppColors.secondaryColor1,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                fontStyle: FontStyle.italic,
+                              ),),
+                              children: [
+                            SizedBox(height: 10),
+                            ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: filteredProjects.length,
+                              itemBuilder: (context, index) {
+                                final project = filteredProjects[index];
+                                Color statusColor = Colors.grey; // Default color
+                                switch (project.status) {
+                                  case 'InProgress':
+                                    statusColor = Colors.blue;
+                                    break;
+                                  case 'Completed':
+                                    statusColor = Colors.red;
+                                    break;
+                                  case 'ToDo':
+                                    statusColor = AppColors.primaryColor2;
+                                    break;
+                                  case 'transferred':
+                                    statusColor = Colors.black54;
+                                    break;
+                                // Add more cases for different statuses if needed
+                                }
+                                return Card(
+                                  child: ListTile(
+                                    title: Center(child: Text("Project: ${project.taskName}",style: TextStyle(
+                                      color: AppColors.secondaryColor2,
+                                      fontSize: 15,fontWeight: FontWeight.bold
+                                    ),)),
+                                    subtitle: Row(
+                                      children: [
+                                        Text(formatDate(project.dueDate)),
+                                        Spacer(),
+                                        Text(project.createdBy,),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                     ])
-              )]),
+              ])]))]),
               ),
     ));
   }
 }
+
+String formatDate(DateTime date) {
+  final formatter = DateFormat('yyyy-MM-dd');
+  return formatter.format(date);
+}
+
+
+
+
+
+

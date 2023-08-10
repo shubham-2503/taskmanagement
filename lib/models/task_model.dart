@@ -22,4 +22,5 @@ class Task {
     required this.priority,
     this.dueDate,
   });
+
 }

@@ -30,6 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
   TruecallerAuthServices truecallerAuthServices = TruecallerAuthServices();
   bool _isPasswordVisible = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  bool _isButtonClickable = true;
 
 
   String? validateEmail(String? value) {
@@ -107,8 +108,8 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         } else {
-          print('Login failed - Email or Password is incorrect');
-          String errorMessage = "Email or Password is incorrect";
+          print('Login failed - Password is incorrect');
+          String errorMessage = "Password is incorrect";
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage, style: TextStyle(color: Colors.black54)),
@@ -116,6 +117,15 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         }
+      } else if (response.statusCode == 401) {
+        print('Password Incorrect');
+        String errorMessage = "Password Incorrect. Please check your password.";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage, style: TextStyle(color: Colors.black54)),
+            backgroundColor: AppColors.primaryColor1,
+          ),
+        );
       } else if (response.statusCode == 404) {
         var data = jsonDecode(response.body);
         if (data['message'] != null) {
@@ -138,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         print('Request failed.');
-        String errorMessage = "Request Failed.";
+        String errorMessage = "Request failed.";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage, style: TextStyle(color: Colors.black54)),
@@ -212,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
           print('JWT Token: $jwtToken');
 
           // Navigate to the DashboardScreen
-          Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
+          // Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardScreen(orgId: ,)));
         } else {
           // Handle API error or sign-in failure
           print('API Error: ${response.body}');
@@ -334,13 +344,21 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(height: 10,),
               RoundGradientButton(
                 title: "Login",
-                onPressed: () {
+                onPressed: _isButtonClickable
+                    ? () {
                   if (_formKey.currentState!.validate()) {
+                    setState(() {
+                      _isButtonClickable = false; // Disable the button
+                    });
+
                     login(
                       _emailController.text.toString(),
-                      _passwordController.text.toString(), context);
+                      _passwordController.text.toString(),
+                      context,
+                    );
                   }
-                },
+                }
+                    : () {}, // Provide an empty callback when the button is not clickable
               ),
               const Spacer(),
               Row(

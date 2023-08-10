@@ -30,7 +30,7 @@ class TruecallerAuthServices{
           String firstName = truecallerSdkCallback.profile!.firstName;
           String? lastName = truecallerSdkCallback.profile!.lastName;
           String phNo = truecallerSdkCallback.profile!.phoneNumber;
-          Navigator.push(context, MaterialPageRoute(builder: (context)=>DashboardScreen(),));
+        
           break;
         case TruecallerSdkCallbackResult.failure:
           print("Truecaller auth failed");

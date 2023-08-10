@@ -21,7 +21,14 @@ class _RenewPlanScreenState extends State<RenewPlanScreen> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');

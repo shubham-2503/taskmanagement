@@ -13,6 +13,7 @@ class RoundTextField extends StatelessWidget {
   final void Function(String)? onChanged;
   final VoidCallback? onTap;
   final String? Function(String?)? validator; // Add validator property
+  final bool isRequired;
 
   const RoundTextField({
     Key? key,
@@ -26,6 +27,7 @@ class RoundTextField extends StatelessWidget {
     this.onTap,
     this.isReadOnly = false,
     this.validator, // Initialize validator property
+    this.isRequired = false,
   }) : super(key: key);
 
   @override
@@ -49,7 +51,7 @@ class RoundTextField extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          hintText: hintText,
+          hintText: hintText + (isRequired ? ' *' : ''),
           prefixIcon: Container(
             alignment: Alignment.center,
             width: 20,

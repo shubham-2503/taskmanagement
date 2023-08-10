@@ -55,7 +55,14 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('selectedOrgId');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -166,9 +173,16 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('selectedOrgId');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
+      if (orgId.isEmpty) {
         throw Exception('orgId not found locally');
       }
 
@@ -213,80 +227,20 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     }
   }
 
-  void _showMembersDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Assignee Members'),
-              content: FutureBuilder<List<User>>(
-                future: fetchUsers(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    users = snapshot.data!; // Assign the fetched users to the instance variable
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: users.map((user) {
-                          bool isSelected = _selectedMembers.contains(user.userId);
-
-                          return CheckboxListTile(
-                            title: Text(user.userName),
-                            value: isSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                if (value == true) {
-                                  _selectedMembers.add(user.userId);
-                                } else {
-                                  _selectedMembers.remove(user.userId);
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  } else {
-                    return Text('No members found.');
-                  }
-                },
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Add'),
-                  onPressed: () {
-                    setState(() {
-                      // Perform any desired actions with the selected members
-                      // For example, you can add them to a list or display them in a text field
-                      List<String> selectedMembersText = _selectedMembers
-                          .map((id) => users.firstWhere((user) => user.userId == id).userName.toString())
-                          .toList();
-                      // Set the value of the desired field
-                      _assigneeMembersController.text = selectedMembersText.join(', ');
-                    });
-                    Navigator.of(context).pop(); // Close the dialog
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   Future<List<Team>> fetchTeams() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('selectedOrgId');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
+      if (orgId.isEmpty) {
         throw Exception('orgId not found locally');
       }
 
@@ -337,76 +291,149 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     }
   }
 
-  void _showTeamsDialog() {
-    showDialog(
+  void _showTeamsDropdown(BuildContext context) async {
+    List<Team> _teams = await fetchTeams();
+
+    final selectedTeamIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Assignee Teams'),
-              content: FutureBuilder<List<Team>>(
-                future: fetchTeams(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    teams = snapshot.data!; // Assign the fetched teams to the instance variable
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: teams.map((team) {
-                          bool isSelected = _selectedTeams.contains(team.id);
+        List<String> selectedTeamsIds = _selectedTeams.toList();
+        return AlertDialog(
+          title: Text('Select Teams'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Column(
+                      children: _teams.map((team) {
+                        bool isSelected = selectedTeamsIds.contains(team.id);
 
-                          return CheckboxListTile(
-                            title: Text(team.teamName),
-                            value: isSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                if (value == true) {
-                                  if (!_selectedTeams.contains(team.id)) {
-                                    _selectedTeams.add(team.id);
-                                  }
-                                } else {
-                                  if (_selectedTeams.contains(team.id)) {
-                                    _selectedTeams.remove(team.id);
-                                  }
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  } else {
-                    return Text('No teams found.');
-                  }
-                },
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Add'),
-                  onPressed: () {
-                    setState(() {
-                      // Perform any desired actions with the selected teams
-                      // For example, you can add them to a list or display them in a text field
-                      List<String> selectedTeamsText = _selectedTeams
-                          .map((id) => teams.firstWhere((team) => team.id == id).teamName.toString())
-                          .toList();
-                      // Set the value of the desired field
-                      _assigneeTeamsController.text = selectedTeamsText.join(', ');
-                    });
-                    Navigator.of(context).pop(); // Close the dialog
-                  },
+                        return CheckboxListTile(
+                          title: Text(team.teamName),
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedTeams.add(team.id);
+                              } else {
+                                _selectedTeams.remove(team.id);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              );
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Done'),
+              onPressed: () {
+                Navigator.of(context).pop(selectedTeamsIds);
+              },
+            ),
+          ],
         );
       },
     );
+
+    if (selectedTeamIds != null) {
+      _selectedTeams = selectedTeamIds;
+      List<String> selectedTeamsText = _selectedTeams
+          .map((id) => _teams.firstWhere((team) => team.id == id).teamName.toString())
+          .toList();
+      _assigneeTeamsController.text = selectedTeamsText.join(', ');
+    }
   }
+
+  void _showMembersDropdown(BuildContext context) async {
+    List<User> allUsers = await fetchUsers();
+
+    final selectedUserIds = await showDialog<List<String>>(
+      context: context,
+      builder: (BuildContext context) {
+        List<String> selectedIds = _selectedMembers.toList();
+        return AlertDialog(
+          title: Text('Select Members'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildSelectedMembersContainer(allUsers), // Add this line
+                    Column(
+                      children: allUsers.map((user) {
+                        bool isSelected = selectedIds.contains(user.userId);
+
+                        return CheckboxListTile(
+                          title: Text(user.userName),
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedMembers.add(user.userId);
+                              } else {
+                                _selectedMembers.remove(user.userId);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Done'),
+              onPressed: () {
+                Navigator.of(context).pop(selectedIds);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (selectedUserIds != null) {
+      _selectedMembers = selectedUserIds;
+      List<String> selectedMembersText = _selectedMembers
+          .map((id) => allUsers.firstWhere((user) => user.userId == id).userName.toString())
+          .toList();
+      _assigneeMembersController.text = selectedMembersText.join(', ');
+    }
+  }
+
+  Widget _buildSelectedMembersContainer(List<User> allUsers) {
+    return Container(
+      margin: EdgeInsets.only(top: 10),
+      child: Wrap(
+        spacing: 6,
+        children: _selectedMembers.map((userId) {
+          User user = allUsers.firstWhere((user) => user.userId == userId);
+          return Chip(
+            label: Text(user.userName),
+            deleteIcon: Icon(Icons.clear),
+            onDeleted: () {
+              setState(() {
+                _selectedMembers.remove(userId);
+                _assigneeMembersController.text = _selectedMembers
+                    .map((id) => allUsers.firstWhere((user) => user.userId == id).userName.toString())
+                    .join(', ');
+              });
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -414,7 +441,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       backgroundColor: AppColors.whiteColor,
       appBar: AppBar(
         title: Text(
-          'Task Creation',
+          'Create Task',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: AppColors.blackColor,
@@ -433,45 +460,55 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: <Widget>[
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGrayColor,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedProject,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 15,
-                              horizontal: 15,
-                            ),
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            hintText: "Project",
-                            hintStyle: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                            icon: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: Image.asset(
-                                "assets/images/pri.png",
-                                width: 20,
+                      Padding(
+                        padding: EdgeInsets.only(left: 20, right: 20),
+                        child: Container(
+                          padding: EdgeInsets.only(left: 20, right: 20),
+                          decoration: BoxDecoration(
+                            color: AppColors.lightGrayColor,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedProject,
+                            decoration: InputDecoration(
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 15,
+                                horizontal: 15,
+                              ),
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              hintText: "Select Project", // Set the initial hint text here
+                              hintStyle: TextStyle(
+                                fontSize: 12,
                                 color: Colors.grey,
                               ),
+                              icon: Padding(
+                                padding: const EdgeInsets.only(left: 16.0),
+                                child: Image.asset(
+                                  "assets/images/pri.png",
+                                  width: 20,
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ),
+                            items: [
+                              DropdownMenuItem<String>(
+                                value: null,
+                                child: Text("Select Project"), // Display the hint text as the first option
+                              ),
+                              ...projects.map<DropdownMenuItem<String>>((project) {
+                                return DropdownMenuItem<String>(
+                                  value: project.id,
+                                  child: Text(project.name),
+                                );
+                              }).toList(),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedProject = value; // Update the selected project here
+                              });
+                            },
                           ),
-                          items: projects.map<DropdownMenuItem<String>>((project) {
-                            return DropdownMenuItem<String>(
-                              value: project.id,
-                              child: Text(project.name),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedProject = value; // Update the selected project here
-                            });
-                          },
                         ),
                       ),
                       SizedBox(height: 16.0),
@@ -504,7 +541,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                         isReadOnly: true,
                         onChanged: (value) {
                           setState(() {
-                            _attachmentController.text = value;
+                            _attachment = value;
                           });
                         },
                       ),
@@ -512,146 +549,161 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                       RoundTextField(
                         hintText: "Assignee Members",
                         icon: "assets/images/pers.png",
-                        onTap: _showMembersDialog,
+                        onTap: (){
+                          _showMembersDropdown(context);
+                        },
                         textEditingController: _assigneeMembersController,
                       ),
                       SizedBox(height: 16.0),
                       RoundTextField(
                         hintText: "Assignee Teams",
                         icon: "assets/images/pers.png",
-                        onTap: _showTeamsDialog,
+                        onTap:(){
+                          _showTeamsDropdown(context);
+                        },
                         textEditingController: _assigneeTeamsController,
                       ),
                       SizedBox(height: 16.0),
                       Row(
                         children: [
                           Expanded(
-                            child: RoundTextField(
-                              hintText: "Start Date",
-                              icon: "assets/icons/calendar_icon.png",
-                              isReadOnly: true,
-                              onTap: () {
-                                _selectStartDate(context);
-                              },
-                              textEditingController: TextEditingController(
-                                text: _startDate != null
-                                    ? DateFormat('yyyy-MM-dd')
-                                    .format(_startDate!)
-                                    : '',
-                              ),
-                              onChanged: (value) {
-                                setState(() {
+                            child: Container(
+                              padding: EdgeInsets.only(left: 20,right: 20),
+                              child: RoundTextField(
+                                hintText: "Start Date",
+                                icon: "assets/icons/calendar_icon.png",
+                                isReadOnly: true,
+                                onTap: () {
                                   _selectStartDate(context);
-                                });
-                              },
+                                },
+                                textEditingController: TextEditingController(
+                                  text: _startDate != null
+                                      ? DateFormat('yyyy-MM-dd')
+                                      .format(_startDate!)
+                                      : '',
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectStartDate(context);
+                                  });
+                                },
+                              ),
                             ),
                           ),
-                          SizedBox(width: 16.0),
                           Expanded(
-                            child: RoundTextField(
-                              hintText: "End Date",
-                              icon: "assets/icons/calendar_icon.png",
-                              isReadOnly: true,
-                              onTap: () {
-                                _selectEndDate(context);
-                              },
-                              textEditingController: TextEditingController(
-                                text: _endDate != null
-                                    ? DateFormat('yyyy-MM-dd')
-                                    .format(_endDate!)
-                                    : '',
+                            child: Container(
+                              padding: EdgeInsets.only(left: 20,right: 20),
+                              child: RoundTextField(
+                                hintText: "End Date",
+                                icon: "assets/icons/calendar_icon.png",
+                                isReadOnly: true,
+                                onTap: () {
+                                  _selectEndDate(context);
+                                },
+                                textEditingController: TextEditingController(
+                                  text: _endDate != null
+                                      ? DateFormat('yyyy-MM-dd')
+                                      .format(_endDate!)
+                                      : '',
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectStartDate(context);
+                                  });
+                                },
                               ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectStartDate(context);
-                                });
-                              },
                             ),
                           ),
                         ],
                       ),
                       SizedBox(height: 16.0),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGrayColor,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _priority,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 15,
-                              horizontal: 15,
-                            ),
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            hintText: "Priority",
-                            hintStyle: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.grayColor,
-                            ),
-                            icon: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: Image.asset(
-                                "assets/images/pri.png",
-                                width: 20,
-                                color: Colors.grey,
+                      Padding(
+                        padding: EdgeInsets.only(left: 20,right: 20),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.lightGrayColor,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _priority,
+                            decoration: InputDecoration(
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 15,
+                                horizontal: 15,
+                              ),
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              hintText: "Priority",
+                              hintStyle: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.grayColor,
+                              ),
+                              icon: Padding(
+                                padding: const EdgeInsets.only(left: 16.0),
+                                child: Image.asset(
+                                  "assets/images/pri.png",
+                                  width: 20,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ),
+                            items: priorities.map((priority) {
+                              return DropdownMenuItem<String>(
+                                value: priority['id'],
+                                child: Text(priority['name']),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _priority = value!;
+                              });
+                            },
                           ),
-                          items: priorities.map((priority) {
-                            return DropdownMenuItem<String>(
-                              value: priority['id'],
-                              child: Text(priority['name']),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _priority = value!;
-                            });
-                          },
                         ),
                       ),
                       SizedBox(height: 16.0),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGrayColor,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedStatus,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 15,
-                              horizontal: 15,
-                            ),
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            hintText: "Status",
-                            hintStyle: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                            icon: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: Image.asset(
-                                "assets/images/pri.png",
-                                width: 20,
+                      Padding(
+                        padding: EdgeInsets.only(left: 20,right: 20),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.lightGrayColor,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedStatus,
+                            decoration: InputDecoration(
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 15,
+                                horizontal: 15,
+                              ),
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              hintText: "Status",
+                              hintStyle: TextStyle(
+                                fontSize: 12,
                                 color: Colors.grey,
                               ),
+                              icon: Padding(
+                                padding: const EdgeInsets.only(left: 16.0),
+                                child: Image.asset(
+                                  "assets/images/pri.png",
+                                  width: 20,
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ),
+                            items: statuses.map<DropdownMenuItem<String>>((status) {
+                              return DropdownMenuItem<String>(
+                                value: status['id'].toString(), // Assuming 'id' is of type String or can be converted to String
+                                child: Text(status['name']),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedStatus = value;
+                              });
+                            },
                           ),
-                          items: statuses.map<DropdownMenuItem<String>>((status) {
-                            return DropdownMenuItem<String>(
-                              value: status['id'].toString(), // Assuming 'id' is of type String or can be converted to String
-                              child: Text(status['name']),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedStatus = value;
-                            });
-                          },
                         ),
                       ),
                       SizedBox(height: 30.0),
@@ -692,6 +744,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       });
     }
   }
+
 
 
   void showSnackbar(BuildContext context, String message) {
@@ -785,34 +838,46 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       "attachment": attachment,
       "start_date": startDate,
       "end_date": endDate,
-      "assigned_user": assignedMembers,
-      "assigned_team": assignedTeams,
+      "assigned_user": _selectedMembers,
+      "assigned_team": _selectedTeams,
       "status": _selectedStatus, // Replace with the appropriate status ID
     };
 
     if (_selectedProject != "NA") {
       taskData["project_id"] = _selectedProject;
-    } else {
-      taskData["project_id"] = null; // Set project_id to null for the "NA" project
     }
 
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('selectedOrgId');
+      String? orgId = prefs.getString("selectedOrgId");
 
       if (orgId == null) {
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
+      if (orgId.isEmpty) {
         throw Exception('orgId not found locally');
       }
 
-      // Send the HTTP POST request to create the task
+      String url = 'http://43.205.97.189:8000/api/Task/tasks?org_id=$orgId';
+
+      // Conditionally append project_id to the URL if a project is selected
+      if (_selectedProject != "NA") {
+        url += '&project_id=$_selectedProject';
+      }
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+        'Content-Type': 'application/json',
+      };
+
       final response = await http.post(
-        Uri.parse('http://43.205.97.189:8000/api/Task/tasks?org_id=$orgId'),
-        headers: {
-          'accept': '*/*',
-          'Authorization': 'Bearer $storedData', // Replace with the actual access token
-          'Content-Type': 'application/json',
-        },
+        Uri.parse(url),
+        headers: headers,
         body: json.encode(taskData),
       );
 
@@ -821,6 +886,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
 
       if (response.statusCode == 200) {
         // Task creation successful
+        Navigator.pop(context,true);
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -852,8 +918,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                 InkWell(
                     onTap: (){
                       Navigator.pop(context);
-                      Navigator.pop(context);
-                      Navigator.pop(context);
+                      Navigator.pop(context,taskData);
                     },
                     child: Text("OK",style: TextStyle(
                         color: AppColors.blackColor,
@@ -864,8 +929,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
           },
         );
         print('Task created successfully');
-
-        // Proceed to the next screen or perform any additional actions if needed
 
       } else {
         // Task creation failed

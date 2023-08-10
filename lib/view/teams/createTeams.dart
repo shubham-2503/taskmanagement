@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../View_model/teamApiServices.dart';
 import '../../common_widgets/round_button.dart';
 import '../../common_widgets/round_textfield.dart';
 import '../../models/fetch_user_model.dart';
@@ -19,11 +22,13 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
   List<User> users = [];
   List<String> _selectedMembers = [];
   TextEditingController _assigneeMembersController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _teamNameController = TextEditingController();
+    fetchUsers();
   }
 
   @override
@@ -36,13 +41,18 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
-        throw Exception('orgId not found locally');
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
       }
 
       print("OrgId: $orgId");
+
+      if (orgId.isEmpty) {
+        throw Exception('orgId not found locally');
+      }
 
       final response = await http.get(
         Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
@@ -81,90 +91,28 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
     }
   }
 
-  Future<List<Team>> fetchTeams() async {
-    List<Team> teams = [];
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+  void _showMembersDropdown(BuildContext context) async {
+    List<User> allUsers = await fetchUsers();
 
-      if (orgId == null) {
-        throw Exception('orgId not found locally');
-      }
-
-      print("OrgId: $orgId");
-
-      final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Team/teamUser?orgId=$orgId'), // Update the API endpoint URL
-        headers: {
-          'accept': '*/*',
-          'Authorization': 'Bearer $storedData',
-        },
-      );
-
-      print("Stored: $storedData");
-      print("API response: ${response.body}");
-      print("StatusCode: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final responseBody = response.body;
-        if (responseBody != null && responseBody.isNotEmpty) {
-          try {
-            final List<dynamic> data = jsonDecode(responseBody);
-            if (data != null) {
-              final List<Team> teams = data
-                  .map((teamJson) => Team.fromJson(teamJson as Map<String, dynamic>))
-                  .toList();
-
-              for (var team in teams) {
-                print("Team Name: ${team.teamName}");
-                print("Team ID: ${team.id}");
-                print("Users: ${team.users}");
-                print("----------------------");
-              }
-
-              return teams;
-            }
-          } catch (e) {
-            print('Error decoding JSON: $e');
-          }
-        }
-      } else {
-        print('Error: ${response.statusCode}');
-      }
-      return teams;
-
-    } catch (e) {
-      print('Error: $e');
-      throw Exception('Failed to fetch teams');
-    }
-  }
-
-  void _showMembersDialog() {
-    showDialog(
+    final selectedUserIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Assignee Members'),
-              content: FutureBuilder<List<User>>(
-                future: fetchUsers(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    users = snapshot.data!; // Assign the fetched users to the instance variable
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: users.map((user) {
-                          bool isSelected = _selectedMembers.contains(user.userId);
+        List<String> selectedIds = _selectedMembers.toList();
+        return AlertDialog(
+          title: Text('Select Members'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildSelectedMembersContainer(allUsers), // Add this line
+                    Column(
+                      children: allUsers.map((user) {
+                        bool isSelected = selectedIds.contains(user.userId);
 
-                          return CheckboxListTile(
-                            title: Text(user.userName),
-                            value: isSelected,
+                        return CheckboxListTile(
+                          title: Text(user.userName),
+                          value: isSelected,
                             onChanged: (value) {
                               setState(() {
                                 if (value == true) {
@@ -174,90 +122,106 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
                                 }
                               });
                             },
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  } else {
-                    return Text('No members found.');
-                  }
-                },
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Add'),
-                  onPressed: () {
-                    setState(() {
-                      // Perform any desired actions with the selected members
-                      // For example, you can add them to a list or display them in a text field
-                      List<String> selectedMembersText = _selectedMembers
-                          .map((id) => users.firstWhere((user) => user.userId == id).userName.toString())
-                          .toList();
-                      // Set the value of the desired field
-                      _assigneeMembersController.text = selectedMembersText.join(', ');
-                    });
-                    Navigator.of(context).pop(); // Close the dialog
-                  },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              );
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Done'),
+              onPressed: () {
+                Navigator.of(context).pop(selectedIds);
+              },
+            ),
+          ],
         );
       },
     );
+
+    if (selectedUserIds != null) {
+      _selectedMembers = selectedUserIds;
+      List<String> selectedMembersText = _selectedMembers
+          .map((id) => allUsers.firstWhere((user) => user.userId == id).userName.toString())
+          .toList();
+      _assigneeMembersController.text = selectedMembersText.join(', ');
+    }
   }
 
-  Future<void> _createTeam() async {
-    if (_formKey.currentState!.validate()) {
-      Team newTeam = Team(
-        id: "",
-        teamName: _teamNameController.text,
-        users: _selectedMembers,
-      );
+  Widget _buildSelectedMembersContainer(List<User> allUsers) {
+    return Container(
+      margin: EdgeInsets.only(top: 10),
+      child: Wrap(
+        spacing: 6,
+        children: _selectedMembers.map((userId) {
+          User user = allUsers.firstWhere((user) => user.userId == userId);
+          return Chip(
+            label: Text(user.userName),
+            deleteIcon: Icon(Icons.clear),
+            onDeleted: () {
+              setState(() {
+                _selectedMembers.remove(userId);
+                _assigneeMembersController.text = _selectedMembers
+                    .map((id) => allUsers.firstWhere((user) => user.userId == id).userName.toString())
+                    .join(', ');
+              });
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
 
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('selectedOrgId');
-      print("OrgId: $orgId");
-
-      if (orgId == null) {
-        throw Exception('orgId not found locally');
-      }
-
-      print("OrgId: $orgId");
-
+  Future<void> _createTeam(BuildContext context) async {
       try {
-        // API endpoint and payload
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        final storedData = prefs.getString('jwtToken');
+        String? orgId = prefs.getString("selectedOrgId");
+
+        if (orgId == null) {
+          orgId = prefs.getString('org_id') ?? "";
+        }
+
+        print("OrgId: $orgId");
+
+        if (orgId == null) {
+          throw Exception('orgId not found locally');
+        }
+
         final apiUrl = 'http://43.205.97.189:8000/api/Team/team?orgId=$orgId';
         final headers = {
           'accept': '*/*',
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $storedData',
         };
+
         final body = jsonEncode({
-          "name": newTeam.teamName,
-          "user_id": newTeam.users,
+          "name": _teamNameController.text.toString(),
+          "user_id": _selectedMembers,
         });
 
-        final response = await http.post(Uri.parse(apiUrl), headers: headers, body: body);
+        print("DAta: $body");
 
-        print("Response: ${response.body}");
-        print("StatusCode: ${response.statusCode}");
+        final response = await http.post(Uri.parse(apiUrl), headers: headers, body: body);
+        print("code: ${response.statusCode}");
+        print("Body: ${response.body}");
 
         if (response.statusCode == 200) {
+          print('Team created successfully.');
           showDialog(
             context: context,
             builder: (context) {
               return AlertDialog(
-                title: Text('Team Created'),
-                content: Text('Team "${newTeam.teamName}" has been created successfully.'),
+                title: Text('Thank you'),
+                content: Text("Team created successfully"),
                 actions: [
                   TextButton(
                     onPressed: () {
-                      _resetForm();
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                      Navigator.pop(context);
+                      Navigator.pop(context,true);
+                      Navigator.pop(context,true);
                     },
                     child: Text('OK'),
                   ),
@@ -266,28 +230,29 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
             },
           );
         } else {
-          showDialog(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                title: Text('Error'),
-                content: Text('An error occurred while creating the team.'),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: Text('OK'),
-                  ),
-                ],
-              );
-            },
-          );
+          throw Exception('Failed to create team');
         }
       } catch (e) {
         print('Error: $e');
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text('Oops'),
+              content: Text("Error while creating team"),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
       }
-    }
+
   }
 
   void _resetForm() {
@@ -344,12 +309,49 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
                     },
                   ),
                   SizedBox(height: 20,),
-                  RoundTextField(
-                    hintText: "Members",
-                    icon: "assets/images/pers.png",
-                    textInputType: TextInputType.text,
-                    onTap: _showMembersDialog,
-                    textEditingController: _assigneeMembersController,
+                  GestureDetector(
+                    onTap: (){
+                      _showMembersDropdown(context);
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                      height: MediaQuery.of(context).size.height * 0.10,
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      decoration: BoxDecoration(
+                        color: AppColors.lightGrayColor,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.person),
+                          Wrap(
+                            spacing: 8,
+                            children: _assigneeMembersController.text.isNotEmpty
+                                ? [
+                              Container(
+                                width: MediaQuery.of(context).size.width * 0.5,
+                                decoration: BoxDecoration(
+                                  color: AppColors.lightGrayColor,
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Chip(
+                                  label: Text(
+                                    _assigneeMembersController.text,
+                                  ),
+                                  deleteIcon: Icon(Icons.clear,size: 12,),
+                                  onDeleted: () {
+                                    setState(() {
+                                      _assigneeMembersController.clear();
+                                    });
+                                  },
+                                ),
+                              ),
+                            ]
+                                : [], // Show the selected priority name chip when priorityController is not empty
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   SizedBox(height: 25.0),
                   Row(
@@ -360,7 +362,9 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
                         width: 100,
                         child: RoundButton(
                           title: "Create\nTeam",
-                          onPressed: _createTeam,
+                          onPressed: (){
+                            _createTeam(context);
+                          },
                         ),
                       ),
                       SizedBox(height: 16.0),

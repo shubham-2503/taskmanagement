@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../models/fetch_user_model.dart';
 import '../../models/project_team_model.dart';
 import '../../utils/app_colors.dart';
+import 'package:intl/intl.dart';
 
 class EditTaskPage extends StatefulWidget {
   final String taskId;
@@ -87,12 +88,16 @@ class _EditTaskPageState extends State<EditTaskPage> {
 
   Future<void> updateTasks(String taskId) async {
     try {
-      List<String> assignedMembers = users.map((user) => user.userId).toList();
-      List<String> assignedTeams = teams.map((team) => team.id).toList();
-
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -106,20 +111,30 @@ class _EditTaskPageState extends State<EditTaskPage> {
         'Content-Type': 'application/json',
       };
 
+      // Assuming assignedMembers and assignedTeams are lists containing UUIDs
+      List<String> assignedMembers = users.map((user) => user.userId).toList();
+      List<String> assignedTeams = teams.map((team) => team.id).toList();
+
+      // Convert status and priority to UUIDs
+      String statusUuid = getStatusUuidFromName(statusController.text);
+      String priorityUuid = getPriorityUuidFromName(priorityController.text);
+
+      // Convert the end_date to a different format
+      String? endDate = DateTime.parse(dueDateController.text).toUtc().toIso8601String();
+
+
       final body = jsonEncode({
-          "task_id": taskId,
-          "name": titleController.text,
-          "description": descriptionController.text,
-          "priority": priorityController.text,
-          "end_date": dueDateController.text,
-          "assigned_user": assignedMembers,
-          "assigned_team": assignedTeams,
-          "project_id": projectController.text,
-          "status": statusController.text,
+        "task_id": taskId,
+        "name": titleController.text,
+        "description": descriptionController.text,
+        "priority": priorityUuid,
+        "end_date": endDate,
+        "assigned_user": assignedMembers,
+        "assigned_team": assignedTeams,
+        "status": statusUuid,
       });
 
-      final response =
-          await http.patch(Uri.parse(url), headers: headers, body: body);
+      final response = await http.patch(Uri.parse(url), headers: headers, body: body);
       print("StatusCode: ${response.statusCode}");
       print("Body: ${response.body}");
       print("Response: ${jsonDecode(body)}");
@@ -128,9 +143,9 @@ class _EditTaskPageState extends State<EditTaskPage> {
         // Update successful
         final responseData = json.decode(response.body);
         print('Tasks updated successfully: ${responseData['message']}');
-        // You can handle the response data here if needed
-
-        // Optionally, you can show a dialog to inform the user about the successful update
+        // Handle the response data as needed
+        setState(() {});
+        // Optionally, you can show a success dialog
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -141,7 +156,8 @@ class _EditTaskPageState extends State<EditTaskPage> {
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context); // Close the dialog
-                    // Optionally, you can navigate back to the previous screen or perform any other action here
+                    Navigator.pop(context);
+                    Navigator.pop(context,true);
                   },
                   child: Text('OK'),
                 ),
@@ -150,15 +166,15 @@ class _EditTaskPageState extends State<EditTaskPage> {
           },
         );
       } else {
+        // Update failed
         print('Error updating tasks: ${response.statusCode}');
-        // Optionally, you can show an error dialog to inform the user about the update failure
+        // Show an error dialog
         showDialog(
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: Text('Error'),
-              content:
-                  Text('Failed to update tasks. Please try again later.'),
+              content: Text('Failed to update tasks. Please try again later.'),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -172,15 +188,15 @@ class _EditTaskPageState extends State<EditTaskPage> {
         );
       }
     } catch (e) {
+      // Handle exceptions
       print('Error updating tasks: $e');
-      // Optionally, you can show an error dialog to inform the user about the update failure
+      // Show an error dialog
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
             title: Text('Error'),
-            content:
-                Text('An unexpected error occurred. Please try again later.'),
+            content: Text('An unexpected error occurred. Please try again later.'),
             actions: [
               TextButton(
                 onPressed: () {
@@ -199,7 +215,14 @@ class _EditTaskPageState extends State<EditTaskPage> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -247,84 +270,18 @@ class _EditTaskPageState extends State<EditTaskPage> {
     }
   }
 
-  void _showMembersDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Assignee Members'),
-              content: FutureBuilder<List<User>>(
-                future: fetchUsers(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    users = snapshot
-                        .data!; // Assign the fetched users to the instance variable
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: users.map((user) {
-                          bool isSelected =
-                              _selectedMembers.contains(user.userId);
-
-                          return CheckboxListTile(
-                            title: Text(user.userName),
-                            value: isSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                if (value == true) {
-                                  _selectedMembers.add(user.userId);
-                                } else {
-                                  _selectedMembers.remove(user.userId);
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  } else {
-                    return Text('No members found.');
-                  }
-                },
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Add'),
-                  onPressed: () {
-                    setState(() {
-                      // Perform any desired actions with the selected members
-                      // For example, you can add them to a list or display them in a text field
-                      List<String> selectedMembersText = _selectedMembers
-                          .map((id) => users
-                              .firstWhere((user) => user.userId == id)
-                              .userName
-                              .toString())
-                          .toList();
-                      // Set the value of the desired fielda
-                      assignedToController.text =
-                          selectedMembersText.join(', ');
-                    });
-                    Navigator.of(context).pop(); // Close the dialog
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   Future<List<Team>> fetchTeams() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -378,95 +335,126 @@ class _EditTaskPageState extends State<EditTaskPage> {
     }
   }
 
-  void _showTeamsDialog() {
-    showDialog(
+  void _showTeamsDropdown(BuildContext context) async {
+    List<Team> _teams = await fetchTeams();
+
+    final selectedTeamIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Assignee Teams'),
-              content: FutureBuilder<List<Team>>(
-                future: fetchTeams(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    teams = snapshot
-                        .data!; // Assign the fetched teams to the instance variable
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: teams.map((team) {
-                          bool isSelected = _selectedTeams.contains(team.id);
+        List<String> selectedTeamsIds = _selectedTeams.toList();
+        return AlertDialog(
+          title: Text('Select Teams'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Column(
+                      children: _teams.map((team) {
+                        bool isSelected = selectedTeamsIds.contains(team.id);
 
-                          return CheckboxListTile(
-                            title: Text(team.teamName),
-                            value: isSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                if (value == true) {
-                                  if (!_selectedTeams.contains(team.id)) {
-                                    _selectedTeams.add(team.id);
-                                  }
-                                } else {
-                                  if (_selectedTeams.contains(team.id)) {
-                                    _selectedTeams.remove(team.id);
-                                  }
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  } else {
-                    return Text('No teams found.');
-                  }
-                },
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Add'),
-                  onPressed: () {
-                    setState(() {
-                      // Perform any desired actions with the selected teams
-                      // For example, you can add them to a list or display them in a text field
-                      List<String> selectedTeamsText = _selectedTeams
-                          .map((id) => teams
-                              .firstWhere((team) => team.id == id)
-                              .teamName
-                              .toString())
-                          .toList();
-                      // Set the value of the desired field
-                      assignedTeamController.text =
-                          selectedTeamsText.join(', ');
-                    });
-                    Navigator.of(context).pop(); // Close the dialog
-                  },
+                        return CheckboxListTile(
+                          title: Text(team.teamName),
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedTeams.add(team.id);
+                              } else {
+                                _selectedTeams.remove(team.id);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              );
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Done'),
+              onPressed: () {
+                Navigator.of(context).pop(selectedTeamsIds);
+              },
+            ),
+          ],
         );
       },
     );
+
+    if (selectedTeamIds != null) {
+      _selectedTeams = selectedTeamIds;
+      List<String> selectedTeamsText = _selectedTeams
+          .map((id) => _teams.firstWhere((team) => team.id == id).teamName.toString())
+          .toList();
+      assignedTeamController.text = selectedTeamsText.join(', ');
+    }
+  }
+
+  void _showMembersDropdown(BuildContext context) async {
+    List<User> allUsers = await fetchUsers();
+
+    final selectedUserIds = await showDialog<List<String>>(
+      context: context,
+      builder: (BuildContext context) {
+        List<String> selectedIds = _selectedMembers.toList();
+        return AlertDialog(
+          title: Text('Select Members'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Column(
+                      children: allUsers.map((user) {
+                        bool isSelected = selectedIds.contains(user.userId);
+
+                        return CheckboxListTile(
+                          title: Text(user.userName),
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedMembers.add(user.userId);
+                              } else {
+                                _selectedMembers.remove(user.userId);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Done'),
+              onPressed: () {
+                Navigator.of(context).pop(selectedIds);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (selectedUserIds != null) {
+      _selectedMembers = selectedUserIds;
+      List<String> selectedMembersText = _selectedMembers
+          .map((id) => allUsers.firstWhere((user) => user.userId == id).userName.toString())
+          .toList();
+      assignedToController.text = selectedMembersText.join(', ');
+    }
   }
 
   Future<void> fetchStatusData() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final storedData = prefs.getString('jwtToken');
-    final String? orgId = prefs.getString('org_id');
-
-    if (orgId == null) {
-      throw Exception('orgId not found locally');
-    }
-    final response = await http
-        .get(Uri.parse('http://43.205.97.189:8000/api/Platform/getStatus?org_id=$orgId'));
-
-    print("StatusCode: ${response.statusCode}");
-    print("Body: ${response.body}");
+    final response = await http.get(Uri.parse('http://43.205.97.189:8000/api/Platform/getStatus'));
 
     if (response.statusCode == 200) {
       setState(() {
@@ -478,16 +466,26 @@ class _EditTaskPageState extends State<EditTaskPage> {
     }
   }
 
-  void fetchPriorities() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final storedData = prefs.getString('jwtToken');
-    final String? orgId = prefs.getString('org_id');
-
-    if (orgId == null) {
-      throw Exception('orgId not found locally');
+  // Function to convert status name to UUID
+  String getStatusUuidFromName(String statusName) {
+    final status = statuses.firstWhere((status) => status['name'] == statusName, orElse: () => null);
+    if (status != null) {
+      return status['id'];
     }
-    final response = await http
-        .get(Uri.parse('http://43.205.97.189:8000/api/Platform/getPriorities?org_id=$orgId'));
+    return '';
+  }
+
+  // Function to convert priority name to UUID
+  String getPriorityUuidFromName(String priorityName) {
+    final priority = priorities.firstWhere((priority) => priority['name'] == priorityName, orElse: () => null);
+    if (priority != null) {
+      return priority['id'];
+    }
+    return '';
+  }
+
+  void fetchPriorities() async {
+    final response = await http.get(Uri.parse('http://43.205.97.189:8000/api/Platform/getPriorities'));
 
     if (response.statusCode == 200) {
       setState(() {
@@ -569,7 +567,9 @@ class _EditTaskPageState extends State<EditTaskPage> {
             Padding(
               padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
               child: GestureDetector(
-                onTap: _showMembersDialog,
+                onTap: (){
+                  _showMembersDropdown(context);
+                },
                 child: Container(
                   padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
                   height: MediaQuery.of(context).size.height * 0.12,
@@ -586,7 +586,7 @@ class _EditTaskPageState extends State<EditTaskPage> {
                         children: assignedToController.text.isNotEmpty
                             ? [
                           Container(
-                            // width: MediaQuery.of(context).size.width * 0.8,
+                            width: MediaQuery.of(context).size.width * 0.3,
                             decoration: BoxDecoration(
                               color: AppColors.lightGrayColor,
                               borderRadius: BorderRadius.circular(15),
@@ -595,7 +595,7 @@ class _EditTaskPageState extends State<EditTaskPage> {
                               label: Text(
                                 assignedToController.text,
                               ),
-                              deleteIcon: Icon(Icons.clear),
+                              deleteIcon: Icon(Icons.clear,size: 12,),
                               onDeleted: () {
                                 setState(() {
                                   assignedToController.clear();
@@ -614,32 +614,36 @@ class _EditTaskPageState extends State<EditTaskPage> {
             Visibility(
               visible: widget.initialAssignedTeam != null &&
                   widget.initialAssignedTeam!.isNotEmpty,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 10),
-                    child: Text(
+              child: Padding(
+                padding: EdgeInsets.only(left: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       "Assigned Team",
+                      textAlign: TextAlign.left,
                       style: TextStyle(
                         color: AppColors.secondaryColor2,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-                    child: RoundTextField(
-                      textEditingController: assignedTeamController,
-                      hintText: "Assigned Team",
-                      icon: "assets/images/pers.png",
-                      onTap: widget.initialAssignedTeam != null &&
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                      child: RoundTextField(
+                        textEditingController: assignedTeamController,
+                        hintText: "Assigned Team",
+                        icon: "assets/images/pers.png",
+                        onTap: (){
+                          widget.initialAssignedTeam != null &&
                               widget.initialAssignedTeam!.isNotEmpty
-                          ? _showTeamsDialog
-                          : null,
+                              ? _showTeamsDropdown(context)
+                              : null;
+                        }
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             Padding(
@@ -842,7 +846,7 @@ class _EditTaskPageState extends State<EditTaskPage> {
                   String selectedStatusName = statuses.firstWhere(
                       (status) => status['id'] == _selectedStatus)['name'];
                   setState(() {
-                    priorityController.text = selectedStatusName;
+                    statusController.text = selectedStatusName;
                   });
                 }
                 Navigator.of(context).pop();
@@ -900,4 +904,5 @@ class _EditTaskPageState extends State<EditTaskPage> {
       },
     );
   }
+
 }

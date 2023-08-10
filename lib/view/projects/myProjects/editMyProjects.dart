@@ -39,6 +39,9 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
   late bool isActive;
   List<String> _selectedMembers = [];
   List<String> _selectedTeams = [];
+  List<User> temporarySelectedMembers = [];
+  List<Team> temporarySelectedTeams = [];
+
 
   @override
   void initState() {
@@ -61,15 +64,19 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
 
   Future<void> updateProject(String projectId, bool status) async {
     try {
-      // Get the required data from the widget's state
+
       String title = titleController.text;
       String assignedTo = assignedToController.text;
       String? assignedTeam = assignedTeamController.text;
       String status = statusController.text;
+      // Get the required data from the widget's state
       String dueDate = dueDateController.text;
+      DateTime parsedDueDate = DateTime.parse(dueDate);
+      DateTime dueDateUtc = parsedDueDate.toUtc();
+
 
       // Call the static method from ProjectApi to update the project
-      String message = await UpdateApiServices.updateProject(projectId, title, assignedTo, assignedTeam, status, dueDate, users, teams,);
+      String message = await UpdateApiServices.updateProject(projectId, title, assignedTo, assignedTeam, status,  dueDateUtc.toIso8601String(), users, teams,);
 
       // Show a dialog to inform the user about the successful update
       showDialog(
@@ -81,8 +88,7 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context); // Close the dialog
-                  // Optionally, you can navigate back to the previous screen or perform any other action here
+                  Navigator.pop(context,true); // Close the dialog
                 },
                 child: Text('OK'),
               ),
@@ -137,148 +143,125 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
     }
   }
 
-  void _showMembersDialog() {
-    showDialog(
+  void _showTeamsDropdown(BuildContext context) async {
+    List<Team> _teams = await _fetchTeams();
+
+    final selectedTeamIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Assignee Members'),
-              content: FutureBuilder<List<User>>(
-                future: _fetchUsers(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    users = snapshot.data!; // Assign the fetched users to the instance variable
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: users.map((user) {
-                          bool isSelected = _selectedMembers.contains(user.userId);
+        List<String> selectedTeamsIds = _selectedTeams.toList();
+        return AlertDialog(
+          title: Text('Select Teams'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Column(
+                      children: _teams.map((team) {
+                        bool isSelected = selectedTeamsIds.contains(team.id);
 
-                          return CheckboxListTile(
-                            title: Text(user.userName),
-                            value: isSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                if (value == true) {
-                                  if (!_selectedMembers.contains(user.userId)) {
-                                    _selectedMembers.add(user.userId);
-                                  }
-                                } else {
-                                  if (_selectedMembers.contains(user.userId)) {
-                                    _selectedMembers.remove(user.userId);
-                                  }
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  } else {
-                    return Text('No members found.');
-                  }
-                },
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Add'),
-                  onPressed: () {
-                    setState(() {
-                      // Perform any desired actions with the selected members
-                      // For example, you can add them to a list or display them in a text field
-                      List<String> selectedMembersText = _selectedMembers
-                          .map((id) => users.firstWhere((user) => user.userId == id).userName.toString())
-                          .toList();
-                      // Set the value of the desired field
-                      assignedToController.text = selectedMembersText.join(', ');
-                    });
-                    Navigator.pop(context);
-                  },
+                        return CheckboxListTile(
+                          title: Text(team.teamName),
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedTeams.add(team.id);
+                              } else {
+                                _selectedTeams.remove(team.id);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              );
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Done'),
+              onPressed: () {
+                Navigator.of(context).pop(selectedTeamsIds);
+              },
+            ),
+          ],
         );
       },
     );
-  }
 
-  void _showTeamsDialog() {
-    showDialog(
+    if (selectedTeamIds != null) {
+      _selectedTeams = selectedTeamIds;
+      List<String> selectedTeamsText = _selectedTeams
+          .map((id) => _teams.firstWhere((team) => team.id == id).teamName.toString())
+          .toList();
+      assignedTeamController.text = selectedTeamsText.join(', ');
+    }
+  }
+  void _showMembersDropdown(BuildContext context,List<String> selectedMembers) async {
+    List<User> allUsers = await _fetchUsers();
+
+    final selectedUserIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Assignee Teams'),
-              content: FutureBuilder<List<Team>>(
-                future: _fetchTeams(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    teams = snapshot.data!; // Assign the fetched teams to the instance variable
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: teams.map((team) {
-                          bool isSelected = _selectedTeams.contains(team.id);
+        List<String> selectedIds = _selectedMembers.toList();
+        return AlertDialog(
+          title: Text('Select Members'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Column(
+                      children: allUsers.map((user) {
+                        bool isSelected = selectedIds.contains(user.userId);
 
-                          return CheckboxListTile(
-                            title: Text(team.teamName),
-                            value: isSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                if (value == true) {
-                                  if (!_selectedTeams.contains(team.id)) {
-                                    _selectedTeams.add(team.id);
-                                  }
-                                } else {
-                                  if (_selectedTeams.contains(team.id)) {
-                                    _selectedTeams.remove(team.id);
-                                  }
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  } else {
-                    return Text('No teams found.');
-                  }
-                },
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Add'),
-                  onPressed: () {
-                    setState(() {
-                      // Perform any desired actions with the selected teams
-                      // For example, you can add them to a list or display them in a text field
-                      List<String> selectedTeamsText = _selectedTeams
-                          .map((id) => teams.firstWhere((team) => team.id == id).teamName.toString())
-                          .toList();
-                      // Set the value of the desired field
-                      assignedTeamController.text = selectedTeamsText.join(', ');
-                    });
-                    Navigator.of(context).pop(); // Close the dialog
-                  },
+                        return CheckboxListTile(
+                          title: Text(user.userName),
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedMembers.add(user.userId);
+                              } else {
+                                _selectedMembers.remove(user.userId);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              );
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Done'),
+              onPressed: () {
+                Navigator.of(context).pop(selectedIds);
+              },
+            ),
+          ],
         );
       },
     );
-  }
 
+    if (selectedUserIds != null) {
+      setState(() {
+        _selectedMembers = selectedUserIds;
+      });
+
+      List<String> selectedMembersText = _selectedMembers
+          .map((id) => allUsers.firstWhere((user) => user.userId == id).userName.toString())
+          .toList();
+      assignedToController.text = selectedMembersText.join(', ');
+    }
+  }
 
   @override
   void dispose() {
@@ -334,7 +317,10 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
                   labelText: 'Assigned To',
                   labelStyle: TextStyle(fontSize: 12, color: AppColors.grayColor),
                 ),
-                onTap: _showMembersDialog,
+                onTap: (){
+                  temporarySelectedMembers = List<User>.from(_selectedMembers);
+                  _showMembersDropdown(context,_selectedMembers);
+                },
               ),
               Visibility(
                 visible: widget.initialAssignedTeam != null && widget.initialAssignedTeam!.isNotEmpty,
@@ -345,7 +331,10 @@ class _EditMyProjectPageState extends State<EditMyProjectPage> {
                     labelStyle: TextStyle(fontSize: 12, color: AppColors.grayColor),
                   ),
                   enabled: widget.initialAssignedTeam != null && widget.initialAssignedTeam!.isNotEmpty,
-                  onTap: widget.initialAssignedTeam != null && widget.initialAssignedTeam!.isNotEmpty ? _showTeamsDialog : null,
+                  onTap:(){
+                    temporarySelectedTeams = List<Team>.from(_selectedTeams);
+                    widget.initialAssignedTeam != null && widget.initialAssignedTeam!.isNotEmpty ? _showTeamsDropdown(context) : null;
+                  }
                 ),
               ),
               TextField(

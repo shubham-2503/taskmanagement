@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:Taskapp/models/project_model.dart';
 import 'package:Taskapp/organization_proivider.dart';
 import 'package:Taskapp/view/projects/projectCreation.dart';
 import 'package:Taskapp/view/reports/reports.dart';
@@ -14,9 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_button.dart';
-import '../../models/project_team_model.dart';
 import '../../models/task_model.dart';
-import '../../models/user.dart';
 import '../notification/notification_screen.dart';
 import 'package:http/http.dart' as http;
 import '../projects/projectDashScreen.dart';
@@ -42,14 +40,20 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isTasksFetched = false;
   bool isTasksCompleted = false;
   String userName="";
-  String orgId= "";
+  String orgName= "";
+  late Timer _timer;
 
   @override
   void initState() {
     super.initState();
     fetchMyProjects(); // Fetch projects when the screen is loaded
     fetchMyTasks();
-    fetchUserName();// Fetch tasks when the screen is loaded
+    fetchUserNameAndOrganization();// Fetch tasks when the screen is loaded
+    // _timer = Timer.periodic(Duration(seconds: 1), (Timer t) async{
+    //   await fetchMyProjects();
+    //   await fetchUserNameAndOrganization();
+    //   await fetchMyTasks();
+    // });
   }
 
 
@@ -57,15 +61,20 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId") ?? "";
-      print("OrgId: $orgId");
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
+      if (orgId.isEmpty) {
         throw Exception('orgId not found locally');
       }
+
       final url = 'http://43.205.97.189:8000/api/Project/myProjects?org_id=$orgId';
-
-
 
       final headers = {
         'accept': '*/*',
@@ -76,33 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
-        final List<Future<Project>> fetchedProjects = responseData.map((projectData) async {
-          // Convert the 'status' field to a string representation
-          String status = projectData['status'] == true ? 'Active' : 'In-Active';
-          String projectId = projectData['project_id'] ?? '';
-
-          // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
-          List<Team> teams = (projectData['teams'] as List<dynamic>).map((teamData) {
-            return Team(
-              id: teamData['teamId'] ?? '',
-              teamName: teamData['teamName'] ?? '',
-            );
-          }).toList();
-
-          List<User> users = (projectData['users'] as List<dynamic>).map((userData) {
-            return User.fromJson(userData); // Create User object from JSON data
-          }).toList();
-
-          return Project(
-            id: projectId,
-            name: projectData['projectName'] ?? '',
-            owner: projectData['created_by'] ?? '',
-            status: status,
-            dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
-            // tasks: tasks,
-            teams: teams,
-            users: users,
-          );
+        final List<Future<Null>> fetchedProjects = responseData.map((projectData) async {
+          // Remaining code remains the same
         }).toList();
         setState(() {
           totalMyProjects = fetchedProjects.length;
@@ -116,11 +100,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> fetchUserName() async {
+  Future<void> fetchUserNameAndOrganization() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId") ?? "";
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -128,7 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       print("OrgId: $orgId");
       final url = 'http://43.205.97.189:8000/api/User/myProfile';
-
 
       final headers = {
         'accept': '*/*',
@@ -143,8 +132,29 @@ class _HomeScreenState extends State<HomeScreen> {
           final Map<String, dynamic> userData = responseData[0];
           setState(() {
             userName = userData['name'] ?? 'Admin'; // Set the value of userName in the class scope
+
             orgId = orgId ?? "";
           });
+        }
+
+        // Fetch organization name using orgId
+        final orgUrl = 'http://43.205.97.189:8000/api/Organization/MyOrganizations';
+        final orgResponse = await http.get(Uri.parse(orgUrl), headers: headers);
+
+        if (orgResponse.statusCode == 200) {
+          final List<dynamic> orgData = jsonDecode(orgResponse.body);
+          final org = orgData.firstWhere((element) => element['org_id'] == orgId, orElse: () => null);
+          if (org != null) {
+            final orgName = org['name'];
+            print("OrgName: $orgName");
+            setState(() {
+              this.orgName = orgName; // Set the value of orgName in the class scope
+            });
+          } else {
+            print('Organization not found with the given orgId.');
+          }
+        } else {
+          print('Error fetching organization name: ${orgResponse.statusCode}');
         }
       } else {
         print('Error fetching user name: ${response.statusCode}');
@@ -158,7 +168,15 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId") ?? "";
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -213,14 +231,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final organizationProvider = Provider.of<OrganizationProvider>(context);
-    final _selectedOrganizationIndex = organizationProvider.selectedOrganizationIndex;
-    final _organizationList = organizationProvider.organizationList;
+    print("Home screen build");
     var media = MediaQuery.of(context).size;
-
-    fetchMyProjects();
-    fetchMyTasks();
-    fetchUserName();
 
     return Scaffold(
       appBar: PreferredSize(
@@ -235,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           title: Padding(
-            padding: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.only(top: 9),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -245,13 +257,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        ClipRect(
-                          child: Image.asset(
-                            "assets/images/user.png",
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
+                        Container(
+                          width: 50, // Adjust the width as per your requirement
+                          height: 80, // Adjust the height as per your requirement
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.secondaryColor2, // Set the desired background color for the oval (e.g., red)
                           ),
+                          // child: Text(
+                          //   userName.substring(0,1), // Check if userName is not empty before using substring
+                          //   style: TextStyle(
+                          //     color: Colors.white,
+                          //     fontSize: 18,
+                          //     fontWeight: FontWeight.bold,
+                          //   ),
+                          // ),
                         ),
                         SizedBox(width: 8,),
                         Column(
@@ -261,15 +282,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               "Welcome Back,",
                               style: TextStyle(
-                                color: AppColors.midGrayColor,
+                                color: AppColors.blackColor,
                                 fontSize: 12,
                               ),
                             ),
                             Text(
-                              userName,
+                              orgName,
                               style: TextStyle(
-                                color: AppColors.blackColor,
-                                fontSize: 20,
+                                color: AppColors.secondaryColor2,
+                                fontSize: 15,
                                 fontFamily: "Poppins",
                                 fontWeight: FontWeight.w700,
                               ),

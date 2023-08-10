@@ -1,16 +1,20 @@
 import 'dart:convert';
 import 'package:Taskapp/view/tasks/taskDetails.dart';
+import 'package:Taskapp/view/tasks/taskModal.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../../common_widgets/round_button.dart';
+import '../../common_widgets/round_textfield.dart';
 import '../../models/task_model.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/dialogUtils.dart';
 
 
 class TeamTaskScreen extends StatefulWidget {
-  const TeamTaskScreen({super.key});
+  final VoidCallback refreshCallback;
+  const TeamTaskScreen({super.key, required this.refreshCallback});
 
   @override
   State<TeamTaskScreen> createState() => _TeamTaskScreenState();
@@ -24,7 +28,15 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('selectedOrgId');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -85,6 +97,15 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
     }
   }
 
+  void filterTeamTasks(String query) {
+    print("Filtering with query: $query");
+    setState(() {
+      // Update filteredProjects based on query
+      filteredTeamTasks = teamTasks.where((teamtasks) =>
+          teamtasks.taskName.toLowerCase().contains(query.toLowerCase())).toList();
+    });
+  }
+
 
   @override
   void initState() {
@@ -96,6 +117,20 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: AppColors.whiteColor,
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: SizedBox(height: 50,width: 150,child:  RoundTextField(
+              onChanged: (query) => filterTeamTasks(query), hintText: 'Search',
+              icon: "assets/images/search_icon.png",
+            ),),
+          )
+        ],
+      ),
       body: Container(
         child: Padding(
           padding: const EdgeInsets.only(top: 30),
@@ -165,144 +200,41 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      task.taskName,
-                                      style: TextStyle(
-                                          color: AppColors.secondaryColor2,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 20),
+                                  child: Text(
+                                    task.taskName,
+                                    style: TextStyle(
+                                      color: AppColors.secondaryColor2,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    SizedBox(height: 5,),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Owner: ',
-                                          style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Text(
-                                            task.owner!,
-                                          style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5,),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Status: ',
-                                          style: TextStyle(
-                                              color: AppColors.secondaryColor2,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Text(
-                                          task.status,
-                                          style: TextStyle(
-                                              color: statusColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5,),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Priority: ',
-                                          style: TextStyle(
-                                              color: AppColors.secondaryColor2,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Text(
-                                          task.priority,
-                                          style: TextStyle(
-                                              color: priorityColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5,),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Due Date: ',
-                                          style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Text(
-                                          formatDate(task.dueDate) ?? '',
-                                          style: TextStyle(
-                                              color: AppColors.secondaryColor2,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 10,),
-                                    Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 100,
-                                          height: 30,
-                                          child: RoundButton(
-                                              title: "View More",
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        TaskDetailsScreen(
-                                                          taskId: task.taskId ?? "", // Provide a default value if taskId is null
-                                                          taskTitle: task.taskName ?? "", // Provide a default value if taskName is null
-                                                          assignedTo: task.assignedTo.join('\n') ?? "", // Provide a default value if assignedTo is null
-                                                          assignedTeam: task.assignedTeam ?? "", // Provide a default value if assignedTeam is null
-                                                          priority: task.priority ?? "", // Provide a default value if priority is null
-                                                          description: task.description ?? "", // Provide a default value if description is null
-                                                          dueDate: task.dueDate ?? "",
-                                                        status: task.status ?? " ",
-                                                        owner: task.owner ?? " ",),
-                                                  ),
-                                                );
-                                              }),
-                                        ),
-                                        SizedBox(
-                                          width: 30,
-                                        ),
-                                        SizedBox(
-                                          width: 120,
-                                          height: 30,
-                                          child: RoundButton(
-                                              title: "Assigned To",
-                                              onPressed: () {
-                                                String assignedToUsers = task.assignedTo.join('\n'); // Join the list into a single string with line breaks
-                                                _showViewMembersDialog(context, assignedToUsers, task.assignedTeam ?? "");
-                                              }),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                              const SizedBox(
-                                width: 15,
+                              Spacer(), // Add a Spacer to push the menu image to the end
+                              GestureDetector(
+                                onTap: () async {
+                                  bool? shouldRefresh = await showModalBottomSheet<bool>(
+                                    context: context,
+                                    builder: (context) {
+                                      return TaskDetailsModal(task: task);
+                                    },
+                                  );
+
+                                  if (shouldRefresh ?? false) {
+                                    await fetchTeamTasks();
+                                  }
+                                },
+                                child: Image.asset(
+                                  "assets/images/menu.png",
+                                  width: 40,
+                                  height: 20,
+                                ),
                               ),
                             ],
                           ),
@@ -318,72 +250,151 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
   }
 }
 
-void _showViewMembersDialog(BuildContext context,String assignedToUsers, String assignedTeam) async {
-  showDialog(
+void _showTaskDetailsBottomSheet(BuildContext context, Task task) {
+  showModalBottomSheet(
     context: context,
     builder: (BuildContext context) {
-      return AlertDialog(
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Display the "Assigned To" users
-              Text(
-                'Assigned To User:',
+      return Container(
+        height: double.infinity,
+        width: double .infinity,
+        padding: EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(
+              text: TextSpan(
+                text: "Task Name: ",
                 style: TextStyle(
-                  color: AppColors.secondaryColor2,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
                 ),
-              ),
-              ListTile(
-                title: InkWell(
-                  onTap: (){
-
-                  },
-                  child: Text(
-                    assignedToUsers,
+                children: [
+                  TextSpan(
+                    text: "${task.taskName}",
                     style: TextStyle(
-                      color: AppColors.primaryColor2,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
                     ),
                   ),
-                ),
+                ],
               ),
-              SizedBox(height: 16),
-              if (assignedTeam.isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Assigned Team:',
-                      style: TextStyle(
-                        color: AppColors.secondaryColor2,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
+            ),
+            RichText(
+              text: TextSpan(
+                text: "Task Description: ",
+                style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
+                ),
+                children: [
+                  TextSpan(
+                    text: "${task.description}",
+                    style: TextStyle(
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
                     ),
-                    ListTile(
-                      title: Text(
-                        assignedTeam,
-                        style: TextStyle(
-                          color: AppColors.primaryColor2,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  ),
+                ],
+              ),
+            ),
+            RichText(
+              text: TextSpan(
+                text: "DueDate: ",
+                style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
+                ),
+                children: [
+                  TextSpan(
+                    text: "${task.dueDate}",
+                    style: TextStyle(
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            RichText(
+              text: TextSpan(
+                text: "Owner: ",
+                style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
+                ),
+                children: [
+                  TextSpan(
+                    text: "${task.owner}",
+                    style: TextStyle(
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            RichText(
+              text: TextSpan(
+                text: "Assignee: ",
+                style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
+                ),
+                children: [
+                  TextSpan(
+                    text: "${task.assignedTo}",
+                    style: TextStyle(
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Visibility(
+              visible: task.assignedTeam?.isNotEmpty == true,
+              child: RichText(
+                text: TextSpan(
+                  text: "Assignee Team: ",
+                  style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: "${task.assignedTeam}",
+                      style: TextStyle(
+                        // Add any specific styles for the plan name here, if needed
+                        color: AppColors.blackColor,
+                        fontSize: 18,
                       ),
                     ),
                   ],
                 ),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
-      );
+      ); // Pass the 'task' object to the modal
     },
   );
 }
+
+void _showViewMembersDialog(BuildContext context, String assignedToUsers, String assignedTeam,String taskId) async {
+  showViewMembersDialog(context, assignedToUsers, assignedTeam,taskId);
+}
+
 
 String? formatDate(String? dateString) {
   if (dateString == null || dateString.isEmpty) {

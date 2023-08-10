@@ -236,13 +236,6 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
                                       return "Please enter your phone number";
                                     }
                                     if (value.length != 10) {
-                                      Fluttertoast.showToast(
-                                        msg: "Phone number must contain 10 digits",
-                                        toastLength: Toast.LENGTH_LONG,
-                                        gravity: ToastGravity.CENTER,
-                                        backgroundColor: Colors.red,
-                                        textColor: Colors.white,
-                                      );
                                       return "Phone number must contain 10 digits";
                                     }
                                     return null; // Return null if validation is successful

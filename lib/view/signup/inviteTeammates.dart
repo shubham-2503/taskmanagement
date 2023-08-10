@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
+import 'package:Taskapp/view/home/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -36,7 +37,14 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('org_id');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -102,13 +110,38 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
   }
 
   void _inviteTeammate() async {
+    for (var teammate in teammates) {
+      if (teammate.nameController.text.isEmpty) {
+        DialogUtils.showSnackbar(context, 'Name is required');
+        return; // Exit the function early if any name field is empty
+      }
+      if (teammate.emailController.text.isEmpty) {
+        DialogUtils.showSnackbar(context, 'Email is required');
+        return; // Exit the function early if any email field is empty
+      }
+      if (teammate.phoneController.text.isEmpty) {
+        DialogUtils.showSnackbar(context, 'Phone number is required');
+        return; // Exit the function early if any phone number field is empty
+      }
+      if (teammate.selectedRole == null) {
+        DialogUtils.showSnackbar(context, 'Role is required');
+        return; // Exit the function early if any role field is not selected
+      }
+    }
+
+
     try {
       // Get the token or user ID from local storage
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('selectedOrgId'); // Use the locally saved _selectedOrgId
-      print("Selected OrgId: $orgId");
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
       if (orgId == null) {
         throw Exception('orgId not found locally');
       }
@@ -232,6 +265,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                       return Column(
                         children: [
                           RoundTextField(
+                            isRequired: true,
                             hintText: "Name",
                             icon: "assets/icons/name.png",
                             textInputType: TextInputType.text,
@@ -239,6 +273,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                           ),
                           SizedBox(height: 20,),
                           RoundTextField(
+                            isRequired: true,
                             hintText: "Email",
                             icon: "assets/icons/message_icon.png",
                             textInputType: TextInputType.emailAddress,
@@ -247,6 +282,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                           ),
                           SizedBox(height: 20,),
                           RoundTextField(
+                            isRequired: true,
                             hintText: "Phone Number",
                             textEditingController: teammate.phoneController,
                             rightIcon: Row(
@@ -297,7 +333,6 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                                     controller: teammate.phoneController,
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        DialogUtils.showSnackbar(context, 'Please enter your phone number');
                                         return "Please enter your phone number";
                                       }
                                       if (value.length != 10) {
@@ -371,7 +406,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                         title: "Skip For\nNow",
                         onPressed: () {
                           if (ModalRoute.of(context)?.settings.name != '/DashboardScreen') {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
+                            // Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
                           }
                         },
                       ),

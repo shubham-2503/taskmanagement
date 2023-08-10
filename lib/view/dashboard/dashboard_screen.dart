@@ -1,18 +1,19 @@
 import 'dart:io';
+import 'package:Taskapp/organization_proivider.dart';
 import 'package:Taskapp/user.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/profile/user_profile.dart';
 import 'package:Taskapp/view/reports/reports.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../common_widgets/round_textfield.dart';
 import '../home/home_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   static String routeName = "/DashboardScreen";
-
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({Key? key,}) : super(key: key);
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -21,78 +22,42 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int selectTab = 0;
   PersistentBottomSheetController? _bottomSheetController;
-  // int notificationCount = 0;
+  int notificationCount = 0;
 
   final List<Widget> _widgetOptions = <Widget>[
-    const HomeScreen(),
-    const InviteScreen(),
+    HomeScreen(),
+    InviteScreen(),
     ReportScreen(),
-    const UserProfile(),
+    UserProfile(),
   ];
 
   @override
   void initState() {
     super.initState();
     // Initialize Firebase messaging and handle incoming messages
-  //   FirebaseMessaging.instance.getInitialMessage().then((message) {
-  //     // Handle initial message if needed
-  //   });
-  //
-  //   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-  //     // Handle foreground messages
-  //     handleNotificationReceived();
-  //   });
-  //
-  //   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-  //     // Handle when the app is opened from a notification
-  //   });
-  // }
-  //
-  // void handleNotificationReceived() {
-  //   setState(() {
-  //     notificationCount++; // Increase the notification count
-  //   });
+    FirebaseMessaging.instance.getInitialMessage().then((message) {});
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      // Handle foreground messages
+      handleNotificationReceived();
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      // Handle when the app is opened from a notification
+    });
   }
+
+  void handleNotificationReceived() {
+    setState(() {
+      notificationCount++; // Increase the notification count
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: InkWell(
-        onTap: () {},
-        child: SizedBox(
-          width: 70,
-          height: 70,
-          child: Container(
-            width: 65,
-            height: 65,
-            decoration: BoxDecoration(
-                gradient: LinearGradient(colors: AppColors.primaryG),
-                borderRadius: BorderRadius.circular(35),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 2)
-                ]),
-            child: InkWell(
-              onTap: (){
-                print("search icon tapped");
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    backgroundColor: AppColors.primaryColor1,
-                    title: RoundTextField(
-                          hintText: "Search",
-                          icon: "assets/images/search_icon.png",
-                          textInputType: TextInputType.text),
-                  ),
-                );
-              },
-              child: const Icon(Icons.search_sharp,
-                  color: AppColors.primaryColor1, size: 32),
-            ),
-          ),
-        ),
-      ),
       body: IndexedStack(
         index: selectTab,
         children: _widgetOptions,
@@ -112,7 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     offset: Offset(0, -2))
               ]),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               TabButton(
                 title: "Home",
@@ -138,7 +103,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       });
                     }
                   }),
-              const SizedBox(width: 40),
               TabButton(
                   title: "Reports",
                   icon: "assets/icons/activity_icon.png",
@@ -152,7 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     }
                   }),
               TabButton(
-                title: "User Profile",
+                  title: "User Profile",
                   icon: "assets/images/account.png",
                   selectIcon: "assets/images/account_select.png",
                   isActive: selectTab == 3,

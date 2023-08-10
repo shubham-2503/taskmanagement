@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../common_widgets/round_button.dart';
+import '../../../common_widgets/round_textfield.dart';
 import '../../../models/project_model.dart';
 import '../../../models/project_team_model.dart';
 import '../../../models/task_model.dart';
@@ -13,6 +14,10 @@ import '../../../utils/app_colors.dart';
 import 'package:intl/intl.dart';
 
 class AssignedToMe extends StatefulWidget {
+  final VoidCallback refreshCallback;
+  final List<Project> projects;
+
+  const AssignedToMe({super.key, required this.refreshCallback, required this.projects});
   @override
   _AssignedToMeState createState() => _AssignedToMeState();
 }
@@ -20,12 +25,20 @@ class AssignedToMe extends StatefulWidget {
 class _AssignedToMeState extends State<AssignedToMe> {
 
   List<Project> projects = [];
+  late List<Project> filteredprojects = [];
 
   Future<void> fetchMyProjects() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      final String? orgId = prefs.getString('selectedOrgId');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -72,6 +85,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
 
         setState(() {
           projects = projectsWithTasks;
+          filteredprojects= List.from(projects);
         });
 
         // Store the projectId locally using SharedPreferences
@@ -85,6 +99,15 @@ class _AssignedToMeState extends State<AssignedToMe> {
     } catch (e) {
       print('Error fetching projects: $e');
     }
+  }
+
+  void filterProjects(String query) {
+    print("Filtering with query: $query");
+    setState(() {
+      // Update filteredProjects based on query
+      filteredprojects = projects.where((project) =>
+          project.name.toLowerCase().contains(query.toLowerCase())).toList();
+    });
   }
 
   @override
@@ -115,6 +138,20 @@ class _AssignedToMeState extends State<AssignedToMe> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        iconTheme: IconThemeData(
+            color: AppColors.whiteColor
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: SizedBox(height: 50,width: 150,child:  RoundTextField(
+              onChanged: (query) => filterProjects(query), hintText: 'Search',
+              icon: "assets/images/search_icon.png",
+            ),),
+          )
+        ],
+      ),
       body: Container(
         child: Padding(
           padding: const EdgeInsets.only(top: 30),
@@ -138,9 +175,9 @@ class _AssignedToMeState extends State<AssignedToMe> {
               ),
               Expanded(
                 child: ListView.builder(
-                  itemCount: projects.length,
+                  itemCount: filteredprojects.length,
                   itemBuilder: (BuildContext context, int index) {
-                    Project project = projects[index];
+                    Project project = filteredprojects[index];
                     Color statusColor = Colors.black;
                     if (project.status == 'Active') {
                       statusColor = Colors.orange;
@@ -260,37 +297,52 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                       ],
                                     ),
                                     SizedBox(height: 10,),
-                                    SizedBox(
-                                        width: 100,
-                                        height: 30,
-                                        child: RoundButton(
-                                          title: "View More",
-                                          onPressed: () async {
-                                            final SharedPreferences prefs = await SharedPreferences.getInstance();
-                                            final List<String>? projectIds = prefs.getStringList('projectIds');
-                                            if (projectIds != null) {
-                                              // Find the index of the selected project in the list of stored projectIds
-                                              int projectIndex = projectIds.indexOf(project.id);
-                                              if (projectIndex != -1) {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) => ProjectDetailsScreen(
-                                                      projectId: projectIds[projectIndex], // Use the selected projectId from the list
-                                                      projectName: project.name,
-                                                      assigneeTo: project.users!.map((user) => user.userName).join(', '),
-                                                      dueDate: formatDate(project.dueDate) ?? '',
-                                                      createdBy: project.owner,
-                                                      assigneeTeam: project.teams!.map((user) => user.teamName).join(', '),
-                                                      attachments: [],
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          },
-                                        )
-                                    )
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        SizedBox(
+                                            width: 100,
+                                            height: 30,
+                                            child: RoundButton(
+                                              title: "View More",
+                                              onPressed: () async {
+                                                final SharedPreferences prefs = await SharedPreferences.getInstance();
+                                                final List<String>? projectIds = prefs.getStringList('projectIds');
+                                                if (projectIds != null) {
+                                                  // Find the index of the selected project in the list of stored projectIds
+                                                  int projectIndex = projectIds.indexOf(project.id);
+                                                  if (projectIndex != -1) {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => ProjectDetailsScreen(
+                                                          projectId: projectIds[projectIndex], // Use the selected projectId from the list
+                                                          projectName: project.name,
+                                                          assigneeTo: project.users!.map((user) => user.userName).join(', '),
+                                                          dueDate: formatDate(project.dueDate) ?? '',
+                                                          createdBy: project.owner,
+                                                          assigneeTeam: project.teams!.map((user) => user.teamName).join(', '),
+                                                          attachments: [],
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                }
+                                              },
+                                            )
+                                        ),
+                                        SizedBox(width: 20,),
+                                        SizedBox(
+                                          width: 100,
+                                          height: 30,
+                                          child: RoundButton(
+                                              title: "Delete",
+                                              onPressed: () async {
+                                                _deleteProject("${project.id}");
+                                              }),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
@@ -308,6 +360,100 @@ class _AssignedToMeState extends State<AssignedToMe> {
         ),
       ),
     );
+  }
+
+  void _deleteProject(String projectId) async {
+    try {
+      // Show a confirmation dialog for deleting the project
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Confirm Delete'),
+            content: Text('Are you sure you want to delete this Project?'),
+            actions: [
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  try {
+                    SharedPreferences prefs = await SharedPreferences.getInstance();
+                    final storedData = prefs.getString('jwtToken');
+                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+                    if (orgId == null) {
+                      // If the user hasn't switched organizations, use the organization ID obtained during login time
+                      orgId = prefs.getString('org_id') ?? "";
+                    }
+
+                    print("OrgId: $orgId");
+
+                    if (orgId == null) {
+                      throw Exception('orgId not found locally');
+                    }
+
+                    final response = await http.delete(
+                      Uri.parse('http://43.205.97.189:8000/api/Project/deleteProject/$projectId'),
+                      headers: {
+                        'accept': '*/*',
+                        'Authorization': "Bearer $storedData",
+                      },
+                    );
+
+                    print("Delete API response: ${response.body}");
+                    print("Delete StatusCode: ${response.statusCode}");
+
+                    if (response.statusCode == 200) {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Thank You'),
+                            content: Text("Project deleted successfully."),
+                            actions: [
+                              InkWell(
+                                onTap: () {
+                                  Navigator.pop(context);
+                                },
+                                child: Text(
+                                  "OK",
+                                  style: TextStyle(color: AppColors.blackColor, fontSize: 20),
+                                ),
+                              )
+                            ],
+                          );
+                        },
+                      );
+                      print('Project deleted successfully.');
+                      // Perform any necessary tasks after successful deletion
+                      // Update state to remove the deleted project from the list
+                      setState(() {
+                        projects.removeWhere((project) => project.id == projectId);
+                      });
+                      // Navigate back to the previous screen
+                      Navigator.pop(context);
+                    } else {
+                      print('Failed to delete Project.');
+                      // Handle other status codes, if needed
+                    }
+                  } catch (e) {
+                    print('Error deleting project: $e');
+                  }
+                },
+                child: Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print('Error showing delete confirmation dialog: $e');
+    }
   }
 }
 String? formatDate(String? dateString) {

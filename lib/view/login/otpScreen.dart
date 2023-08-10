@@ -6,7 +6,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../Providers/session_provider.dart';
 import '../../common_widgets/round_gradient_button.dart';
 import '../../utils/app_colors.dart';
 
@@ -27,6 +29,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   int _start = 60;
   bool _resendEnabled = false;
   String _timerText = '';
+  String enteredOTP = "";
 
   @override
   void initState() {
@@ -68,43 +71,51 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
         if (response.statusCode == 200) {
           // Resend OTP successful
-          Fluttertoast.showToast(
-            msg: "OTP sent successfully!",
-            toastLength: Toast.LENGTH_LONG,
-            gravity: ToastGravity.CENTER,
-            backgroundColor: Colors.green,
-            textColor: Colors.white,
+          String Message = "Resend Otp Successfully!";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(Message, style: TextStyle(
+                  color: Colors.black54
+              ),),
+              backgroundColor: AppColors.primaryColor1,
+            ),
           );
           print('Resend OTP successful!');
         } else if (response.statusCode == 404) {
           // User not found
-          Fluttertoast.showToast(
-            msg: "User not found. Please check your user ID.",
-            toastLength: Toast.LENGTH_LONG,
-            gravity: ToastGravity.CENTER,
-            backgroundColor: Colors.red,
-            textColor: Colors.white,
+          String Message = "User not found. Please check your user ID.";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(Message, style: TextStyle(
+                  color: Colors.black54
+              ),),
+              backgroundColor: AppColors.primaryColor1,
+            ),
           );
           print('User not found. Please check your user ID.');
         } else {
           // Resend OTP failed with an unexpected status code
-          Fluttertoast.showToast(
-            msg: "Resend OTP failed with status: ${response.statusCode}",
-            toastLength: Toast.LENGTH_LONG,
-            gravity: ToastGravity.CENTER,
-            backgroundColor: Colors.red,
-            textColor: Colors.white,
+          String Message = "Resend OTP failed!";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(Message, style: TextStyle(
+                  color: Colors.black54
+              ),),
+              backgroundColor: AppColors.primaryColor1,
+            ),
           );
           print('Resend OTP failed with status: ${response.statusCode}');
         }
       } catch (error) {
         // Error occurred
-        Fluttertoast.showToast(
-          msg: "Error occurred while resending OTP. Please try again later.",
-          toastLength: Toast.LENGTH_LONG,
-          gravity: ToastGravity.CENTER,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
+        String Message = "Oops!Request Failed Please Try again!!!!";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(Message, style: TextStyle(
+                color: Colors.black54
+            ),),
+            backgroundColor: AppColors.primaryColor1,
+          ),
         );
         print('Error: $error');
       }
@@ -147,8 +158,19 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 backgroundColor: AppColors.primaryColor1,
               ),
             );
+
+            // Update session status in SessionProvider
+            final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+            sessionProvider.setLoggedIn(true);
+
             // Clear the navigation stack and go to DashboardScreen
-            Navigator.pushNamedAndRemoveUntil(context, DashboardScreen.routeName, (route) => false);
+            // Inside the verifyOTP function
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              DashboardScreen.routeName,
+                  (route) => false,
+              arguments: orgId, // Pass the orgId as an argument
+            );
 
             print('OTP verification successful!');
           } } else {
@@ -250,10 +272,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                     // Set border color to black
                   ),
                   animationDuration: Duration(milliseconds: 300),
-                  onChanged: null,
-                  onCompleted: (value) {
-                    verifyOTP(context, widget.userId, value, widget.email, widget.orgId, widget.roleId);
+                  onChanged: (otp) {
+                    setState(() {
+                      enteredOTP = otp;
+                    });
                   },
+                  onCompleted: (value) {},
                 ),
                 SizedBox(height: 16.0),
                 RichText(
@@ -282,7 +306,16 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 SizedBox(height: 20,),
                 RoundGradientButton(
                   title: "Verify OTP",
-                  onPressed: () {},
+                  onPressed: () {
+                    verifyOTP(
+                      context,
+                      widget.userId,
+                      enteredOTP, // Use the entered OTP
+                      widget.email,
+                      widget.orgId,
+                      widget.roleId,
+                    );
+                  },
                 ),
               ],
             ),
