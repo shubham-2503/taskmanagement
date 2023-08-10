@@ -65,29 +65,6 @@ class OrganizationProvider with ChangeNotifier {
     // Store the selected organization ID locally in the app
     _storeSelectedOrgId(selectedOrgId, selectedName);
 
-    // // Show a dialog to inform the user about the organization switch
-    // showDialog(
-    //   context: context,
-    //   builder: (BuildContext context) {
-    //     return AlertDialog(
-    //       title: Text('Organization Switched'),
-    //       content: Text('You have successfully switched to $selectedName.'),
-    //       actions: <Widget>[
-    //         TextButton(
-    //           child: Text('Ok'),
-    //           onPressed: () {
-    //             Navigator.pop(context); // Close the dialog
-    //             // Navigate to the dashboard screen without reloading the app
-    //             Navigator.push(
-    //               context,
-    //               MaterialPageRoute(builder: (context) => DashboardScreen()),
-    //             );
-    //           },
-    //         ),
-    //       ],
-    //     );
-    //   },
-    // );
   }
 
   Future<void> _storeSelectedOrgId(String selectedOrgId,String selectedName) async {

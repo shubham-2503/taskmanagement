@@ -102,11 +102,15 @@ class _AssignedToMeState extends State<AssignedToMe> {
   }
 
   void filterProjects(String query) {
-    print("Filtering with query: $query");
     setState(() {
-      // Update filteredProjects based on query
-      filteredprojects = projects.where((project) =>
-          project.name.toLowerCase().contains(query.toLowerCase())).toList();
+      if (query.length >= 3) {
+        print("Filtering with query: $query");
+        filteredprojects = projects.where((project) =>
+            project.name.toLowerCase().contains(query.toLowerCase())).toList();
+      } else {
+        // Reset the filteredprojects list when query length is less than 3
+        filteredprojects = projects.toList();
+      }
     });
   }
 

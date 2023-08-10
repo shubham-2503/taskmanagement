@@ -231,13 +231,18 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
   }
 
   void filterTeams(String query) {
-    print("Filtering with query: $query");
     setState(() {
-      // Update filteredTeams based on query
-      filteredTeams = _teams.where((team) =>
-          team.teamName.toLowerCase().contains(query.toLowerCase())).toList();
+      if (query.length >= 3) {
+        print("Filtering with query: $query");
+        filteredTeams = _teams.where((team) =>
+            team.teamName.toLowerCase().contains(query.toLowerCase())).toList();
+      } else {
+        // Filter with an empty query or a query with less than 3 characters
+        filteredTeams = _teams.toList();
+      }
     });
   }
+
 
   void _deleteTeam(String teamId) async {
     try {

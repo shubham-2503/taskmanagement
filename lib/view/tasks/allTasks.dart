@@ -24,11 +24,15 @@ class _AllTaskScreenState extends State<AllTaskScreen> {
   List<Task> AllTasks = [];
 
   void filterAllTasks(String query) {
-    print("Filtering with query: $query");
     setState(() {
-      // Update filteredProjects based on query
-      filteredAllTasks = AllTasks.where((AllTasks) =>
-          AllTasks.taskName.toLowerCase().contains(query.toLowerCase())).toList();
+      if (query.length >= 3) {
+        print("Filtering with query: $query");
+        filteredAllTasks = AllTasks.where((task) =>
+            task.taskName.toLowerCase().contains(query.toLowerCase())).toList();
+      } else {
+        // Filter with an empty query or a query with less than 3 characters
+        filteredAllTasks = AllTasks.toList();
+      }
     });
   }
 

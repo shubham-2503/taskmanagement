@@ -94,11 +94,15 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
   }
 
   void filterMyTasks(String query) {
-    print("Filtering with query: $query");
     setState(() {
-      // Update filteredProjects based on query
-      filteredMyTasks = mytasks.where((mytasks) =>
-          mytasks.taskName.toLowerCase().contains(query.toLowerCase())).toList();
+      if (query.length >= 3) {
+        print("Filtering with query: $query");
+        filteredMyTasks = mytasks.where((mytask) =>
+            mytask.taskName.toLowerCase().contains(query.toLowerCase())).toList();
+      } else {
+        // Filter with an empty query or a query with less than 3 characters
+        filteredMyTasks = mytasks.toList();
+      }
     });
   }
 

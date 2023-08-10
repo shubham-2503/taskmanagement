@@ -98,11 +98,15 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
   }
 
   void filterTeamTasks(String query) {
-    print("Filtering with query: $query");
     setState(() {
-      // Update filteredProjects based on query
-      filteredTeamTasks = teamTasks.where((teamtasks) =>
-          teamtasks.taskName.toLowerCase().contains(query.toLowerCase())).toList();
+      if (query.length >= 3) {
+        print("Filtering with query: $query");
+        filteredTeamTasks = teamTasks.where((teamtask) =>
+            teamtask.taskName.toLowerCase().contains(query.toLowerCase())).toList();
+      } else {
+        // Filter with an empty query or a query with less than 3 characters
+        filteredTeamTasks = teamTasks.toList();
+      }
     });
   }
 

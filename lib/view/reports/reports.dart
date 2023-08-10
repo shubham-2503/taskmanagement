@@ -23,17 +23,17 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   List<Task> filteredTasks = [];
-  List<Task> tasks = [];// Define the Task class structure accordingly
+  List<Task> tasks = []; // Define the Task class structure accordingly
   List<Project> projects = [];
   List<Project> filteredProjects = [];
   int totalTaskCount = 0;
-  int completedTaskCount= 0;
-  int pendingTaskCount= 0;
-  int noProgressTaskCount= 0;
+  int completedTaskCount = 0;
+  int pendingTaskCount = 0;
+  int noProgressTaskCount = 0;
   int totalProjectCount = 0;
-  int completedProjectCount= 0;
-  int noProgressProjectCount= 0;
-  int offTrackProjectCount= 0;
+  int completedProjectCount = 0;
+  int noProgressProjectCount = 0;
+  int offTrackProjectCount = 0;
 
   final projectMap = <String, double>{
     "Completed": 0,
@@ -74,17 +74,24 @@ class _ReportScreenState extends State<ReportScreen> {
     fetchData();
   }
 
-  Future<void> fetchData({String? reportType, bool? active, String? onSchedule, String? priority, String? status, String? startDate, String? endDate}) async {
+  Future<void> fetchData(
+      {String? reportType,
+      bool? active,
+      String? onSchedule,
+      String? priority,
+      String? status,
+      String? startDate,
+      String? endDate}) async {
     print("APi calls");
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId =
+        prefs.getString("selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
       orgId = prefs.getString('org_id') ?? "";
     }
-
 
     print("OrgId: $orgId");
 
@@ -92,7 +99,8 @@ class _ReportScreenState extends State<ReportScreen> {
       throw Exception('orgId not found locally');
     }
 
-    final Url = 'http://43.205.97.189:8000/api/Common/taskReport?org_id=$orgId'; // Replace with your API base URL
+    final Url =
+        'http://43.205.97.189:8000/api/Common/taskReport?org_id=$orgId'; // Replace with your API base URL
     // By default, set active to true
     bool active = true;
 
@@ -120,7 +128,8 @@ class _ReportScreenState extends State<ReportScreen> {
     final url = Uri.parse(Url).replace(queryParameters: queryParams);
 
     final headers = {
-      'Authorization': 'Bearer $storedData', // Add the Authorization header with the JWT token
+      'Authorization':
+          'Bearer $storedData', // Add the Authorization header with the JWT token
     };
 
     try {
@@ -144,7 +153,9 @@ class _ReportScreenState extends State<ReportScreen> {
               createdBy: taskData['created_by'] ?? '',
               description: taskData['description'] ?? '',
               priority: taskData['priority'] ?? '',
-              dueDate: taskData['dueDate'] != null ? DateTime.parse(taskData['dueDate']) : DateTime.now(),
+              dueDate: taskData['dueDate'] != null
+                  ? DateTime.parse(taskData['dueDate'])
+                  : DateTime.now(),
             );
             tasks.add(task);
           }
@@ -153,32 +164,48 @@ class _ReportScreenState extends State<ReportScreen> {
         List<Project> projects = [];
         if (jsonData['projects'] != null && jsonData['projects'] is List) {
           for (var projectData in jsonData['projects']) {
-            Project project = Project(id: projectData['id'] ?? '', taskName: projectData['task_name'] ?? '', createdBy: projectData['created_by'] ?? '', status: projectData['status'] ?? '',dueDate: projectData['dueDate'] != null ? DateTime.parse(projectData['dueDate']) : DateTime.now(), type: projectData['type']?? '');
+            Project project = Project(
+                id: projectData['id'] ?? '',
+                taskName: projectData['task_name'] ?? '',
+                createdBy: projectData['created_by'] ?? '',
+                status: projectData['status'] ?? '',
+                dueDate: projectData['dueDate'] != null
+                    ? DateTime.parse(projectData['dueDate'])
+                    : DateTime.now(),
+                type: projectData['type'] ?? '');
             projects.add(project);
           }
         }
 
         int totalTaskCount = tasks.length;
-        int completedTaskCount = tasks.where((task) => task.status == 'Completed').length;
-        int pendingTaskCount = tasks.where((task) => task.status == 'ToDo').length;
-        int noProgressTaskCount = tasks.where((task) => task.status == 'InProgress').length;
+        int completedTaskCount =
+            tasks.where((task) => task.status == 'Completed').length;
+        int pendingTaskCount =
+            tasks.where((task) => task.status == 'ToDo').length;
+        int noProgressTaskCount =
+            tasks.where((task) => task.status == 'InProgress').length;
 
         int totalProjectCount = projects.length;
-        int completedProjectCount = projects.where((project) => project.status == 'Completed').length;
-        int offTrackProjectCount = projects.where((project) => project.status == 'OffTrack').length;
-        int noProgressProjectCount = projects.where((project) => project.status == 'InProgress').length;
+        int completedProjectCount =
+            projects.where((project) => project.status == 'Completed').length;
+        int offTrackProjectCount =
+            projects.where((project) => project.status == 'OffTrack').length;
+        int noProgressProjectCount =
+            projects.where((project) => project.status == 'InProgress').length;
 
         // Update the projectMap with calculated values
         projectMap["Completed"] = completedProjectCount.toDouble();
-        projectMap["Pending"] = noProgressProjectCount.toDouble();// Calculate the pending count
-        projectMap["Off-Track"] = offTrackProjectCount.toDouble(); // Calculate the off-track count
-
+        projectMap["Pending"] =
+            noProgressProjectCount.toDouble(); // Calculate the pending count
+        projectMap["Off-Track"] =
+            offTrackProjectCount.toDouble(); // Calculate the off-track count
 
         // Update the projectMap with calculated values
         dataMap["Completed"] = completedTaskCount.toDouble();
-        dataMap["Pending"] = pendingTaskCount.toDouble();// Calculate the pending count
-        dataMap["No Progress"] = noProgressTaskCount.toDouble(); // Calculate the off-track count
-
+        dataMap["Pending"] =
+            pendingTaskCount.toDouble(); // Calculate the pending count
+        dataMap["No Progress"] =
+            noProgressTaskCount.toDouble(); // Calculate the off-track count
 
         setState(() {
           this.totalTaskCount = totalTaskCount;
@@ -193,12 +220,12 @@ class _ReportScreenState extends State<ReportScreen> {
 
           tasks = tasks; // Assign the fetched tasks to the widget's tasks list
           filteredTasks = tasks;
-          projects = projects; // Assign the fetched projects to the widget's projects list
+          projects =
+              projects; // Assign the fetched projects to the widget's projects list
           filteredProjects = projects;
         });
       } else if (response.statusCode == 401) {
         print("Failed to fetched the Reports: ${response.statusCode}");
-
       } else if (response.statusCode == 403) {
         // Handle forbidden error
         print("Failed to fetched the Reports: ${response.statusCode}");
@@ -302,244 +329,106 @@ class _ReportScreenState extends State<ReportScreen> {
     );
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(100),
-        child: AppBar(
-          backgroundColor: AppColors.primaryColor1,
-          elevation: 0.0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(40),
-            ),
-          ),
-          iconTheme: IconThemeData(
-            color: AppColors.primaryColor2,
-          ),
-          title: Text(
-            "Reports",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                color: AppColors.secondaryColor2,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                fontStyle: FontStyle.italic),
-          ),
-          actions: [
-            IconButton(
-              onPressed: _downloadReport,
-              icon: Icon(
-                Icons.download,
-                color: AppColors.secondaryColor2,
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(100),
+          child: AppBar(
+            backgroundColor: AppColors.primaryColor1,
+            elevation: 0.0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(
+                bottom: Radius.circular(40),
               ),
             ),
-            IconButton(
-              onPressed: _shareReport,
-              icon: Icon(
-                Icons.share,
-                color: AppColors.secondaryColor2,
-              ),
+            iconTheme: IconThemeData(
+              color: AppColors.primaryColor2,
             ),
-          ],
+            title: Text(
+              "Reports",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: AppColors.secondaryColor2,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  fontStyle: FontStyle.italic),
+            ),
+            actions: [
+              IconButton(
+                onPressed: _downloadReport,
+                icon: Icon(
+                  Icons.download,
+                  color: AppColors.secondaryColor2,
+                ),
+              ),
+              IconButton(
+                onPressed: _shareReport,
+                icon: Icon(
+                  Icons.share,
+                  color: AppColors.secondaryColor2,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.only(top: 30),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
+        body: Padding(
+          padding: const EdgeInsets.only(top: 30),
+          child: SingleChildScrollView(
+            child: Column(children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   GestureDetector(
-                      onTap: (){
+                      onTap: () {
                         showModalBottomSheet(
                           context: context,
-                          builder: (BuildContext context) => MyFilterOptionsModal(),
+                          builder: (BuildContext context) =>
+                              MyFilterOptionsModal(),
                         );
                       },
-                      child: Image.asset("assets/images/menu.png", width: 40, height: 40)),
+                      child: Image.asset("assets/images/menu.png",
+                          width: 40, height: 40)),
                 ],
               ),
-              SizedBox(height: 20,),
+              SizedBox(
+                height: 20,
+              ),
               SingleChildScrollView(
-                child: Column(
+                  child: Column(children: [
+                SizedBox(
+                  height: 50,
+                ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
                     children: [
-                     SizedBox(height: 50,),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                         children: [
-                           Column(
-                          children: [
-                            Text(
-                              "Task Information",
-                              style: TextStyle(
-                                  color: AppColors.secondaryColor2,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 15,
-                                  fontStyle: FontStyle.italic),
-                            ),
-                            SizedBox(height: 10,),
-                            Container(
-                              width: 170,
-                              margin: EdgeInsets.only(left: 12),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  color: Color(0xffE1E3E9),
-                                  border: Border.all(color: const Color(0xffE1E3E9))),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "Total Tasks",
-                                        style: TextStyle(
-                                          color: AppColors.secondaryColor2,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                            color: const Color(0xffE1E3E9),
-                                            borderRadius: BorderRadius.circular(8)),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
-                                        child: Center(
-                                          child: Text(totalTaskCount.toString()),
-                                        ),
-                                      )
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                  const Divider(
-                                    height: 0,
-                                    color: AppColors.blackColor,
-                                  ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "Completed\nTask",
-                                        style: TextStyle(
-                                          color: AppColors.secondaryColor2,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                            color: const Color(0xffDEE5FF),
-                                            borderRadius: BorderRadius.circular(8)),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
-                                        child: Center(
-                                          child: Text(completedTaskCount.toString()),
-
-                                        ),
-                                      )
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                  const Divider(
-                                    height: 0,
-                                    color: AppColors.blackColor,
-                                  ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "Pending Tasks",
-                                        style: TextStyle(
-                                          color: AppColors.secondaryColor2,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                            color: const Color(0xffDEE5FF),
-                                            borderRadius: BorderRadius.circular(8)),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
-                                        child: Center(
-                                          child: Text(pendingTaskCount.toString()),
-                                        ),
-                                      )
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                  const Divider(
-                                    height: 0,
-                                    color: AppColors.blackColor,
-                                  ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "No Progress",
-                                        style: TextStyle(
-                                          color: AppColors.secondaryColor2,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                            color: const Color(0xffDEE5FF),
-                                            borderRadius: BorderRadius.circular(8)),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
-                                        child: Center(
-                                          child: Text(noProgressTaskCount.toString()),
-                                        ),
-                                      )
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(width: 20,),
-                        Column(
-                          children: [
+                      Column(
+                        children: [
                           Text(
-                            "Project Information",
+                            "Task Information",
                             style: TextStyle(
                                 color: AppColors.secondaryColor2,
                                 fontWeight: FontWeight.w500,
                                 fontSize: 15,
                                 fontStyle: FontStyle.italic),
                           ),
-                          SizedBox(height: 10,),
+                          SizedBox(
+                            height: 10,
+                          ),
                           Container(
                             width: 170,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-                            margin: EdgeInsets.only(right: 12),
+                            margin: EdgeInsets.only(left: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 15),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
                                 color: Color(0xffE1E3E9),
-                                border: Border.all(color: const Color(0xffE1E3E9))),
+                                border:
+                                    Border.all(color: const Color(0xffE1E3E9))),
                             child: Column(
                               children: [
                                 Row(
                                   children: [
                                     Text(
-                                      "Total Projects",
+                                      "Total Tasks",
                                       style: TextStyle(
                                         color: AppColors.secondaryColor2,
                                         fontSize: 14,
@@ -549,11 +438,12 @@ class _ReportScreenState extends State<ReportScreen> {
                                     Container(
                                       decoration: BoxDecoration(
                                           color: const Color(0xffE1E3E9),
-                                          borderRadius: BorderRadius.circular(8)),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
                                       child: Center(
-                                        child: Text(totalProjectCount.toString()),
+                                        child: Text(totalTaskCount.toString()),
                                       ),
                                     )
                                   ],
@@ -571,7 +461,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                 Row(
                                   children: [
                                     Text(
-                                      "Completed\nProjects",
+                                      "Completed\nTask",
                                       style: TextStyle(
                                         color: AppColors.secondaryColor2,
                                         fontSize: 14,
@@ -581,11 +471,13 @@ class _ReportScreenState extends State<ReportScreen> {
                                     Container(
                                       decoration: BoxDecoration(
                                           color: const Color(0xffDEE5FF),
-                                          borderRadius: BorderRadius.circular(8)),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
                                       child: Center(
-                                        child: Text(completedProjectCount.toString()),
+                                        child:
+                                            Text(completedTaskCount.toString()),
                                       ),
                                     )
                                   ],
@@ -603,7 +495,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                 Row(
                                   children: [
                                     Text(
-                                      "Off Track",
+                                      "Pending Tasks",
                                       style: TextStyle(
                                         color: AppColors.secondaryColor2,
                                         fontSize: 14,
@@ -613,11 +505,13 @@ class _ReportScreenState extends State<ReportScreen> {
                                     Container(
                                       decoration: BoxDecoration(
                                           color: const Color(0xffDEE5FF),
-                                          borderRadius: BorderRadius.circular(8)),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
                                       child: Center(
-                                        child: Text(offTrackProjectCount.toString()),
+                                        child:
+                                            Text(pendingTaskCount.toString()),
                                       ),
                                     )
                                   ],
@@ -645,11 +539,13 @@ class _ReportScreenState extends State<ReportScreen> {
                                     Container(
                                       decoration: BoxDecoration(
                                           color: const Color(0xffDEE5FF),
-                                          borderRadius: BorderRadius.circular(8)),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 4),
                                       child: Center(
-                                        child: Text(noProgressProjectCount.toString()),
+                                        child: Text(
+                                            noProgressTaskCount.toString()),
                                       ),
                                     )
                                   ],
@@ -657,221 +553,394 @@ class _ReportScreenState extends State<ReportScreen> {
                               ],
                             ),
                           ),
-                          ],),
-                    ],
-                  ),
+                        ],
                       ),
-                      const SizedBox(
-                        height: 20,
+                      SizedBox(
+                        width: 20,
                       ),
-                      const SizedBox(
-                        height: 20,
-                      ),
-                    Text("Reports",
-                      style: TextStyle(
-                          color: AppColors.secondaryColor2,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          fontStyle: FontStyle.italic),),
-                      SizedBox(height: 20,),
-                      Container(
-                        height: 50,
-                        width: double.infinity,
-                        padding: EdgeInsets.only(left: 55),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(dataMap.length, (index) {
-                              final key = dataMap.keys.elementAt(index);
-                              return Row(
-                                children: [
-                                  Container(
-                                    width: 12,
-                                    height: 12,
-                                    margin: EdgeInsets.only(right: 6),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: colorList[index],
-                                    ),
-                                  ),
-                                  Text(
-                                    '$key',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.normal,
-                                    ),
-                                  ),
-                                  if (index != dataMap.length - 1) SizedBox(width: 10),
-                                ],
-                              );
-                            }),
-                          ),
-                        ),
-                      ),
-                      LayoutBuilder(
-                        builder: (_, constraints) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Flexible(
-                                flex: 3,
-                                fit: FlexFit.tight,
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 32, horizontal: 10),
-                                  child: Column(
-                                    children: [
-                                      Text("Tasks Reports",
-                                        style: TextStyle(
-                                            color: AppColors.primaryColor2,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15,
-                                            fontStyle: FontStyle.italic),),
-                                      chart,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              Flexible(
-                                flex: 3,
-                                fit: FlexFit.tight,
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 32, horizontal: 10),
-                                  child: Column(
-                                    children: [
-                                      Text("Project Reports",
-                                        style: TextStyle(
-                                            color: AppColors.primaryColor2,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15,
-                                            fontStyle: FontStyle.italic),),
-                                      chart2,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      SizedBox(height: 20),
-                      if (filteredTasks.isNotEmpty)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            ExpansionTile(
-                              title: Text("Task Reports", style: TextStyle(
-                                color: AppColors.secondaryColor1,
-                                fontWeight: FontWeight.w600,
+                      Column(
+                        children: [
+                          Text(
+                            "Project Information",
+                            style: TextStyle(
+                                color: AppColors.secondaryColor2,
+                                fontWeight: FontWeight.w500,
                                 fontSize: 15,
-                                fontStyle: FontStyle.italic,
-                              ),),
+                                fontStyle: FontStyle.italic),
+                          ),
+                          SizedBox(
+                            height: 10,
+                          ),
+                          Container(
+                            width: 170,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 15),
+                            margin: EdgeInsets.only(right: 12),
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                color: Color(0xffE1E3E9),
+                                border:
+                                    Border.all(color: const Color(0xffE1E3E9))),
+                            child: Column(
                               children: [
-                            SizedBox(height: 10),
-                            ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: filteredTasks.length,
-                              itemBuilder: (context, index) {
-                                final task = filteredTasks[index];
-                                Color statusColor = Colors.grey; // Default color
-                                switch (task.status) {
-                                  case 'InProgress':
-                                    statusColor = Colors.blue;
-                                    break;
-                                  case 'Completed':
-                                    statusColor = Colors.red;
-                                    break;
-                                  case 'ToDo':
-                                    statusColor = AppColors.primaryColor2;
-                                    break;
-                                  case 'transferred':
-                                    statusColor = Colors.black54;
-                                    break;
-                                // Add more cases for different statuses if needed
-                                }
-                                return Card(
-                                  child: ListTile(
-                                    title: Center(
-                                      child: Text(
-                                        "Task: ${task.taskName}",
-                                        style: TextStyle(
-                                          color: AppColors.secondaryColor2,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      "Total Projects",
+                                      style: TextStyle(
+                                        color: AppColors.secondaryColor2,
+                                        fontSize: 14,
                                       ),
                                     ),
-                                    subtitle: Row(
-                                      children: [
-                                        Text(formatDate(task.dueDate)),
-                                        Spacer(),
-                                        Text(task.createdBy),
-                                      ],
+                                    const Spacer(),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                          color: const Color(0xffE1E3E9),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
+                                      child: Center(
+                                        child:
+                                            Text(totalProjectCount.toString()),
+                                      ),
+                                    )
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 20,
+                                ),
+                                const Divider(
+                                  height: 0,
+                                  color: AppColors.blackColor,
+                                ),
+                                const SizedBox(
+                                  height: 20,
+                                ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      "Completed\nProjects",
+                                      style: TextStyle(
+                                        color: AppColors.secondaryColor2,
+                                        fontSize: 14,
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
+                                    const Spacer(),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                          color: const Color(0xffDEE5FF),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
+                                      child: Center(
+                                        child: Text(
+                                            completedProjectCount.toString()),
+                                      ),
+                                    )
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 20,
+                                ),
+                                const Divider(
+                                  height: 0,
+                                  color: AppColors.blackColor,
+                                ),
+                                const SizedBox(
+                                  height: 20,
+                                ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      "Off Track",
+                                      style: TextStyle(
+                                        color: AppColors.secondaryColor2,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                          color: const Color(0xffDEE5FF),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
+                                      child: Center(
+                                        child: Text(
+                                            offTrackProjectCount.toString()),
+                                      ),
+                                    )
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 20,
+                                ),
+                                const Divider(
+                                  height: 0,
+                                  color: AppColors.blackColor,
+                                ),
+                                const SizedBox(
+                                  height: 20,
+                                ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      "No Progress",
+                                      style: TextStyle(
+                                        color: AppColors.secondaryColor2,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                          color: const Color(0xffDEE5FF),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
+                                      child: Center(
+                                        child: Text(
+                                            noProgressProjectCount.toString()),
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      SizedBox(height: 20),
-                      if (filteredProjects.isNotEmpty)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
+                Text(
+                  "Reports",
+                  style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontStyle: FontStyle.italic),
+                ),
+                SizedBox(
+                  height: 20,
+                ),
+                Container(
+                  height: 50,
+                  width: double.infinity,
+                  padding: EdgeInsets.only(left: 55),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(dataMap.length, (index) {
+                        final key = dataMap.keys.elementAt(index);
+                        return Row(
                           children: [
-                            ExpansionTile(
-                              title: Text("Project Reports", style: TextStyle(
-                                color: AppColors.secondaryColor1,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                                fontStyle: FontStyle.italic,
-                              ),),
-                              children: [
-                            SizedBox(height: 10),
-                            ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: filteredProjects.length,
-                              itemBuilder: (context, index) {
-                                final project = filteredProjects[index];
-                                Color statusColor = Colors.grey; // Default color
-                                switch (project.status) {
-                                  case 'InProgress':
-                                    statusColor = Colors.blue;
-                                    break;
-                                  case 'Completed':
-                                    statusColor = Colors.red;
-                                    break;
-                                  case 'ToDo':
-                                    statusColor = AppColors.primaryColor2;
-                                    break;
-                                  case 'transferred':
-                                    statusColor = Colors.black54;
-                                    break;
-                                // Add more cases for different statuses if needed
-                                }
-                                return Card(
-                                  child: ListTile(
-                                    title: Center(child: Text("Project: ${project.taskName}",style: TextStyle(
-                                      color: AppColors.secondaryColor2,
-                                      fontSize: 15,fontWeight: FontWeight.bold
-                                    ),)),
-                                    subtitle: Row(
-                                      children: [
-                                        Text(formatDate(project.dueDate)),
-                                        Spacer(),
-                                        Text(project.createdBy,),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
+                            Container(
+                              width: 12,
+                              height: 12,
+                              margin: EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: colorList[index],
+                              ),
                             ),
+                            Text(
+                              '$key',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                            if (index != dataMap.length - 1)
+                              SizedBox(width: 10),
                           ],
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+                LayoutBuilder(
+                  builder: (_, constraints) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Flexible(
+                          flex: 3,
+                          fit: FlexFit.tight,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 32, horizontal: 10),
+                            child: Column(
+                              children: [
+                                Text(
+                                  "Tasks Reports",
+                                  style: TextStyle(
+                                      color: AppColors.primaryColor2,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                      fontStyle: FontStyle.italic),
+                                ),
+                                chart,
+                              ],
+                            ),
+                          ),
                         ),
-                    ])
-              ])]))]),
-              ),
-    ));
+                        Flexible(
+                          flex: 3,
+                          fit: FlexFit.tight,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 32, horizontal: 10),
+                            child: Column(
+                              children: [
+                                Text(
+                                  "Project Reports",
+                                  style: TextStyle(
+                                      color: AppColors.primaryColor2,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                      fontStyle: FontStyle.italic),
+                                ),
+                                chart2,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                SizedBox(height: 20),
+                //         if (filteredTasks.isNotEmpty)
+                //           Column(
+                //             crossAxisAlignment: CrossAxisAlignment.center,
+                //             children: [
+                //               ExpansionTile(
+                //                 title: Text("Task Reports", style: TextStyle(
+                //                   color: AppColors.secondaryColor1,
+                //                   fontWeight: FontWeight.w600,
+                //                   fontSize: 15,
+                //                   fontStyle: FontStyle.italic,
+                //                 ),),
+                //                 children: [
+                //               SizedBox(height: 10),
+                //               ListView.builder(
+                //                 shrinkWrap: true,
+                //                 itemCount: filteredTasks.length,
+                //                 itemBuilder: (context, index) {
+                //                   final task = filteredTasks[index];
+                //                   Color statusColor = Colors.grey; // Default color
+                //                   switch (task.status) {
+                //                     case 'InProgress':
+                //                       statusColor = Colors.blue;
+                //                       break;
+                //                     case 'Completed':
+                //                       statusColor = Colors.red;
+                //                       break;
+                //                     case 'ToDo':
+                //                       statusColor = AppColors.primaryColor2;
+                //                       break;
+                //                     case 'transferred':
+                //                       statusColor = Colors.black54;
+                //                       break;
+                //                   // Add more cases for different statuses if needed
+                //                   }
+                //                   return Card(
+                //                     child: ListTile(
+                //                       title: Center(
+                //                         child: Text(
+                //                           "Task: ${task.taskName}",
+                //                           style: TextStyle(
+                //                             color: AppColors.secondaryColor2,
+                //                             fontSize: 15,
+                //                             fontWeight: FontWeight.bold,
+                //                           ),
+                //                         ),
+                //                       ),
+                //                       subtitle: Row(
+                //                         children: [
+                //                           Text(formatDate(task.dueDate)),
+                //                           Spacer(),
+                //                           Text(task.createdBy),
+                //                         ],
+                //                       ),
+                //                     ),
+                //                   );
+                //                 },
+                //               ),
+                //             ],
+                //           ),
+                //         SizedBox(height: 20),
+                //         if (filteredProjects.isNotEmpty)
+                //           Column(
+                //             crossAxisAlignment: CrossAxisAlignment.center,
+                //             children: [
+                //               ExpansionTile(
+                //                 title: Text("Project Reports", style: TextStyle(
+                //                   color: AppColors.secondaryColor1,
+                //                   fontWeight: FontWeight.w600,
+                //                   fontSize: 15,
+                //                   fontStyle: FontStyle.italic,
+                //                 ),),
+                //                 children: [
+                //               SizedBox(height: 10),
+                //               ListView.builder(
+                //                 shrinkWrap: true,
+                //                 itemCount: filteredProjects.length,
+                //                 itemBuilder: (context, index) {
+                //                   final project = filteredProjects[index];
+                //                   Color statusColor = Colors.grey; // Default color
+                //                   switch (project.status) {
+                //                     case 'InProgress':
+                //                       statusColor = Colors.blue;
+                //                       break;
+                //                     case 'Completed':
+                //                       statusColor = Colors.red;
+                //                       break;
+                //                     case 'ToDo':
+                //                       statusColor = AppColors.primaryColor2;
+                //                       break;
+                //                     case 'transferred':
+                //                       statusColor = Colors.black54;
+                //                       break;
+                //                   // Add more cases for different statuses if needed
+                //                   }
+                //                   return Card(
+                //                     child: ListTile(
+                //                       title: Center(child: Text("Project: ${project.taskName}",style: TextStyle(
+                //                         color: AppColors.secondaryColor2,
+                //                         fontSize: 15,fontWeight: FontWeight.bold
+                //                       ),)),
+                //                       subtitle: Row(
+                //                         children: [
+                //                           Text(formatDate(project.dueDate)),
+                //                           Spacer(),
+                //                           Text(project.createdBy,),
+                //                         ],
+                //                       ),
+                //                     ),
+                //                   );
+                //                 },
+                //               ),
+                //             ],
+                //           ),
+                //       ])
+                // ])
+              ]))
+            ]),
+          ),
+        ));
   }
 }
 
@@ -879,9 +948,3 @@ String formatDate(DateTime date) {
   final formatter = DateFormat('yyyy-MM-dd');
   return formatter.format(date);
 }
-
-
-
-
-
-
