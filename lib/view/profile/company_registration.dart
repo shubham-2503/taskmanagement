@@ -13,7 +13,10 @@ import '../../common_widgets/round_textfield.dart';
 
 class CompanyRegistrationScreen extends StatefulWidget {
   final String userId;
-  CompanyRegistrationScreen({required this.userId});
+  final String userType;
+  final String roleId;
+
+  CompanyRegistrationScreen({required this.userId, required this.userType, required this.roleId});
 
   @override
   State<CompanyRegistrationScreen> createState() => _CompanyRegistrationScreenState();
@@ -25,6 +28,7 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
   final TextEditingController _employeeCountController = TextEditingController();
   final TextEditingController _companyAddressController =
   TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   List<Map<String, dynamic>> countryCodes = [
     {"name": "+91 (India)", "code": "+91"},
@@ -35,12 +39,12 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
     final Map<String, dynamic> requestBody = {
       'name': _companyNameController.text,
       'address': _companyAddressController.text,
-      'description': 'string',
+      'description': _descriptionController.text,
       'employee_count': int.parse(_employeeCountController.text),
       'tax_id': _gstNumberController.text,
-      'user_id': '',
-      'user_type': '',
-      'role_id': '',
+      'user_id': widget.userId,
+      'user_type': widget.userType,
+      'role_id': widget.roleId,
     };
 
     // Fetch the stored user data from SharedPreferences
@@ -48,7 +52,6 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
     final storedData = prefs.getString('userData');
     if (storedData != null) {
       final userData = jsonDecode(storedData);
-      requestBody['user_id'] = userData['id'];
       requestBody['user_type'] = userData['user_type'];
       requestBody['role_id'] = userData['role_id'];
     }
@@ -63,6 +66,7 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
       body: jsonEncode(requestBody),
     );
 
+    print("Decode Body: ${jsonEncode(requestBody)}");
     print("API Error: ${response.body}");
     print("StatusCode: ${response.statusCode}");
 
@@ -101,6 +105,7 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
   void dispose() {
     _companyNameController.dispose();
     _gstNumberController.dispose();
+    _descriptionController.dispose();
     _employeeCountController.dispose();
     _companyAddressController.dispose();
     _phoneNumberController.dispose();
@@ -109,6 +114,8 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userId = widget.userId;
+    print(userId);
     var media = MediaQuery.of(context).size;
     return Scaffold(
       body: Container(
@@ -147,6 +154,13 @@ class _CompanyRegistrationScreenState extends State<CompanyRegistrationScreen> {
                 RoundTextField(
                   textEditingController: _companyNameController,
                   hintText: "Company Name",
+                  icon: "assets/icons/name.png",
+                  textInputType: TextInputType.text,
+                ),
+                SizedBox(height: 15),
+                RoundTextField(
+                  textEditingController: _descriptionController,
+                  hintText: "Company Description",
                   icon: "assets/icons/name.png",
                   textInputType: TextInputType.text,
                 ),

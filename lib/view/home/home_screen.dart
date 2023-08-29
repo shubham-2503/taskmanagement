@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:Taskapp/Providers/project_provider.dart';
+import 'package:Taskapp/view/login/forgetpassword/verificationScreens.dart';
 import 'package:Taskapp/view/projects/projectCreation.dart';
 import 'package:Taskapp/view/signup/inviteTeammates.dart';
 import 'package:Taskapp/view/subscription/subscriptions.dart';
@@ -172,11 +173,6 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       ProjectCountManager projectCountManager = ProjectCountManager(prefs);
-      if (projectCountManager == null) {
-        print("projectCountManager is null");
-        return;
-      }
-
       await projectCountManager.updateProjectCount();
       int count = await projectCountManager.fetchTotalProjectCount();
       print("Total project count: $count"); // Debugging print
@@ -772,7 +768,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: Icon(Icons.settings),
               title: Text('settings'),
-              onTap: (){},
+              onTap: (){
+              },
             ),
           ],
         ),

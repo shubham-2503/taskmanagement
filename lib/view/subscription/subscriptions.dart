@@ -22,28 +22,33 @@ class _SubscriptionsPlanState extends State<SubscriptionsPlan> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
 
-      final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
-        headers: {'accept': '*/*'},
-      );
+      if (storedData != null) {
+        final response = await http.get(
+          Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
+          headers: {'accept': '*/*'},
+        );
 
-      print('API Response: ${response.body}');
-      print("StatusCode: ${response.statusCode}");
+        print('API Response: ${response.body}');
+        print("StatusCode: ${response.statusCode}");
 
-      if (response.statusCode == 200) {
-        final List<dynamic> responseData = jsonDecode(response.body);
-        print('API Response: $responseData');
+        if (response.statusCode == 200) {
+          final List<dynamic> responseData = jsonDecode(response.body);
+          print('API Response: $responseData');
 
-        final List<SubscriptionPlan> subscriptionPlans = responseData.map(
-              (jsonPlan) => SubscriptionPlan.fromJson(jsonPlan),
-        ).toList();
+          final List<SubscriptionPlan> subscriptionPlans = responseData.map(
+                (jsonPlan) => SubscriptionPlan.fromJson(jsonPlan),
+          ).toList();
 
-        setState(() {
-          plans = subscriptionPlans;
-        });
+          setState(() {
+            plans = subscriptionPlans;
+          });
+        } else {
+          print('API Error: ${response.statusCode}');
+          // Handle the error and display an error message to the user
+        }
       } else {
-        print('API Error: ${response.statusCode}');
-        // Handle the error and display an error message to the user
+        print("'jwtToken' is null");
+        // Handle the case when 'jwtToken' is null
       }
     } catch (e) {
       print('Exception: $e');

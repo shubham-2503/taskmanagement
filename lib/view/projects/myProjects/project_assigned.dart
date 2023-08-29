@@ -19,8 +19,9 @@ import 'package:intl/intl.dart';
 class AssignedToMe extends StatefulWidget {
   final VoidCallback refreshCallback;
   final List<Project> projects;
+  final Map<String, String?> selectedFilters;
 
-  const AssignedToMe({super.key, required this.refreshCallback, required this.projects});
+  const AssignedToMe({super.key, required this.refreshCallback, required this.projects, required this.selectedFilters});
   @override
   _AssignedToMeState createState() => _AssignedToMeState();
 }
@@ -47,15 +48,20 @@ class _AssignedToMeState extends State<AssignedToMe> {
       if (orgId == null) {
         throw Exception('orgId not found locally');
       }
-      final url = 'http://43.205.97.189:8000/api/Project/myProjects?org_id=$orgId';
+      // Use the selected filters to build the query parameters
+      Map<String, String?> queryParameters = {
+        'org_id': orgId,
+        ...widget.selectedFilters,
+      };
 
+      final url = Uri.http('43.205.97.189:8000', '/api/Project/myProjects', queryParameters);
 
       final headers = {
         'accept': '*/*',
         'Authorization': 'Bearer $storedData',
       };
 
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
@@ -340,29 +346,50 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                             child: RoundButton(
                                               title: "View More",
                                               onPressed: () async {
-                                                final SharedPreferences prefs = await SharedPreferences.getInstance();
-                                                final List<String>? projectIds = prefs.getStringList('projectIds');
+                                                final SharedPreferences prefs =
+                                                await SharedPreferences
+                                                    .getInstance();
+                                                final List<String>? projectIds =
+                                                prefs.getStringList(
+                                                    'projectIds');
                                                 if (projectIds != null) {
                                                   // Find the index of the selected project in the list of stored projectIds
-                                                  int projectIndex = projectIds.indexOf(project.id);
+                                                  int projectIndex = projectIds
+                                                      .indexOf(project.id);
                                                   if (projectIndex != -1) {
-                                                    Navigator.push(
+                                                    bool edited = await Navigator.push(
                                                       context,
                                                       MaterialPageRoute(
-                                                        builder: (context) => ProjectDetailsScreen(
-                                                          project: project,
-                                                          active: project.active!,
-                                                          projectId: projectIds[projectIndex], // Use the selected projectId from the list
-                                                          projectName: project.name,
-                                                          status: project.status,
-                                                          assigneeTo: project.users!.map((user) => user.userName).join(', '),
-                                                          dueDate: formatDate(project.dueDate) ?? '',
-                                                          createdBy: project.owner,
-                                                          assigneeTeam: project.teams!.map((user) => user.teamName).join(', '),
-                                                          attachments: [],
-                                                        ),
+                                                        builder: (context) =>
+                                                            ProjectDetailsScreen(
+                                                              active: project.active!,
+                                                              projectId: projectIds[
+                                                              projectIndex], // Use the selected projectId from the list
+                                                              projectName: project.name,
+                                                              assigneeTo: project.users
+                                                                  ?.map((user) =>
+                                                              user.userName)
+                                                                  .join(', ') ??
+                                                                  '',
+                                                              status: project.status,
+                                                              dueDate: formatDate(
+                                                                  project
+                                                                      .dueDate) ??
+                                                                  '',
+                                                              createdBy: project.owner,
+                                                              assigneeTeam: project
+                                                                  .teams
+                                                                  ?.map((user) =>
+                                                              user.teamName)
+                                                                  .join(', ') ??
+                                                                  '',
+                                                              attachments: [], project: project,
+                                                            ),
                                                       ),
                                                     );
+                                                    if(edited == true){
+                                                      await fetchMyProjects();
+                                                    }
                                                   }
                                                 }
                                               },

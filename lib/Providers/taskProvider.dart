@@ -7,7 +7,11 @@ import '../models/task_model.dart';
 
 class TaskProvider extends ChangeNotifier {
   List<Task> _tasks = [];
+
   List<Task> get tasks => [..._tasks]; // Return a copy of the tasks list
+  Map<String, String?> _selectedFilters = {};
+
+  Map<String, String?> get selectedFilters => _selectedFilters;
 
   void setTasks(List<Task> newTasks) {
     _tasks = newTasks;
@@ -23,6 +27,12 @@ class TaskProvider extends ChangeNotifier {
     _tasks.remove(taskId);
     notifyListeners();
   }
+
+  // // Method to update selected filters
+  // void updateFilters(Map<String, String?> newFilters) {
+  //   _selectedFilters = newFilters;
+  //   notifyListeners(); // Notify listeners to update the UI
+  // }
 }
 
 
@@ -62,10 +72,10 @@ class TaskCountManager {
       alltasks.addAll(data1);
       alltasks.addAll(data2);
 
-      Set<String> projectIds = {}; // Use a Set to remove duplications
-      projectIds.addAll(alltasks.map((project) => project['unique_id'] as String));
+      Set<String> taskIds = {}; // Use a Set to remove duplications
+      taskIds.addAll(alltasks.map((task) => task['id'] as String));
 
-      int totalTaskCount = projectIds.length;
+      int totalTaskCount = taskIds.length;
       print("Total task Count: $totalTaskCount"); // Print the count
 
       return totalTaskCount;

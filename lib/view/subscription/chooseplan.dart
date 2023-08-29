@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:Taskapp/common_widgets/round_button.dart';
+import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:Taskapp/view/login/login_screen.dart';
+import 'package:Taskapp/view/login/teamcontactScreens.dart';
 import 'package:Taskapp/view/welcome/backToLogin/backToLogin.dart';
 import 'package:Taskapp/view/welcome/welcome_screen.dart';
 import 'package:flutter/material.dart';
@@ -22,24 +24,36 @@ class _ChoosePlanState extends State<ChoosePlan> {
 
   Future<void> fetchSubscriptionPlans() async {
     try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
 
-      final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
-        headers: {'accept': '*/*'},
-      );
+      if (storedData != null) {
+        final response = await http.get(
+          Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
+          headers: {'accept': '*/*'},
+        );
 
-      print('API Response: ${response.body}');
-      print("StatusCode: ${response.statusCode}");
+        print('API Response: ${response.body}');
+        print("StatusCode: ${response.statusCode}");
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        print('Decoded Data: $data');
-        setState(() {
-          plans = data.map((plan) => SubscriptionPlan.fromJson(plan)).toList();
-        });
+        if (response.statusCode == 200) {
+          final List<dynamic> responseData = jsonDecode(response.body);
+          print('API Response: $responseData');
+
+          final List<SubscriptionPlan> subscriptionPlans = responseData.map(
+                (jsonPlan) => SubscriptionPlan.fromJson(jsonPlan),
+          ).toList();
+
+          setState(() {
+            plans = subscriptionPlans;
+          });
+        } else {
+          print('API Error: ${response.statusCode}');
+          // Handle the error and display an error message to the user
+        }
       } else {
-        print('API Error: ${response.statusCode}');
-        // Handle the error and display an error message to the user
+        print("'jwtToken' is null");
+        // Handle the case when 'jwtToken' is null
       }
     } catch (e) {
       print('Exception: $e');
@@ -69,10 +83,7 @@ class _ChoosePlanState extends State<ChoosePlan> {
       print('StatusCode: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        // Subscription added successfully
-        // Handle the success scenario
         print("Successfully added");
-        Navigator.push(context, MaterialPageRoute(builder: (context)=>BackToLogin(),));
       } else {
         print('API Response: ${response.body}');
         print("StatusCode: ${response.statusCode}");
@@ -93,6 +104,8 @@ class _ChoosePlanState extends State<ChoosePlan> {
 
   @override
   Widget build(BuildContext context) {
+    final orgId = widget.orgId;
+    print("$orgId");
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(color: Colors.black),
@@ -190,21 +203,18 @@ class _ChoosePlanState extends State<ChoosePlan> {
                                           ),
                                         ),
                                         SizedBox(height: 10),
-                                        Expanded(
-                                          child: Wrap(
-                                            crossAxisAlignment: WrapCrossAlignment.start,
-                                            spacing: 5, // Add spacing between features
-                                            children: plan.features.split(',').map(
-                                                  (feature) => Text(
-                                                '• $feature',
-                                                style: TextStyle(
-                                                  color: AppColors.primaryColor2,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: plan.features.split(',').map(
+                                                (feature) => Text(
+                                              '• $feature',
+                                              style: TextStyle(
+                                                color: AppColors.primaryColor2,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
                                               ),
-                                            ).toList(),
-                                          ),
+                                            ),
+                                          ).toList(),
                                         ),
                                         SizedBox(height: 15),
                                         SizedBox(
@@ -212,14 +222,29 @@ class _ChoosePlanState extends State<ChoosePlan> {
                                           width: 110,
                                           child: RoundButton(title: "START Now", onPressed: () async{
                                             SharedPreferences prefs = await SharedPreferences.getInstance();
-                                            final orgID = prefs.getString('id');
+                                            final orgID = prefs.getString('org_id');
 
                                             if (orgID != null) {
                                               print("org_Id: $orgID");
                                               addSubscriptionToAccount(orgID, plan.id);
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) {
+                                                  return AlertDialog(
+                                                    title: Text('Your Plan has been selected'),
+                                                    content: Text('Our team will contact you soon'),
+                                                    actions: <Widget>[
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          Navigator.pushNamedAndRemoveUntil(context,LoginScreen.routeName, (route) => false);
+                                                        },
+                                                        child: Text('Close'),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
                                             } else {
-                                              // Handle the case when the storedCompanyId is null
-                                              // Display an error message or take appropriate action
                                               print("Company Id can't be null");
                                             }
                                           }),

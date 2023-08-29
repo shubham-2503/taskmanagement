@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart';
@@ -9,11 +10,13 @@ import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import 'package:pie_chart/pie_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../Providers/filterProvider.dart';
 import '../../models/report_model.dart';
 import '../../utils/app_colors.dart';
 import 'package:path/path.dart' as path;
 import 'package:intl/intl.dart';
 
+import 'appliedFilterModal.dart';
 import 'myFilter.dart';
 
 class ReportScreen extends StatefulWidget {
@@ -73,18 +76,52 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch data when the widget initializes
     fetchData();
   }
 
-  Future<void> fetchData(
-      {String? reportType,
-      bool? active,
-      String? onSchedule,
-      String? priority,
-      String? status,
-      String? startDate,
-      String? endDate}) async {
+  Future<dynamic> fetchTaskReportData() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final storedData = prefs.getString('jwtToken');
+    String? orgId =
+    prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+    if (orgId == null) {
+      // If the user hasn't switched organizations, use the organization ID obtained during login time
+      orgId = prefs.getString('org_id') ?? "";
+    }
+
+    print("OrgId: $orgId");
+
+    if (orgId == null) {
+      throw Exception('orgId not found locally');
+    }
+
+    final url = Uri.parse('http://43.205.97.189:8000/api/Common/taskReport?org_id=$orgId');
+
+    final headers = {
+      'Authorization': 'Bearer $storedData',
+    };
+
+    try {
+      final response = await http.get(url, headers: headers);
+
+      print("Status: ${response.statusCode}");
+      print("body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return responseData;
+      } else {
+        print("Failed to fetch the Task Report: ${response.statusCode}");
+        throw Exception('Failed to fetch the Task Report');
+      }
+    } catch (e) {
+      print("Failed to fetch the Task Report: $e");
+      throw Exception('Failed to fetch the Task Report');
+    }
+  }
+
+  Future<void> fetchData() async {
     print("APi calls");
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
@@ -104,24 +141,9 @@ class _ReportScreenState extends State<ReportScreen> {
 
     final Url =
         'http://43.205.97.189:8000/api/Common/taskReport?org_id=$orgId'; // Replace with your API base URL
-    // By default, set active to true
-    bool active = true;
 
-    // If the status is 'completed', set active to false
-    if (status == 'completed') {
-      active = false;
-    }
-
-    // Construct the query parameters
     final queryParams = {
       'org_id': orgId,
-      if (reportType != null) 'report_type': reportType,
-      if (active != null) 'active': active.toString(),
-      if (onSchedule != null) 'on_schedule': onSchedule,
-      if (priority != null) 'priority': priority,
-      if (status != null) 'status': status,
-      if (startDate != null) 'start_date': startDate,
-      if (endDate != null) 'end_date': endDate,
     };
 
     // Print the query parameters in JSON format
@@ -242,55 +264,116 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  Future<void> _downloadReport() async {
-    final pdf = pw.Document();
+  Future<void> _downloadReport(BuildContext context) async {
+    try {
+      final reportData = await fetchTaskReportData();
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      String? orgId =
+      prefs.getString("selectedOrgId"); // Get the selected organization ID
 
-    // Add content to the PDF
-    pdf.addPage(
-      pw.Page(
-        build: (pw.Context context) {
-          return pw.Center(
-            child: pw.Text('This is the report content'),
-          );
-        },
-      ),
-    );
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
 
-    // Save the PDF file
-    final directory = await getTemporaryDirectory();
-    final filePath = path.join(directory.path, 'report.pdf');
-    final file = File(filePath);
-    await file.writeAsBytes(await pdf.save());
+      print("OrgId: $orgId");
 
-    // Show a dialog with a download link
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final pdf = pw.Document();
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) {
+            return pw.Center(
+              child: pw.Text(reportData.toString()), // Adjust as per your report structure
+            );
+          },
+        ),
+      );
+
+      // Save the PDF file
+      final directory = await getTemporaryDirectory();
+      final filePath = path.join(directory.path, 'report.pdf');
+      final file = File(filePath);
+      await file.writeAsBytes(await pdf.save());
+
+      // Show a confirmation dialog
+      final confirm = await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
           title: Text('Download Report'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('The report has been downloaded.'),
-              SizedBox(height: 10),
-              TextButton(
-                onPressed: () {
-                  OpenFile.open(file.path);
-                },
-                child: Text('Open Report'),
-              ),
-            ],
-          ),
+          content: Text('Are you sure you want to download the report?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: Text('No'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: Text('Yes'),
+            ),
+          ],
+        ),
+      );
+      if (confirm == true) {
+        // Download the report using the export API endpoint
+        final exportResponse = await http.post(
+          Uri.parse('http://43.205.97.189:8000/api/Export/reportExport'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $storedData'},
+          body: jsonEncode(reportData),
         );
-      },
-    );
+
+        print("Status: ${exportResponse.statusCode}");
+        print("body: ${exportResponse.body}");
+
+        if (exportResponse.statusCode == 200) {
+          final exportFilePath = path.join(directory.path, 'exported_report.pdf');
+          final exportFile = File(exportFilePath);
+          await exportFile.writeAsBytes(exportResponse.bodyBytes);
+
+          // Show a dialog with a download link for the exported report
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: Text('Download Exported Report'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('The exported report has been downloaded.'),
+                    SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () {
+                        OpenFile.open(exportFile.path);
+                        // OpenFile.open(file.path);
+                      },
+                      child: Text('Open Exported Report'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        } else {
+          print('Failed to export report: ${exportResponse.statusCode}');
+        }
+      }
+    } catch (e) {
+      print('Error downloading report: $e');
+    }
   }
 
-  void _shareReport() {
-    // Add logic to share the report
-    // You can use a package like 'share' to share the report file or content
-  }
+  void _shareReport() {}
 
   @override
   Widget build(BuildContext context) {
@@ -357,7 +440,9 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
             actions: [
               IconButton(
-                onPressed: _downloadReport,
+                onPressed: ()async {
+                  await _downloadReport(context);
+                },
                 icon: Icon(
                   Icons.download,
                   color: AppColors.secondaryColor2,
@@ -381,15 +466,28 @@ class _ReportScreenState extends State<ReportScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   GestureDetector(
-                      onTap: () {
-                        showModalBottomSheet(
+                    onTap: () async {
+                      final appliedFilters = await showModalBottomSheet(
+                        context: context,
+                        builder: (BuildContext context) => MyFilterOptionsModal(),
+                      );
+
+                      if (appliedFilters != null) {
+                        print(appliedFilters);
+                        await showModalBottomSheet(
                           context: context,
-                          builder: (BuildContext context) =>
-                              MyFilterOptionsModal(),
+                          builder: (BuildContext context) {
+                            return SeparateSectionsModal(data: appliedFilters);
+                          },
                         );
-                      },
-                      child: Image.asset("assets/images/menu.png",
-                          width: 40, height: 40)),
+                      }
+                    },
+                    child: Image.asset(
+                      "assets/images/menu.png",
+                      width: 40,
+                      height: 40,
+                    ),
+                  ),
                 ],
               ),
               SizedBox(

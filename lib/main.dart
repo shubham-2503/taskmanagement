@@ -1,14 +1,17 @@
+import 'package:Taskapp/Providers/filterProvider.dart';
 import 'package:Taskapp/Providers/project_provider.dart';
 import 'package:Taskapp/routes.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:Taskapp/view/on_boarding/start_screen.dart';
+import 'package:Taskapp/view/projects/myProjectFilterProvider.dart';
+import 'package:Taskapp/view/tasks/widgets/mytasksFilter_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'Providers/session_provider.dart';
 import 'Providers/taskProvider.dart';
 import 'organization_proivider.dart';
@@ -16,6 +19,19 @@ import 'organization_proivider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  if(!kDebugMode) {
+
+    PlatformDispatcher.instance.onError = (error, stack) {
+      // If you wish to record a "non-fatal" exception, please remove the "fatal" parameter
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+    FlutterError.onError = (errorDetails) {
+      // If you wish to record a "non-fatal" exception, please use `FirebaseCrashlytics.instance.recordFlutterError` instead
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    };
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+  }
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   runApp(const MyApp());
 }
@@ -74,6 +90,12 @@ class _MyAppState extends State<MyApp> {
             create: (context) => TaskProvider()),
         ChangeNotifierProvider<ProjectDataProvider>(
             create: (context) => ProjectDataProvider()),
+        ChangeNotifierProvider<FilterProvider>(
+            create: (context) =>FilterProvider()),
+        ChangeNotifierProvider<TasksFilterNotifier>(
+          create: (_) => TasksFilterNotifier(),),
+        ChangeNotifierProvider<ProjectsFilterNotifier>(
+          create: (_) => ProjectsFilterNotifier(),),
       ],
       builder: (context, _) {
         return MaterialApp(

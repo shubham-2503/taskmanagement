@@ -65,6 +65,8 @@ dependencies:
   firebase_auth: ^4.7.0
   truecaller_sdk: ^0.1.2
   open_mail_app: ^0.4.5
+  google_fonts: ^5.1.0
+  flutter_excel: any
 #  calendar_agenda:
 #    path: dev_lib/calendar_agenda/
   pdf: ^3.10.4
@@ -87,6 +89,8 @@ dependencies:
   easy_refresh: ^3.3.2+1
   cupertino_refresh: ^0.9.5
   connectivity_plus: ^4.0.2
+  sqflite: ^2.3.0
+  firebase_crashlytics: ^3.3.5
 
 dev_dependencies:
   flutter_test:

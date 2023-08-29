@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:Taskapp/view/profile/addOrganization.dart';
 import 'package:Taskapp/view/profile/company_registration.dart';
 import 'package:Taskapp/view/subscription/chooseplan.dart';
 import 'package:Taskapp/view/subscription/renewPlan.dart';
@@ -14,13 +15,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../Providers/session_provider.dart';
 import '../../common_widgets/round_gradient_button.dart';
 import '../../utils/app_colors.dart';
+import 'forgetpassword/verificationScreens.dart';
+import 'inactivePlan.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String email;
   final String userId;
   final String roleId;
+  final String userType;
 
-  OTPVerificationScreen({required this.userId, required this.email, required this.roleId,});
+  OTPVerificationScreen({required this.userId, required this.email, required this.roleId, required this.userType,});
 
   @override
   State<OTPVerificationScreen> createState() => _OTPVerificationScreenState();
@@ -124,7 +128,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     }
   }
 
-  Future<void> verifyOTP(BuildContext context, String userId, String otp,String email,String roleId) async {
+  Future<void> verifyOTP(BuildContext context, String userId, String otp, String email, String roleId) async {
     print("Email: $email");
     print("UserId: $userId");
     print("RoleId: $roleId");
@@ -139,25 +143,27 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         'user_id': userId,
         'otp': otp,
       });
-
+      print("Api response: ${response.body}");
+      print("code: ${response.statusCode}");
       if (response.statusCode == 200) {
         print('OTP verification response: ${response.body}');
         final responseData = jsonDecode(response.body);
         bool status = responseData['status'];
-
         if (status) {
           var jwtToken = responseData['data']['jwtToken'];
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('jwtToken', jwtToken);
           var orgDetail = responseData['data']['org_detail'];
-          var orgId = orgDetail['org_id'];
+          var orgId = orgDetail != null ? orgDetail['org_id'] : null;
+
+          // Check if orgId is not null before setting it in SharedPreferences
           if (orgId != null) {
             await prefs.setString('org_id', orgId);
           }
-          print("OrgId: $orgId");
-          print("OrgId: $orgId");
-          bool subsStatus = orgDetail['subs_status'];
-          bool isSubscribed = orgDetail['is_subscribed'];
+          print("User_type = ${widget.userType}");
+          bool subsStatus = orgDetail != null ? orgDetail['subs_status'] : false;
+          bool isSubscribed = orgDetail != null ? orgDetail['is_subscribed'] : false;
+          bool isVerified = responseData['data']['is_verified'];
 
           String message = "OTP verification successful!";
           ScaffoldMessenger.of(context).showSnackBar(
@@ -170,23 +176,27 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             ),
           );
 
-          // Update session status in SessionProvider
-          final sessionProvider = Provider.of<SessionProvider>(
-              context, listen: false);
-          sessionProvider.setLoggedIn(true);
-
-          // Navigate based on org_details
-          if (orgDetail == null) {
+          if (!isVerified) {
             Navigator.pushReplacement(context, MaterialPageRoute(
-                builder: (context) =>
-                    CompanyRegistrationScreen(userId: userId)));
-          } else if (!subsStatus) {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => RenewPlanScreen()));
+              builder: (context) => VerificationScreen(email: email,),
+            ));
+          } else if (orgDetail == null) {
+            Navigator.pushReplacement(context, MaterialPageRoute(
+              builder: (context) =>CompanyRegistrationScreen(userId: userId, userType: widget.userType, roleId: widget.roleId,),
+            ));
           } else if (!isSubscribed) {
             Navigator.pushReplacement(context, MaterialPageRoute(
-                builder: (context) => ChoosePlan(orgId: orgId)));
+              builder: (context) => ChoosePlan(orgId: orgId),
+            ));
+          } else if (!subsStatus) {
+            Navigator.pushReplacement(context, MaterialPageRoute(
+              builder: (context) => InactivePlanScreen(),
+            ));
           } else {
+            // Update session status in SessionProvider
+            final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+            sessionProvider.setLoggedIn(true);
+
             Navigator.pushNamedAndRemoveUntil(
               context,
               DashboardScreen.routeName,
@@ -211,8 +221,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         }
       } else {
         // Request failed
-        String errorMessage = "Request failed with status: ${response
-            .statusCode}";
+        String errorMessage = "Request failed with status: ${response.statusCode}";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -229,9 +238,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       String errorMessage = "Error: $error";
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMessage,style: TextStyle(
-              color: Colors.black54
-          ),),
+          content: Text(
+            errorMessage,
+            style: TextStyle(
+              color: Colors.black54,
+            ),
+          ),
           backgroundColor: AppColors.primaryColor1,
         ),
       );

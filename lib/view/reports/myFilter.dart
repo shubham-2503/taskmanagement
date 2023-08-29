@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:provider/provider.dart';
+import '../../Providers/filterProvider.dart';
 import '../../utils/app_colors.dart';
 
 class MyFilterOptionsModal extends StatefulWidget {
@@ -28,76 +28,6 @@ class _MyFilterOptionsModalState extends State<MyFilterOptionsModal> {
     // Fetch data when the widget initializes
     fetchAllData();
   }
-
-  Future<void> fetchData({String? reportType, bool? active, String? onSchedule, String? priority, String? status, String? startDate, String? endDate}) async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  final storedData = prefs.getString('jwtToken');
-  String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-  if (orgId == null) {
-    // If the user hasn't switched organizations, use the organization ID obtained during login time
-    orgId = prefs.getString('org_id') ?? "";
-  }
-
-
-  print("OrgId: $orgId");
-
-  if (orgId == null) {
-    throw Exception('orgId not found locally');
-  }
-
-  final Url = 'http://43.205.97.189:8000/api/Common/taskReport?org_id=$orgId'; // Replace with your API base URL
-  // By default, set active to true
-  bool active = true;
-
-  // If the status is 'completed', set active to false
-  if (status == 'completed') {
-    active = false;
-  }
-
-  // Construct the query parameters
-  final queryParams = {
-    'org_id': orgId,
-    if (reportType != null) 'report_type': reportType,
-    if (active != null) 'active': active.toString(),
-    if (onSchedule != null) 'on_schedule': onSchedule,
-    if (priority != null) 'priority': priority,
-    if (status != null) 'status': status,
-    if (startDate != null) 'start_date': startDate,
-    if (endDate != null) 'end_date': endDate,
-  };
-
-  // Print the query parameters in JSON format
-  final queryParamsJson = jsonEncode(queryParams);
-  print('Query Parameters: $queryParamsJson');
-
-  final url = Uri.parse(Url).replace(queryParameters: queryParams);
-
-  final headers = {
-    'Authorization': 'Bearer $storedData', // Add the Authorization header with the JWT token
-  };
-
-  try {
-    final response = await http.get(url);
-    print("StatusCode: ${response.statusCode}");
-    print("Body: ${response.body}");
-
-    if (response.statusCode == 200) {
-      print("Successfully fetched the Reports");
-    } else if (response.statusCode == 401) {
-      print("Failed to fetched the Reports: ${response.statusCode}");
-    } else if (response.statusCode == 403) {
-      // Handle forbidden error
-      print("Failed to fetched the Reports: ${response.statusCode}");
-    } else {
-      // Handle other errors
-      print("Failed to fetched the Reports: ${response.statusCode}");
-    }
-  } catch (e) {
-    // Handle network or other errors
-    print("Failed to fetched the Reports");
-  }
-}
 
   Future<void> fetchAllData() async {
     try {
@@ -135,6 +65,7 @@ class _MyFilterOptionsModalState extends State<MyFilterOptionsModal> {
 
   @override
   Widget build(BuildContext context) {
+    final filterProvider = Provider.of<FilterProvider>(context);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(8.0),
@@ -154,17 +85,21 @@ class _MyFilterOptionsModalState extends State<MyFilterOptionsModal> {
                     SizedBox(
                       height: 30,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // // Call the fetchData API function here
-                          // fetchData(
-                          //   reportType: selectedReportType,
-                          //   active: selectedStatus == 'completed' ? false : true,
-                          //   onSchedule: selectedOnSchedule,
-                          //   priority: selectedpriority,
-                          //   status: selectedStatus,
-                          //   startDate: _startDateController.text,
-                          //   endDate: _endDateController.text,
-                          // );
+                        onPressed: () async {
+                          print("$selectedStatus");
+                          print("$selectedpriority");
+                          print("$selectedReportType");
+                          print("$selectedOnSchedule");
+                          print("${_startDateController.text.toString()}");
+                          print("${_endDateController.text.toString()}");
+                          filterProvider.selectedStatus = selectedStatus;
+                          filterProvider.selectedPriority = selectedpriority;
+                          filterProvider.selectedReportType = selectedReportType;
+                          filterProvider.startDate = _startDateController.text;
+                          filterProvider.endDate = _endDateController.text;
+                          // Apply filters and fetch data
+                          final selectedFilters = await filterProvider.applyFilters();
+                          Navigator.pop(context,selectedFilters);
                         },
                         child: Text(
                           "APPLY",
@@ -367,53 +302,6 @@ class _MyFilterOptionsModalState extends State<MyFilterOptionsModal> {
                           color: selectedReportType == 'TeamReport' ? AppColors.secondaryColor2 : AppColors.primaryColor1,
                         ),
                         child: Text('Team Report'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'On Schedule',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 10),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedOnSchedule = 'OnTrack';
-                        });
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(8),
-                        margin: EdgeInsets.symmetric(horizontal: 5),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(5),
-                          color: selectedOnSchedule == 'OnTrack' ? AppColors.secondaryColor2 : AppColors.primaryColor1,
-                        ),
-                        child: Text('On Track'),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedOnSchedule = 'OffTrack';
-                        });
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(8),
-                        margin: EdgeInsets.symmetric(horizontal: 5),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(5),
-                          color: selectedOnSchedule == 'offTrack' ? AppColors.secondaryColor2 : AppColors.primaryColor1,
-                        ),
-                        child: Text('Off Track'),
                       ),
                     ),
                   ],

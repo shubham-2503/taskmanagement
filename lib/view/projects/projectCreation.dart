@@ -140,7 +140,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
           // Create a Project instance with relevant data
           Project createdProject = Project(
             id: project['id'],
-            name: project['name'],owner: project['created_by'], status: project['status'], description: project['description'],
+            name: project['name'],owner: project['created_by'], status: project['status'], description: project['description'] ?? " ",
             // Set other properties as needed
           );
 

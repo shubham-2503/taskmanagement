@@ -9,7 +9,7 @@ class User {
     return User(
       userId: json['user_id'],
       userName: json['user_name'],
-      email: json.containsKey('email') ? json['email'] : '',
+      email: json.containsKey('email') ? json['email'] : null,
     );
   }
 }

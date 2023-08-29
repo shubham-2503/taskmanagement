@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:Taskapp/common_widgets/round_button.dart';
+import 'package:Taskapp/view/tasks/editCreatetasks.dart';
 import 'package:http/http.dart' as http;
 import 'package:Taskapp/view/projects/Projecttaskcreation.dart';
 import 'package:flutter/material.dart';
@@ -41,12 +42,12 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
   String? _selectedStatus;
   bool _isActive = true;
   List<Task> tasks = [];
+  late Project project;
 
   @override
   void initState() {
     super.initState();
     final projectId = widget.projectId;
-    // Call the API to fetch the tasks using the provided project ID
     fetchProjectTasks(widget.projectId!);
   }
 
@@ -178,9 +179,43 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     }
   }
 
+  Future<void> fetchProjectDetails() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'http://43.205.97.189:8000/api/Task/taskDetails?taskId=${widget.project.id}',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+
+        if (data.isNotEmpty) {
+          final projectJson = data.firstWhere(
+                (project) => project['id'] == widget.project.id,
+            orElse: () => null,
+          );
+
+          if (projectJson != null) {
+            final projectDetail = Project.fromJson(projectJson);
+
+            setState(() {
+              project = projectDetail;
+            });
+          }
+        }
+      } else {
+        print('API Error: Status Code ${response.statusCode}');
+        // Handle error scenario
+      }
+    } catch (e) {
+      print('Exception in fetchProjectDetails: $e');
+      // Handle exception
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+   Widget build(BuildContext context) {
     final ProjectId = widget.projectId;
     final projectName = widget.projectName;
     final assignee = widget.assigneeTo;
@@ -193,7 +228,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
 
     return Scaffold(
       body: Container(
-        padding: EdgeInsets.only(top: 60, left: 20, right: 20),
+        padding: EdgeInsets.only(top: 50, left: 10, right: 10),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,11 +260,23 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        IconButton(onPressed: (){
-                          print("Assigned Team: $assigneeteam");
-                          Navigator.push(context, MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project,)));
-                        }, icon: Icon(Icons.edit,color: AppColors.primaryColor1,)),
-                        SizedBox(width: 3,),
+                        IconButton(
+                          onPressed: () async {
+                            print("Assigned Team: $assigneeteam");
+                            await showModalBottomSheet(
+                            context: context,
+                            // isScrollControlled: true,
+                            builder: (BuildContext context) {
+                              return EditMyProject(project: widget.project);
+                            },
+                            );
+                            // After closing the modal, you can refresh your data here
+                            // For example, you can call a function to reload the projects
+                           fetchProjectDetails();
+                          },
+                          icon: Icon(Icons.edit, color: AppColors.primaryColor1),
+                        ),
+                        SizedBox(width: 2,),
                         IconButton(
                           onPressed: () async {
                             final result = await Navigator.push(
@@ -242,6 +289,10 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                             }
                           },
                           icon: Icon(Icons.add_task, color: AppColors.secondaryColor1),
+                        ),
+                        IconButton(
+                          onPressed: () async {},
+                          icon: Icon(Icons.add_circle, color: AppColors.secondaryColor1),
                         ),
                       ],
                     ),
@@ -260,10 +311,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                     ),
                   ),
                   Text("$status"),
-                  // Text(_selectedStatus ?? 'Active', style: TextStyle(
-                  //     fontSize: 12,
-                  //     color: AppColors.primaryColor2
-                  // ),),
                   Visibility(
                     visible: attachment != null && assigneeteam.isNotEmpty,
                     child: Row(
@@ -434,114 +481,11 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                                                         // Close the modal
                                                         Navigator.pop(context);
                                                         // Show the popup dialog with task details and options
-                                                        showDialog(
+                                                        showModalBottomSheet(
                                                           context: context,
-                                                          builder: (context) {
-                                                            Task task = tasks[index];
-                                                            // Initialize TextEditingController for each field
-                                                            TextEditingController projectNameController = TextEditingController(text: projectName);
-                                                            TextEditingController taskNameController = TextEditingController(text: task.taskName);
-                                                            TextEditingController descriptionController = TextEditingController(text: task.description);
-                                                            TextEditingController dueDateController = TextEditingController(text: formatDate(task.dueDate));
-                                                            TextEditingController statusController = TextEditingController(text: task.status);
-                                                            TextEditingController priorityController = TextEditingController(text: task.priority);
-                                                            TextEditingController assignedToController = TextEditingController(text: task.assignedTo.join(", "));
-
-                                                            return AlertDialog(
-                                                              title: Row(
-                                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                                children: [
-                                                                  RichText(
-                                                                    text: TextSpan(
-                                                                      text: "Task: ",
-                                                                      style: TextStyle(
-                                                                        color: AppColors.secondaryColor2,
-                                                                        fontSize: 18,
-                                                                        fontWeight: FontWeight.bold,
-                                                                      ),
-                                                                      children: [
-                                                                        TextSpan(
-                                                                          text: "${task.taskName}",
-                                                                          style: TextStyle(
-                                                                            color: AppColors.blackColor,
-                                                                            fontSize: 18,
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              content: Column(
-                                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                                mainAxisSize: MainAxisSize.min,
-                                                                children: [
-                                                                  TextFormField(
-                                                                    controller: projectNameController,
-                                                                    decoration: InputDecoration(labelText: "Project Name"),
-                                                                  ),
-                                                                  TextFormField(
-                                                                    controller: taskNameController,
-                                                                    decoration: InputDecoration(labelText: "Task Name"),
-                                                                  ),
-                                                                  TextFormField(
-                                                                    controller: descriptionController,
-                                                                    decoration: InputDecoration(labelText: "Description"),
-                                                                  ),
-                                                                  TextFormField(
-                                                                    controller: dueDateController,
-                                                                    decoration: InputDecoration(labelText: "Due Date"),
-                                                                  ),
-                                                                  TextFormField(
-                                                                    controller: statusController,
-                                                                    decoration: InputDecoration(labelText: "Status"),
-                                                                  ),
-                                                                  TextFormField(
-                                                                    controller: priorityController,
-                                                                    decoration: InputDecoration(labelText: "Priority"),
-                                                                  ),
-                                                                  TextFormField(
-                                                                    controller: assignedToController,
-                                                                    decoration: InputDecoration(labelText: "Assigned To"),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              actions: [
-                                                                SizedBox(
-                                                                  height: 30,
-                                                                  width: 80,
-                                                                  child: RoundButton(
-                                                                    title: "Save",
-                                                                    onPressed: () async {
-                                                                      // Perform the update here
-                                                                      Map<String, dynamic> updatedTaskData = {
-                                                                        "task_id": task.taskId, // Include taskId here
-                                                                        "name": taskNameController.text,
-                                                                        "description": descriptionController.text,
-                                                                        "priority": await _getPriorityUuidFromName(priorityController.text),
-                                                                        "end_date": task.dueDate,
-                                                                        "assigned_user": await _getUserUuidsFromNames(task.assignedTo),
-                                                                        "project_id": widget.projectId,
-                                                                        "status": await _getStatusUuidFromName(statusController.text),
-                                                                      };
-                                                                      await updateTask(updatedTaskData);
-
-                                                                      Navigator.pop(context);
-                                                                    },
-                                                                  ),
-                                                                ),
-                                                                SizedBox(
-                                                                  height: 30,
-                                                                  width: 80,
-                                                                  child: RoundButton(
-                                                                    title: "Cancel",
-                                                                    onPressed: () {
-                                                                      Navigator.pop(context);
-                                                                    },
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            );
+                                                          // isScrollControlled: true,
+                                                          builder: (BuildContext context) {
+                                                            return EditCreatedByTask(task: task,);
                                                           },
                                                         );
                                                       },

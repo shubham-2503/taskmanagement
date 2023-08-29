@@ -1,7 +1,6 @@
 import 'dart:convert';
-import 'package:Taskapp/common_widgets/round_button.dart';
+import 'package:Taskapp/common_widgets/round_gradient_button.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/comment_model.dart';
 import '../../models/fetch_user_model.dart';
@@ -27,11 +26,13 @@ class TaskDetailsScreen extends StatefulWidget {
   State<TaskDetailsScreen> createState() => _TaskDetailsScreenState();
 }
 
-class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
+class _TaskDetailsScreenState extends State<TaskDetailsScreen>  with SingleTickerProviderStateMixin {
   Activity _selectedActivityType = Activity.All;
+  late TabController _tabController;
   TextEditingController _commentController = TextEditingController();
   TextEditingController _replyController = TextEditingController();
   TextEditingController _editCommentController = TextEditingController();
+  TextEditingController _editreplyCommentController = TextEditingController();
   List<String> suggestedUsers = [];
   List<String> mentionedUserIds = [];
   bool showSuggestions = false;
@@ -45,10 +46,17 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    // Step 2: Initialize the FocusNode
+    _tabController = TabController(length: 3, vsync: this);
     fetchUsers();
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _commentController.dispose();
+    _replyController.dispose();
+    super.dispose();
+  }
 
   Color getCircleAvatarColor(String entry) {
     if (entry.contains('Comment:')) {
@@ -78,9 +86,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   }
 
   Future<void> replyComment(String commentId, String replyText, String taskId, List<String> mentionedUserIds,) async {
+    print("Commentid: $commentId");
+    print("ReplyText: $replyText");
+    print("TaskId: $taskId");
+    print("MentionedUsers: $mentionedUserIds");
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId = prefs.getString(
+        "selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -95,7 +108,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
 
     print("OrgId: $orgId");
-    final url = Uri.parse('http://43.205.97.189:8000/api/Comment/replyComment?comment_id=$commentId&replyText=$replyText&taskId=$taskId&org_id=$orgId');
+    final url = Uri.parse(
+        'http://43.205.97.189:8000/api/Comment/replyComment?comment_id=$commentId&replyText=$replyText&taskId=$taskId&org_id=$orgId');
 
     final headers = {
       'accept': '*/*',
@@ -121,7 +135,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
     if (response.statusCode == 200) {
       print('Reply comment successfully sent!');
-      Navigator.pop(context);
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -131,6 +144,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               InkWell(
                 onTap: () {
                   Navigator.pop(context);
+                  Navigator.pop(context,true);
+                  setState(() {
+                    fetchComments(widget.task.taskId!);
+                  });
                 },
                 child: Text(
                   "OK",
@@ -146,7 +163,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            content: Text("Unauthorized: ${response.body}"),
+            content: Text("Failed to reply on comments...session ends"),
             actions: [
               InkWell(
                 onTap: () {
@@ -169,7 +186,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            content: Text("Forbidden: ${response.body}"),
+            content: Text("FAiled to reply on Comments"),
             actions: [
               InkWell(
                 onTap: () {
@@ -191,7 +208,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            content: Text("Error: ${response.body}"),
+            title: Text("OOPs"),
+            content: Text("Failed to reply on Comments.Please try again"),
             actions: [
               InkWell(
                 onTap: () {
@@ -214,7 +232,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+      String? orgId = prefs.getString(
+          "selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
         // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -231,7 +250,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       print("OrgId: $orgId");
 
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
+        Uri.parse(
+            'http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -247,7 +267,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         if (responseBody != null && responseBody.isNotEmpty) {
           final List<dynamic> data = jsonDecode(responseBody);
           final List<String> users =
-              data.map((userJson) => User.fromJson(userJson).userName).toList();
+          data.map((userJson) =>
+          User
+              .fromJson(userJson)
+              .userName).toList();
 
           setState(() {
             suggestedUsers = users;
@@ -274,7 +297,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   Future<void> deleteComment(String commentId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId = prefs.getString(
+        "selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -289,7 +313,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
 
     print("OrgId: $orgId");
-    final url = Uri.parse('http://43.205.97.189:8000/api/Comment/deleteComment?comment_id=$commentId&org_id=$orgId');
+    final url = Uri.parse(
+        'http://43.205.97.189:8000/api/Comment/deleteComment?comment_id=$commentId&org_id=$orgId');
 
     final headers = {
       'accept': '*/*',
@@ -309,10 +334,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              content: Text(responseData['message'] ?? "Comment deleted successfully!"),
+              content: Text(
+                  responseData['message'] ?? "Comment deleted successfully!"),
               actions: [
                 InkWell(
                   onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      fetchComments(widget.task.taskId!);
+                    });
                     Navigator.pop(context);
                   },
                   child: Text(
@@ -330,7 +360,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              content: Text(responseData['message'] ?? "Failed to delete comment!"),
+              content: Text(
+                  responseData['message'] ?? "Failed to delete comment!"),
               actions: [
                 InkWell(
                   onTap: () {
@@ -358,7 +389,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
   }
 
-  void _showEditDeleteModal(String commentId,String CommentText) {
+  void _showEditDeleteModal(String commentId, String CommentText,String Commenter) {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -373,12 +404,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   showDialog(
                     context: context,
                     builder: (BuildContext context) {
-                      _editCommentController.text = CommentText; // Set the existing comment text to the controller
+                      _editCommentController.text =
+                          CommentText; // Set the existing comment text to the controller
                       return AlertDialog(
                         title: Text("Edit Comment"),
                         content: TextField(
                           controller: _editCommentController,
-                          decoration: InputDecoration(hintText: "Edit your comment..."),
+                          decoration: InputDecoration(
+                              hintText: "Edit your comment..."),
                         ),
                         actions: [
                           TextButton(
@@ -411,12 +444,144 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     builder: (BuildContext context) {
                       return AlertDialog(
                         title: Text("Delete Comment"),
-                        content: Text("Are you sure you want to delete this comment?"),
+                        content: Text(
+                            "Are you sure you want to delete this comment?"),
                         actions: [
                           TextButton(
                             onPressed: () {
-                              // Call the deleteComment method when the user confirms the deletion
                               deleteComment(commentId);
+                              Navigator.pop(context); // Close the dialog
+                            },
+                            child: Text("Yes"),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Close the dialog
+                            },
+                            child: Text("No"),
+                          ),
+                        ],
+                      );
+                    },
+                  ); // Close the bottom sheet
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showreplyModal(Reply reply) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.edit),
+                title: Text('Edit'),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      _editreplyCommentController.text = reply.replyText; // Set the existing comment text to the controller
+                      return AlertDialog(
+                        title: Text("Edit Comment"),
+                        content: Column(
+                          children: [
+                            Wrap(
+                              spacing: 4,
+                              children: reply.taggedUsers.toList().asMap().entries.map((entry) {
+                                int index = entry.key;
+                                Map<String, String> taggedUser = entry.value;
+
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(taggedUser['name']!),
+                                      SizedBox(width: 4),
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            List<Map<String, String>> updatedTaggedUsers = List.from(reply.taggedUsers);
+                                            updatedTaggedUsers.removeAt(index);
+
+                                            // Create a new instance of Reply with updated taggedUsers
+                                            Reply updatedReply = Reply(
+                                              replyId: reply.replyId,
+                                              replierName: reply.replierName,
+                                              replyText: reply.replyText,
+                                              replyTime: reply.replyTime,
+                                              taggedUsers: updatedTaggedUsers,
+                                              replyOfReply: reply.replyOfReply,
+                                            );
+
+                                            // Set the updated reply instance to the reply variable
+                                            reply = updatedReply;
+                                            print("Reply: ${reply.taggedUsers}");
+                                          });
+                                        },
+                                        child: Icon(Icons.close, size: 16),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            TextField(
+                              controller: _editreplyCommentController,
+                              decoration: InputDecoration(
+                                  hintText: "Edit your comment..."),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              String editedCommentText = _editreplyCommentController.text;
+                              List<String> editedTaggedUsers = _getTaggedUserNames(_editreplyCommentController.text);
+                              editComment(reply.replyId, editedCommentText,);
+                              Navigator.pop(context);
+                            },
+                            child: Text("Save"),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Close the dialog
+                            },
+                            child: Text("Cancel"),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete),
+                title: Text('Delete'),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text("Delete Comment"),
+                        content: Text(
+                            "Are you sure you want to delete this comment?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              deleteComment(reply.replyId);
                               Navigator.pop(context); // Close the dialog
                             },
                             child: Text("Yes"),
@@ -444,7 +609,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+      String? orgId = prefs.getString(
+          "selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
         // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -462,7 +628,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
       final response = await http.get(
         Uri.parse(
-            'http://43.205.97.189:8000/api/History/history?taskId=${widget.task.taskId}'),
+            'http://43.205.97.189:8000/api/History/history?taskId=${widget.task
+                .taskId}'),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -476,7 +643,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body) as List<dynamic>;
         final historyData =
-            jsonData.map((item) => item as Map<String, dynamic>).toList();
+        jsonData.map((item) => item as Map<String, dynamic>).toList();
         return historyData;
       } else {
         throw Exception('Failed to load history');
@@ -489,7 +656,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   Future<List<Comment>> fetchComments(String taskId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId = prefs.getString(
+        "selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -506,7 +674,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     print("OrgId: $orgId");
 
     final response = await http.get(
-      Uri.parse('http://43.205.97.189:8000/api/Comment/getComment?task_id=$taskId'),
+      Uri.parse(
+          'http://43.205.97.189:8000/api/Comment/getComment?task_id=$taskId'),
       headers: {
         'accept': '*/*',
         'Authorization': 'Bearer $storedData',
@@ -518,7 +687,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       List<Comment> commentsData = jsonData.map((commentMap) {
         List<Map<String, String>> taggedUsers = List<Map<String, String>>.from(
           (commentMap['tagged'] as List<dynamic>).map(
-                (taggedUserMap) => {
+                (taggedUserMap) =>
+            {
               'name': taggedUserMap['name'] as String,
               'user_id': taggedUserMap['user_id'] as String,
             },
@@ -526,11 +696,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         );
 
         List<Reply> replies = (commentMap['replies'] as List<dynamic>).map(
-              (replyMap) => Reply(
-            replierName: replyMap['name'] as String,
-            replyText: replyMap['comment'] as String,
-            replyTime: replyMap['time'] as String,
-          ),
+              (replyMap) =>
+              Reply.fromJson(replyMap), // Pass the correct JSON data for reply parsing
         ).toList();
 
         return Comment(
@@ -569,7 +736,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   Future<void> editComment(String commentId, String editedCommentText) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId = prefs.getString(
+        "selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -586,29 +754,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     print("OrgId: $orgId");
 
     final requestJson = mentionedUserIds.isEmpty ? [] : mentionedUserIds;
-    // Check if the edited comment contains mentions
-    final mentionPattern = RegExp(r'@\w+');
-    Iterable<Match> mentionMatches = mentionPattern.allMatches(editedCommentText);
-    String cleanedEditedCommentText = editedCommentText;
-    if (mentionMatches.isNotEmpty) {
-      // Remove mentions from the edited comment text
-      cleanedEditedCommentText = editedCommentText.replaceAll(RegExp(r'@\w+'), '').trim();
-      // Extract the mentioned users and add them to the mentionedUserIds list
-      for (Match match in mentionMatches) {
-        String mention = match.group(0)!;
-        String username = mention.substring(1); // Remove the "@" symbol
-        final userId = await getUserIdByUsername(username);
-        if (!mentionedUserIds.contains(userId)) {
-          mentionedUserIds.add(userId);
-          print("UserId: $userId");
-        }
-      }
-    }
-
-    print("cleaned Edited Text: $cleanedEditedCommentText");
     print("Mentioned Users: $mentionedUserIds");
 
-    final url = Uri.parse('http://43.205.97.189:8000/api/Comment/editComment?comment_id=$commentId&comment=$cleanedEditedCommentText');
+    final url = Uri.parse(
+        'http://43.205.97.189:8000/api/Comment/editComment?comment_id=$commentId&comment=$editedCommentText');
 
     final headers = {
       'accept': '*/*',
@@ -630,11 +779,16 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              content: Text(responseData['message'] ?? "Comment Edited Successfully!"),
+              content: Text(
+                  responseData['message'] ?? "Comment Edited Successfully!"),
               actions: [
                 InkWell(
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
+                    Navigator.pop(context,true);
+                    setState(() {
+                      fetchComments(widget.task.taskId!);
+                    });
                   },
                   child: Text(
                     "OK",
@@ -651,7 +805,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              content: Text(responseData['message'] ?? "Failed to edit comment!"),
+              content: Text(
+                  responseData['message'] ?? "Failed to edit comment!"),
               actions: [
                 InkWell(
                   onTap: () {
@@ -682,7 +837,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   Future<List<Map<String, dynamic>>> fetchActivityHistory(String taskId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId = prefs.getString(
+        "selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -710,21 +866,21 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     if (response.statusCode == 200) {
       final jsonData = jsonDecode(response.body) as List<dynamic>;
       final activityHistory =
-          jsonData.map((item) => item as Map<String, dynamic>).toList();
+      jsonData.map((item) => item as Map<String, dynamic>).toList();
       return activityHistory;
     } else {
       throw Exception('Failed to load activity history');
     }
   }
 
-  Widget _buildReportTypeText() {
-    switch (_selectedActivityType) {
+  Widget _buildReportTypeText(Activity reportType) {
+    switch (reportType) {
       case Activity.History:
         return FutureBuilder<List<Map<String, dynamic>>>(
           future: fetchHistory(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CircularProgressIndicator(); // Show a loading indicator while fetching data.
+              return _buildLoadingText(); // Show a loading indicator while fetching data.
             } else if (snapshot.hasError) {
               return Text('Error: ${snapshot.error}');
             } else {
@@ -758,7 +914,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                               text: userName,
                               style: TextStyle(
                                 color: AppColors
-                                    .primaryColor1, // Set the desired color for the userName
+                                    .primaryColor1,
+                                // Set the desired color for the userName
                                 fontWeight: FontWeight
                                     .bold, // You can customize other styles as well
                               ),
@@ -796,7 +953,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                 ),
                               ),
                               subtitle: Text(
-                                '${DateFormat('dd MMMM, yyyy hh:mm a').format(DateTime.parse(historyItem['time']))}',
+                                '${DateFormat('dd MMMM, yyyy hh:mm a').format(
+                                    DateTime.parse(historyItem['time']))}',
                                 style: TextStyle(
                                   fontStyle: FontStyle.italic,
                                   fontSize: 12,
@@ -819,7 +977,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           future: fetchComments(widget.task.taskId!),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CircularProgressIndicator();
+              return _buildLoadingText();
             } else if (snapshot.hasError) {
               return Text('Error: ${snapshot.error}');
             } else {
@@ -846,6 +1004,32 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         itemCount: commentsData.length,
                         itemBuilder: (context, index) {
                           Comment comment = commentsData[index];
+                          List<InlineSpan> commentTextSpans = [];
+                          if (comment.taggedUsers.isNotEmpty) {
+                            var taggedUserNames = comment.taggedUsers.map((user) => user['name']).join(', ');
+                            commentTextSpans.add(
+                              TextSpan(
+                                text: taggedUserNames,
+                                style: TextStyle(
+                                  color: AppColors.primaryColor2,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            );
+                            commentTextSpans.add(TextSpan(text: " "));
+                          }
+                          final commentTextParts = comment.commentText.split(" ");
+                          for (var textPart in commentTextParts) {
+                            if (!textPart.startsWith("@")) {
+                              commentTextSpans.add(
+                                TextSpan(
+                                  text: textPart,
+                                  style: TextStyle(color: AppColors.blackColor),
+                                ),
+                              );
+                            }
+                            commentTextSpans.add(TextSpan(text: " "));
+                          }
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -861,125 +1045,58 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                 ),
                                 title: Row(
                                   children: [
-                                    RichText(
-                                      text: TextSpan(
-                                        text: "${comment.commenterName}:",
-                                        style: TextStyle(
-                                          color: AppColors.secondaryColor2,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        children: [
-                                          if (comment.commentText.contains("@"))
-                                            ...comment.commentText.split(" ").map((textPart) {
-                                              if (textPart.startsWith("@")) {
-                                                // Apply the taggedUserStyle to tagged users
+                                    Container(
+                                      width: 190,
+                                      child: RichText(
+                                        text: TextSpan(
+                                          text: "${comment.commenterName}:",
+                                          style: TextStyle(
+                                            color: AppColors.secondaryColor2,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                            children: [
+                                              ...comment.taggedUsers.map((taggedUser) {
                                                 return TextSpan(
-                                                  text: "$textPart  ",
+                                                  text: "@${taggedUser['name']},",
                                                   style: TextStyle(
                                                     color: AppColors.primaryColor2,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 );
-                                              } else {
-                                                // Apply the commentTextStyle to the rest of the comment text
-                                                return TextSpan(
-                                                  text: textPart,
-                                                  style: TextStyle(color: AppColors.blackColor),
-                                                );
-                                              }
-                                            }).toList()
-                                          else
-                                            TextSpan(text: comment.commentText, style: TextStyle(color: AppColors.blackColor)),
-                                        ],
+                                              }).toList(),
+                                              TextSpan(
+                                                text: comment.commentText,
+                                                style: TextStyle(
+                                                  color: AppColors.blackColor,
+                                                ),
+                                              ),
+                                            ]
+                                        ),
                                       ),
                                     ),
                                     Spacer(),
-                                    IconButton(onPressed: (){
-                                      _showEditDeleteModal(comment.commentId,comment.commentText);
-                                    }, icon: Icon(Icons.edit,color: AppColors.secondaryColor2,)),
+                                    IconButton(onPressed: () {
+                                      _showEditDeleteModal(comment.commentId,
+                                          comment.commentText,comment.commenterName);
+                                    }, icon: Icon(Icons.more_vert,
+                                          color: AppColors.secondaryColor2,)),
                                     IconButton(
                                       onPressed: () {
                                         print("Icon Pressed");
-                                        showDialog(
-                                          context: context,
-                                          builder: (BuildContext context) {
-                                            return AlertDialog(
-                                              title: Text("Reply"),
-                                              content: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Container(
-                                                    padding: EdgeInsets.all(16.0),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.black26, // Add the color here within the BoxDecoration
-                                                      borderRadius: BorderRadius.circular(10.0),
-                                                    ),
-                                                    child: Row(
-                                                      children: [
-                                                        Text(
-                                                          "Replying to ${comment.commenterName}:",
-                                                          style: TextStyle(fontWeight: FontWeight.bold),
-                                                        ),
-                                                        IconButton(
-                                                          onPressed: () {
-                                                            Navigator.pop(context);
-                                                          },
-                                                          icon: Icon(Icons.close),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  TextField(
-                                                    controller: _replyController,
-                                                    decoration: InputDecoration(hintText: "Write your reply..."),
-                                                  ),
-                                                ],
-                                              ),
-                                              actions: [
-                                                SizedBox(
-                                                  height: 40,
-                                                  width: 70,
-                                                  child: RoundButton(
-                                                    title: "Reply",
-                                                    onPressed: () async {
-                                                      String replyText = _replyController.text;
-                                                      // Add the commenter's name with "@" symbol to the reply text
-                                                      String replyWithMention = "${comment.commenterName} $replyText";
-
-                                                      // Send the reply to the backend
-                                                      await replyComment(comment.commentId, replyWithMention, widget.task.taskId!, mentionedUserIds);
-
-                                                      // Process the replyWithMention as needed (e.g., store it).
-                                                      _replyController.clear(); // Clear the reply text field
-                                                      Navigator.pop(context); // Close the dialog
-                                                    },
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                  height: 40,
-                                                  width: 90,
-                                                  child: RoundButton(
-                                                    title: "Cancel",
-                                                    onPressed: () {
-                                                      _replyController.clear(); // Clear the reply text field
-                                                      Navigator.pop(context); // Close the dialog
-                                                    },
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        );
+                                        _replyBottomSheet(context,comment);
                                       },
-                                      icon: Icon(Icons.reply,color: AppColors.secondaryColor2,),
+                                      icon: Icon(Icons.reply,
+                                        color: AppColors.secondaryColor2,),
                                     ),
                                   ],
                                 ),
                                 subtitle: Row(
                                   children: [
                                     Text(
-                                      '${DateFormat('dd MMMM, yyyy').format(DateTime.parse(comment.commentTime))}',
+                                      '${DateFormat('dd MMMM, yyyy').format(
+                                          DateTime.parse(
+                                              comment.commentTime))}',
                                       style: TextStyle(
                                         fontStyle: FontStyle.italic,
                                         fontSize: 12,
@@ -995,23 +1112,108 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                     // ),
                                     SizedBox(width: 10,),
                                     InkWell(
-                                        onTap: (){
+                                        onTap: () {
                                           setState(() {
                                             showReplies = !showReplies;
                                           });
                                         },
-                                        child: Text("View ${comment.replies.length} comments",style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.secondaryColor2
-                                        ),)),
+                                        child: Text("View ${comment.replies
+                                            .length} comments",
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.secondaryColor2
+                                          ),)),
                                   ],
                                 ),
                               ),
 
-                              // Display replies here using ListView.builder or other widgets
+                              // // Display replies here using ListView.builder or other widgets
+                              // if (comment.replies.isNotEmpty && showReplies)
+                              //   Padding(
+                              //     padding: const EdgeInsets.only(left: 40.0),
+                              //     // Add indentation for replies
+                              //     child: Column(
+                              //       crossAxisAlignment: CrossAxisAlignment
+                              //           .start,
+                              //       children: comment.replies.map((reply) {
+                              //         return ListTile(
+                              //           leading: CircleAvatar(
+                              //             child: Text(
+                              //               reply.replierName[0],
+                              //               style: TextStyle(
+                              //                 color: Colors.white,
+                              //               ),
+                              //             ),
+                              //             backgroundColor: AppColors
+                              //                 .primaryColor1,
+                              //           ),
+                              //           title: Row(
+                              //             children: [
+                              //               RichText(
+                              //                 text: TextSpan(
+                              //                   children: [
+                              //                     TextSpan(
+                              //                       text: "${reply.replierName}: ",
+                              //                       style: TextStyle(
+                              //                         color: AppColors.secondaryColor2,
+                              //                         fontSize: 12,
+                              //                         fontWeight: FontWeight.bold,
+                              //                       ),
+                              //                     ),
+                              //                     TextSpan(
+                              //                       text: reply.replyText,
+                              //                       style: TextStyle(
+                              //                         color: AppColors.blackColor,
+                              //                         fontSize: 10,
+                              //                         fontWeight: FontWeight.bold,
+                              //                       ),
+                              //                     ),
+                              //                   ],
+                              //                 ),
+                              //               ),
+                              //               Spacer(),
+                              //               IconButton(onPressed: () {
+                              //                 _showreplyModal(reply);
+                              //               }, icon: Icon(Icons.more_vert,
+                              //                 color: AppColors.secondaryColor2,)),
+                              //               IconButton(
+                              //                 onPressed: () {
+                              //                   print("Icon Pressed");
+                              //                   _replyBottomSheet(context,comment);
+                              //                 },
+                              //                 icon: Icon(Icons.reply,
+                              //                   color: AppColors.secondaryColor2,),
+                              //               ),
+                              //             ],
+                              //           ),
+                              //           subtitle: Column(
+                              //             crossAxisAlignment: CrossAxisAlignment
+                              //                 .start,
+                              //             children: [
+                              //               Row(
+                              //                 children: [
+                              //                   Text(
+                              //                     '${DateFormat(
+                              //                         'dd MMMM, yyyy hh:mm a')
+                              //                         .format(DateTime.parse(
+                              //                         reply.replyTime))}',
+                              //                     style: TextStyle(
+                              //                       fontStyle: FontStyle.italic,
+                              //                       fontSize: 8,
+                              //                     ),
+                              //                   ),
+                              //                 ],
+                              //               ),
+                              //             ],
+                              //           ),
+                              //         );
+                              //       }).toList(),
+                              //     ),
+                              //   ),
                               if (comment.replies.isNotEmpty && showReplies)
                                 Padding(
-                                  padding: const EdgeInsets.only(left: 40.0), // Add indentation for replies
+                                  padding: const EdgeInsets.only(left: 40.0),
+                                  // Add indentation for replies
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: comment.replies.map((reply) {
@@ -1025,21 +1227,90 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                           ),
                                           backgroundColor: AppColors.primaryColor1,
                                         ),
-                                        title: Text(
-                                          "${reply.replierName}:",
-                                          style: TextStyle(
-                                            color: AppColors.secondaryColor2,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        title: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  width: 150,
+                                                  child: RichText(
+                                                    text: TextSpan(
+                                                        text: "${reply.replierName}:",
+                                                        style: TextStyle(
+                                                          color: AppColors.secondaryColor2,
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                        children: [
+                                                          ...reply.taggedUsers.map((taggedUser) {
+                                                            return TextSpan(
+                                                              text: "@${taggedUser['name']},",
+                                                              style: TextStyle(
+                                                                color: AppColors.primaryColor2,
+                                                                fontWeight: FontWeight.bold,
+                                                              ),
+                                                            );
+                                                          }).toList(),
+                                                          TextSpan(
+                                                            text: reply.replyText,
+                                                            style: TextStyle(
+                                                              color: AppColors.blackColor,
+                                                            ),
+                                                          ),
+                                                        ]
+                                                    ),
+                                                  ),
+                                                ),
+                                                // RichText(
+                                                //   text: TextSpan(
+                                                //     children: [
+                                                //       TextSpan(
+                                                //         text: "${reply.replierName}: ",
+                                                //         style: TextStyle(
+                                                //           color: AppColors.secondaryColor2,
+                                                //           fontSize: 12,
+                                                //           fontWeight: FontWeight.bold,
+                                                //         ),
+                                                //       ),
+                                                //       TextSpan(
+                                                //         text: reply.replyText,
+                                                //         style: TextStyle(
+                                                //           color: AppColors.blackColor,
+                                                //           fontSize: 10,
+                                                //           fontWeight: FontWeight.bold,
+                                                //         ),
+                                                //       ),
+                                                //     ],
+                                                //   ),
+                                                // ),
+                                                Spacer(),
+                                                IconButton(
+                                                  onPressed: () {
+                                                    _showreplyModal(reply);
+                                                  },
+                                                  icon: Icon(
+                                                    Icons.more_vert,
+                                                    color: AppColors.secondaryColor2,
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  onPressed: () {
+                                                    print("Icon Pressed");
+                                                    _replyBottomSheet(context, comment);
+                                                  },
+                                                  icon: Icon(
+                                                    Icons.reply,
+                                                    color: AppColors.secondaryColor2,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
                                         subtitle: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              reply.replyText,
-                                              style: TextStyle(color: AppColors.blackColor, fontSize: 10),
-                                            ),
                                             Row(
                                               children: [
                                                 Text(
@@ -1069,13 +1340,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           },
         );
 
-
       default:
         return FutureBuilder<List<Map<String, dynamic>>>(
           future: fetchActivityHistory(widget.task.taskId!),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CircularProgressIndicator(); // Show a loading indicator while fetching data.
+              return _buildLoadingText();// Show a loading indicator while fetching data.
             } else if (snapshot.hasError) {
               return Text('Error: ${snapshot.error}');
             } else {
@@ -1103,7 +1373,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           final activityTime = activity['time'] as String;
                           final activityUserName = activity['name'] as String;
 
-                          List<Map<String, dynamic>> taggedUsers = activity['tagged']!=null ? List<Map<String,dynamic>>.from(activity['tagged']): [];
+                          List<Map<String,
+                              dynamic>> taggedUsers = activity['tagged'] != null
+                              ? List<Map<String, dynamic>>.from(
+                              activity['tagged'])
+                              : [];
 
                           String taggedUserString = taggedUsers
                               .map((taggedUser) => "@${taggedUser['name']}")
@@ -1116,7 +1390,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           for (Map<String, dynamic> taggedUser in taggedUsers) {
                             final taggedUserName = taggedUser['name'] as String;
                             final userMention = "@$taggedUserName";
-                            displayActivityComment = displayActivityComment.replaceAll("@$taggedUserName", userMention);
+                            displayActivityComment = displayActivityComment
+                                .replaceAll("@$taggedUserName", userMention);
                           }
 
                           return ListTile(
@@ -1139,17 +1414,25 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                       fontWeight: FontWeight.bold),
                                   children: [
                                     if (displayActivityComment.contains("@"))
-                                      ...displayActivityComment.split(" ").map((textPart) {
+                                      ...displayActivityComment.split(" ").map((
+                                          textPart) {
                                         if (textPart.startsWith("@")) {
                                           // Apply the taggedUserStyle to tagged users
-                                          return TextSpan(text: "$textPart  "  , style: TextStyle(color: AppColors.primaryColor2,fontWeight: FontWeight.bold));
+                                          return TextSpan(text: "$textPart  ",
+                                              style: TextStyle(color: AppColors
+                                                  .primaryColor2,
+                                                  fontWeight: FontWeight.bold));
                                         } else {
                                           // Apply the commentTextStyle to the rest of the comment text
-                                          return TextSpan(text: textPart, style: TextStyle(color: AppColors.blackColor));
+                                          return TextSpan(text: textPart,
+                                              style: TextStyle(
+                                                  color: AppColors.blackColor));
                                         }
                                       }).toList()
                                     else
-                                      TextSpan(text: displayActivityComment,style: TextStyle(color: AppColors.blackColor)),
+                                      TextSpan(text: displayActivityComment,
+                                          style: TextStyle(
+                                              color: AppColors.blackColor)),
                                   ],
                                 ),
                               ),
@@ -1157,7 +1440,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             subtitle: Row(
                               children: [
                                 Text(
-                                  '${DateFormat('dd MMMM, yyyy hh:mm a').format(DateTime.parse(activityTime))}',
+                                  '${DateFormat('dd MMMM, yyyy hh:mm a').format(
+                                      DateTime.parse(activityTime))}',
                                   style: TextStyle(
                                     fontStyle: FontStyle.italic,
                                     fontSize: 12,
@@ -1178,12 +1462,147 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
   }
 
+  void _replyBottomSheet(BuildContext context,Comment comment){
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Container(
+              padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 48.0), // Added padding from bottom
+              margin: EdgeInsets.only(bottom: 20.0),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("Reply to ${comment.commenterName}",style: TextStyle(
+                            color: AppColors.secondaryColor2,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),),
+                          IconButton(onPressed: (){
+                            Navigator.pop(context);
+                          }, icon: Icon(Icons.close)),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 10,),
+                    Container(
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      decoration: BoxDecoration(
+                        color: AppColors.whiteColor,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: TextFormField(
+                        decoration: InputDecoration(
+                            hintText: "Reply to ${comment.commenterName}",
+                            contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AppColors.secondaryColor2,
+                                width: 1.2,
+                              ),
+                            )
+                        ),
+                        controller:_replyController,
+                        onChanged: (text) {
+                          if (text.endsWith('@')) {
+                            setState(() {
+                              showSuggestions = true;
+                            });
+                          } else {
+                            setState(() {
+                              showSuggestions = false;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    if (showSuggestions)
+                      ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: suggestedUsers.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            title: Text(suggestedUsers[index]),
+                            onTap: () {
+                              final currentText = _replyController.text;
+                              final cursorPosition =
+                                  _replyController.selection.base.offset;
+                              final newText = currentText.substring(0, cursorPosition) + suggestedUsers[index] + ' ' +
+                                  currentText.substring(cursorPosition);
+
+                              setState(() {
+                                _replyController.text = newText;
+                                mentionedUserIds.add(suggestedUsers[index]);
+                                showSuggestions = false;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    SizedBox(height: 20,),
+                    RoundGradientButton(
+                      title: "Send",
+                      onPressed: () async {
+                        String replyText = _replyController.text;
+                        print("Reply Text: $replyText");
+
+                        List<String> mentionedUserIdsList = []; // Create a list to store user IDs
+
+                        for (String mentionedUser in mentionedUserIds) {
+                          print("Mentioned User: @$mentionedUser");
+                        }
+
+                        String replyTextWithoutMentions = replyText;
+                        for (String mentionedUser in mentionedUserIds) {
+                          replyTextWithoutMentions = replyTextWithoutMentions.replaceAll('@$mentionedUser', '');
+                        }
+                        replyTextWithoutMentions = replyTextWithoutMentions.trim(); // Remove unnecessary spaces
+
+                        print("Reply Text without Mentions: $replyTextWithoutMentions");
+
+                        for (String mentionedUser in mentionedUserIds) {
+                          try {
+                            String userId = await getUserIdByUsername(mentionedUser);
+                            if (!mentionedUserIdsList.contains(userId)) {
+                              mentionedUserIdsList.add(userId); // Store user ID in the list if not already present
+                            }
+                            print("Mentioned User: [$userId]");
+                          } catch (e) {
+                            print("Error getting user ID for $mentionedUser: $e");
+                          }
+                        }
+                        print("Mentioned User IDs List: $mentionedUserIdsList");
+                        await replyComment(comment.commentId, replyTextWithoutMentions, widget.task.taskId!, mentionedUserIdsList);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingText() {
+    return Text('Loading data...');
+  }
 
   Future<String> getUserIdByUsername(String username) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+      String? orgId = prefs.getString(
+          "selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
         // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -1200,7 +1619,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       print("OrgId: $orgId");
 
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
+        Uri.parse(
+            'http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
@@ -1213,7 +1633,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> users = jsonDecode(response.body);
         final user = users.firstWhere(
-          (user) => user['name'].toLowerCase() == username.toLowerCase(),
+              (user) => user['name'].toLowerCase() == username.toLowerCase(),
           orElse: () => null,
         );
 
@@ -1235,74 +1655,113 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
   }
 
-  Future<String> addComment(String taskId, String commentText) async {
+  Future<String> addComment(String taskId, String commentText,List<String> mentionedUserIds) async {
+    print("$taskId");
+    print("$commentText");
+    print("$mentionedUserIds");
     try {
       if (commentText.isEmpty) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              content: Text("Comment Cannot be empty!"),
+              actions: [
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(context,true);
+                    setState(() {
+                      fetchComments(widget.task.taskId!);
+                    });
+                  },
+                  child: Text(
+                    "OK",
+                    style: TextStyle(color: AppColors.blackColor, fontSize: 20),
+                  ),
+                )
+              ],
+            );
+          },
+        );
         throw Exception('Comment cannot be empty');
       }
-
-      List<Map<String, String>> mentionedUsers = [];
-      final mentionPattern = RegExp(r'@\w+');
-      Iterable<Match> mentionMatches = mentionPattern.allMatches(commentText);
-      String cleanedCommentText = commentText;
-      if (mentionMatches.isNotEmpty) {
-        cleanedCommentText = commentText.replaceAll(RegExp(r'@\w+'), '').trim();
-        for (Match match in mentionMatches) {
-          String mention = match.group(0)!;
-          String username = mention.substring(1); // Remove the "@" symbol
-          final userId = await getUserIdByUsername(username);
-          if (!mentionedUsers.any((user) => user['userId'] == userId)) {
-            mentionedUsers.add({
-              'userId': userId,
-              'username': username,
-            });
-            print("Mentioned User: $username ($userId)");
-          }
-        }
-      }
-
-      print("Cleaned Text: $cleanedCommentText");
-      print("Mentioned Users: $mentionedUsers");
-
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-      if (orgId == null) {
-        // If the user hasn't switched organizations, use the organization ID obtained during login time
-        orgId = prefs.getString('org_id') ?? "";
-      }
-
-      print("OrgId: $orgId");
-
-
-      if (orgId == null) {
-        throw Exception('orgId not found locally');
-      }
-
-      print("OrgId: $orgId");
       print("Stored: $storedData");
 
+      List<String> requestBody = mentionedUserIds.isNotEmpty ? mentionedUserIds : [];
+
+      print("Request Body: $requestBody");
+
       final response = await http.post(
-        Uri.parse('http://43.205.97.189:8000/api/Comment/newComment?task_id=$taskId&comment=$cleanedCommentText&org_id=$orgId'),
+        Uri.parse(
+            'http://43.205.97.189:8000/api/Comment/newComment?task_id=$taskId&comment=$commentText'),
         headers: {
           'Content-Type': 'application/json',
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
         },
-        body: jsonEncode(mentionedUsers),
+        body: jsonEncode(requestBody),
       );
 
       print("API response: ${response.body}");
       print("StatusCode: ${response.statusCode}");
+      print('Request Body: ${jsonEncode(requestBody)}');
+
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         final comment = responseBody['data']['comment'];
         print('New Comment Text: $comment');
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              content: Text("Comment Added Successfully!"),
+              actions: [
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(context);
+                    Navigator.pop(context,true);
+                    setState(() {
+                      fetchComments(widget.task.taskId!);
+                    });
+                  },
+                  child: Text(
+                    "OK",
+                    style: TextStyle(color: AppColors.blackColor, fontSize: 20),
+                  ),
+                )
+              ],
+            );
+          },
+        );
         return comment;
       } else {
         print('Failed to add comment: StatusCode: ${response.statusCode}');
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              content: Text("Failed to add Comments!"),
+              actions: [
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(context);
+                    Navigator.pop(context,true);
+                    setState(() {
+                      fetchComments(widget.task.taskId!);
+                    });
+                  },
+                  child: Text(
+                    "OK",
+                    style: TextStyle(color: AppColors.blackColor, fontSize: 20),
+                  ),
+                )
+              ],
+            );
+          },
+        );
         throw Exception('Failed to add comment');
       }
     } catch (e) {
@@ -1331,493 +1790,353 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // title: Text("Add new Comments"),
         actions: [
           IconButton(
             onPressed: () {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return Dialog(
-                    child:  SingleChildScrollView(
-                      reverse: true,
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Stack(
-                                  children: [
-                                    TypeAheadFormField<String>(
-                                      textFieldConfiguration: TextFieldConfiguration(
-                                        controller: _commentController,
-                                        onChanged: (text) {
-                                          if (text.endsWith("@") && text.length > 1) {
-                                            fetchUsers();
-                                            setState(() {
-                                              showSuggestions = true;
-                                            });
-                                          } else {
-                                            setState(() {
-                                              showSuggestions = false;
-                                            });
-                                          }
-                                        },
-                                        decoration: InputDecoration(
-                                          hintText: "Write your comment...",
-                                        ),
-                                      ),
-                                      suggestionsCallback: (pattern) async {
-                                        final atIndex = pattern.indexOf("@");
-                                        if (atIndex != -1 && atIndex + 1 < pattern.length) {
-                                          final searchQuery =
-                                          pattern.substring(atIndex + 1).toLowerCase();
-                                          final filteredUsers = suggestedUsers
-                                              .where((user) =>
-                                              user.toLowerCase().contains(searchQuery))
-                                              .toList();
-                                          return filteredUsers;
-                                        } else {
-                                          return suggestedUsers;
-                                        }
-                                      },
-                                      itemBuilder: (context, suggestion) {
-                                        return ListTile(
-                                          leading: CircleAvatar(
-                                            child: Text(suggestion.substring(0, 1)),
-                                          ),
-                                          title: Text(suggestion),
-                                        );
-                                      },
-                                      onSuggestionSelected: (suggestion) async {
-                                        // Append the selected suggestion to the comment box
-                                        // Fetch the userId corresponding to the mentioned username
-                                        final userId = await getUserIdByUsername(suggestion);
-                                        // Add the userId to the mentionedUserIds list
-                                        setState(() {
-                                          mentionedUserIds.add(userId);
-                                        });
-
-                                        // Append the selected suggestion to the comment box
-                                        final currentText = _commentController.text;
-                                        final lastAtSymbolIndex = currentText.lastIndexOf("@");
-                                        final newText =
-                                            currentText.substring(0, lastAtSymbolIndex) +
-                                                "@$suggestion ";
-
-                                        // Clear the input field
-                                        _commentController.clear();
-                                        _commentController.text = newText;
-                                      },
-                                    ),
-                                    Visibility(
-                                      visible: showSuggestions,
-                                      child: Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        child: Card(
-                                          elevation: 4.0,
-                                          child: SizedBox(
-                                            height: 200,
-                                            child: ListView.builder(
-                                              itemCount: suggestedUsers.length,
-                                              itemBuilder: (context, index) {
-                                                final suggestion = suggestedUsers[index];
-                                                return ListTile(
-                                                  leading: CircleAvatar(
-                                                    child: Text(suggestion.substring(0, 1)),
-                                                  ),
-                                                  title: Text(suggestion),
-                                                  onTap: () async {
-                                                    // Append the selected suggestion to the comment box
-                                                    // Fetch the userId corresponding to the mentioned username
-                                                    final userId =
-                                                    await getUserIdByUsername(suggestion);
-                                                    // Add the userId to the mentionedUserIds list
-                                                    setState(() {
-                                                      mentionedUserIds.add(userId);
-                                                    });
-
-                                                    // Append the selected suggestion to the comment box
-                                                    final currentText =
-                                                        _commentController.text;
-                                                    final lastAtSymbolIndex =
-                                                    currentText.lastIndexOf("@");
-                                                    final newText =
-                                                        currentText.substring(0, lastAtSymbolIndex) +
-                                                            "@$suggestion ";
-
-                                                    // Clear the input field
-                                                    _commentController.clear();
-                                                    _commentController.text = newText;
-                                                  },
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(width: 10.0),
-                              GestureDetector(
-                                onTap: () async {
-                                  // Implement the send comments logic here
-                                  await addComment(
-                                    widget.task.taskId!,
-                                    _commentController.text!,
-                                  );
-
-                                  // Fetch the comments again to refresh the list
-                                  await fetchComments(widget.task.taskId!);
-
-                                  // Optionally, you can use setState to trigger a UI refresh if needed
-                                  setState((){
-                                    // After successfully adding the comment, clear the input field
-                                    _commentController.clear();
-                                  });
-
-                                  // Now, navigate back to the previous screen (assuming the comments section is on the previous screen)
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Comment added successfully'),
-                                      duration: Duration(seconds: 2),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: 12.0,
-                                    horizontal: 16.0,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primaryColor1,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    'Send',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
+              _openBottomSheet(context);
             },
             icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
           ),
           Text(
             "Add comments",
-            style: TextStyle(color: AppColors.secondaryColor2, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: AppColors.secondaryColor2, fontWeight: FontWeight.bold),
           ),
         ],
       ),
-        body: Container(
-            padding: EdgeInsets.only(top: 40, left: 20, right: 20),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    width: 120,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryColor1,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.all(8.0),
-                    child: DropdownButtonFormField<Activity>(
-                      decoration: InputDecoration.collapsed(hintText: ''),
-                      value: _selectedActivityType,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedActivityType = value!;
-                        });
-                      },
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      selectedItemBuilder: (BuildContext context) {
-                        return [
-                          Text(
-                            'All',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Comments',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Activity',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ];
-                      },
-                      items: Activity.values.map((activity) {
-                        return DropdownMenuItem<Activity>(
-                          value: activity,
-                          child: Text(
-                            activity.toString().split('.').last,
-                            style: TextStyle(color: Colors.black),
-                          ),
-                        );
-                      }).toList(),
-                    ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(
+                child: Text(
+                  'All',
+                  style: TextStyle(
+                    color: AppColors.secondaryColor2, // Change the text color as needed
+                    fontSize: 16, // Change the font size as needed
+                    fontWeight: FontWeight.bold, // Change the font weight as needed
                   ),
-                ],
+                ),
               ),
-              _buildReportTypeText(),
-               // SingleChildScrollView(
-               //      reverse: true,
-               //      child: Column(
-               //        children: [
-               //          Row(
-               //            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-               //            children: [
-               //              Expanded(
-               //                child: Stack(
-               //                  children: [
-               //                    TypeAheadFormField<String>(
-               //                      textFieldConfiguration: TextFieldConfiguration(
-               //                        controller: _commentController,
-               //                        onChanged: (text) {
-               //                          if (text.endsWith("@") && text.length > 1) {
-               //                            fetchUsers();
-               //                            setState(() {
-               //                              showSuggestions = true;
-               //                            });
-               //                          } else {
-               //                            setState(() {
-               //                              showSuggestions = false;
-               //                            });
-               //                          }
-               //                        },
-               //                        decoration: InputDecoration(
-               //                          hintText: "Write your comment...",
-               //                        ),
-               //                      ),
-               //                      suggestionsCallback: (pattern) async {
-               //                        final atIndex = pattern.indexOf("@");
-               //                        if (atIndex != -1 && atIndex + 1 < pattern.length) {
-               //                          final searchQuery =
-               //                          pattern.substring(atIndex + 1).toLowerCase();
-               //                          final filteredUsers = suggestedUsers
-               //                              .where((user) =>
-               //                              user.toLowerCase().contains(searchQuery))
-               //                              .toList();
-               //                          return filteredUsers;
-               //                        } else {
-               //                          return suggestedUsers;
-               //                        }
-               //                      },
-               //                      itemBuilder: (context, suggestion) {
-               //                        return ListTile(
-               //                          leading: CircleAvatar(
-               //                            child: Text(suggestion.substring(0, 1)),
-               //                          ),
-               //                          title: Text(suggestion),
-               //                        );
-               //                      },
-               //                      onSuggestionSelected: (suggestion) async {
-               //                        // Append the selected suggestion to the comment box
-               //                        // Fetch the userId corresponding to the mentioned username
-               //                        final userId = await getUserIdByUsername(suggestion);
-               //                        // Add the userId to the mentionedUserIds list
-               //                        setState(() {
-               //                          mentionedUserIds.add(userId);
-               //                        });
-               //
-               //                        // Append the selected suggestion to the comment box
-               //                        final currentText = _commentController.text;
-               //                        final lastAtSymbolIndex = currentText.lastIndexOf("@");
-               //                        final newText =
-               //                            currentText.substring(0, lastAtSymbolIndex) +
-               //                                "@$suggestion ";
-               //
-               //                        // Clear the input field
-               //                        _commentController.clear();
-               //                        _commentController.text = newText;
-               //                      },
-               //                    ),
-               //                    Visibility(
-               //                      visible: showSuggestions,
-               //                      child: Positioned(
-               //                        top: 0,
-               //                        left: 0,
-               //                        right: 0,
-               //                        child: Card(
-               //                          elevation: 4.0,
-               //                          child: SizedBox(
-               //                            height: 200,
-               //                            child: ListView.builder(
-               //                              itemCount: suggestedUsers.length,
-               //                              itemBuilder: (context, index) {
-               //                                final suggestion = suggestedUsers[index];
-               //                                return ListTile(
-               //                                  leading: CircleAvatar(
-               //                                    child: Text(suggestion.substring(0, 1)),
-               //                                  ),
-               //                                  title: Text(suggestion),
-               //                                  onTap: () async {
-               //                                    // Append the selected suggestion to the comment box
-               //                                    // Fetch the userId corresponding to the mentioned username
-               //                                    final userId =
-               //                                    await getUserIdByUsername(suggestion);
-               //                                    // Add the userId to the mentionedUserIds list
-               //                                    setState(() {
-               //                                      mentionedUserIds.add(userId);
-               //                                    });
-               //
-               //                                    // Append the selected suggestion to the comment box
-               //                                    final currentText =
-               //                                        _commentController.text;
-               //                                    final lastAtSymbolIndex =
-               //                                    currentText.lastIndexOf("@");
-               //                                    final newText =
-               //                                        currentText.substring(0, lastAtSymbolIndex) +
-               //                                            "@$suggestion ";
-               //
-               //                                    // Clear the input field
-               //                                    _commentController.clear();
-               //                                    _commentController.text = newText;
-               //                                  },
-               //                                );
-               //                              },
-               //                            ),
-               //                          ),
-               //                        ),
-               //                      ),
-               //                    ),
-               //                  ],
-               //                ),
-               //              ),
-               //              SizedBox(width: 10.0),
-               //              GestureDetector(
-               //                onTap: () async {
-               //                  // Implement the send comments logic here
-               //                  await addComment(
-               //                    widget.task.taskId!,
-               //                    _commentController.text!,
-               //                  );
-               //
-               //                  // Fetch the comments again to refresh the list
-               //                  await fetchComments(widget.task.taskId!);
-               //
-               //                  // Optionally, you can use setState to trigger a UI refresh if needed
-               //                  setState((){
-               //                    // After successfully adding the comment, clear the input field
-               //                    _commentController.clear();
-               //                  });
-               //
-               //                  // Now, navigate back to the previous screen (assuming the comments section is on the previous screen)
-               //                  ScaffoldMessenger.of(context).showSnackBar(
-               //                    SnackBar(
-               //                      content: Text('Comment added successfully'),
-               //                      duration: Duration(seconds: 2),
-               //                    ),
-               //                  );
-               //                },
-               //                child: Container(
-               //                  padding: EdgeInsets.symmetric(
-               //                    vertical: 12.0,
-               //                    horizontal: 16.0,
-               //                  ),
-               //                  decoration: BoxDecoration(
-               //                    color: AppColors.primaryColor1,
-               //                    borderRadius: BorderRadius.circular(10),
-               //                  ),
-               //                  child: Text(
-               //                    'Send',
-               //                    style: TextStyle(
-               //                      color: Colors.white,
-               //                      fontSize: 14,
-               //                      fontWeight: FontWeight.bold,
-               //                    ),
-               //                  ),
-               //                ),
-               //              ),
-               //            ],
-               //          ),
-               //        ],
-               //      ),
-               //    ),
-               //    Column(
-               //      children: [
-               //        MentionTextField(
-               //          controller: _commentController,
-               //          users: suggestedUsers, // Replace with your list of suggested users
-               //          hintText: "Write your comment...",
-               //        ),
-               //        SizedBox(height: 10.0),
-               //        GestureDetector(
-               //          onTap: () async {
-               //            // Implement the send comments logic here
-               //            await addComment(
-               //              widget.task.taskId!,
-               //              _commentController.text!,
-               //            );
-               //
-               //            // Fetch the comments again to refresh the list
-               //            await fetchComments(widget.task.taskId!);
-               //
-               //            // Optionally, you can use setState to trigger a UI refresh if needed
-               //            setState(() {
-               //              // After successfully adding the comment, clear the input field
-               //              _commentController.clear();
-               //            });
-               //
-               //            // Now, navigate back to the previous screen (assuming the comments section is on the previous screen)
-               //            ScaffoldMessenger.of(context).showSnackBar(
-               //              SnackBar(
-               //                content: Text('Comment added successfully'),
-               //                duration: Duration(seconds: 2),
-               //              ),
-               //            );
-               //          },
-               //          child: Container(
-               //            padding: EdgeInsets.symmetric(
-               //              vertical: 12.0,
-               //              horizontal: 16.0,
-               //            ),
-               //            decoration: BoxDecoration(
-               //              color: AppColors.primaryColor1,
-               //              borderRadius: BorderRadius.circular(10),
-               //            ),
-               //            child: Text(
-               //              'Send',
-               //              style: TextStyle(
-               //                color: Colors.white,
-               //                fontSize: 14,
-               //                fontWeight: FontWeight.bold,
-               //              ),
-               //            ),
-               //          ),
-               //        ),
-               //      ],
-               //    ),
-                ])));
+              Tab(
+                child: Text(
+                  'Comments',
+                  style: TextStyle(
+                    color: AppColors.secondaryColor2, // Change the text color as needed
+                    fontSize: 16, // Change the font size as needed
+                    fontWeight: FontWeight.bold, // Change the font weight as needed
+                  ),
+                ),
+              ),
+              Tab(
+                child: Text(
+                  'History',
+                  style: TextStyle(
+                    color: AppColors.secondaryColor2, // Change the text color as needed
+                    fontSize: 16, // Change the font size as needed
+                    fontWeight: FontWeight.bold, // Change the font weight as needed
+                  ),
+                ),
+              ),
+            ],
+            onTap: (index) {
+              setState(() {
+                _selectedActivityType = Activity.values[index];
+              });
+            },
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              physics: NeverScrollableScrollPhysics(), // Disable sliding
+              children: [
+                _buildReportTypeText(Activity.All),
+                _buildReportTypeText(Activity.Comments),
+                _buildReportTypeText(Activity.History),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // void _openreplySheet(BuildContext context,String commenter) {
+  //   showModalBottomSheet(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return StatefulBuilder(
+  //         builder: (BuildContext context, StateSetter setState) {
+  //           return Container(
+  //             padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 48.0), // Added padding from bottom
+  //             margin: EdgeInsets.only(bottom: 20.0),
+  //             child: SingleChildScrollView(
+  //               child: Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   Container(
+  //                     width: 250,
+  //                     height: 70,
+  //                     padding: EdgeInsets.all(
+  //                         16.0),
+  //                     decoration: BoxDecoration(
+  //                       color:AppColors.primaryColor1,
+  //                       // Add the color here within the BoxDecoration
+  //                       borderRadius: BorderRadius
+  //                           .circular(10.0),
+  //                     ),
+  //                     child: Row(
+  //                       mainAxisAlignment: MainAxisAlignment.center,
+  //                       children: [
+  //                         Text(
+  //                           "Replying to ${commenter}:",
+  //                           style: TextStyle(
+  //                               fontWeight: FontWeight
+  //                                   .bold),
+  //                         ),
+  //                         SizedBox(width: 4,),
+  //                         IconButton(
+  //                           onPressed: () {
+  //                             Navigator.pop(
+  //                                 context);
+  //                           },
+  //                           icon: Icon(
+  //                               Icons.close),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ),
+  //                   SizedBox(height: 10,),
+  //                   Container(
+  //                     width: MediaQuery.of(context).size.width * 0.8,
+  //                     decoration: BoxDecoration(
+  //                       borderRadius: BorderRadius.circular(15),
+  //                       border: BoxBorder
+  //                     ),
+  //                     child: TextFormField(
+  //                       decoration: InputDecoration(
+  //                         contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+  //                         hintText: "Reply to $commenter",
+  //                         enabledBorder: InputBorder.none,
+  //                         focusedBorder: InputBorder.none,
+  //                       ),
+  //                       controller: _replyController,
+  //                       onChanged: (text) {
+  //                         if (text.endsWith('@')) {
+  //                           setState(() {
+  //                             showSuggestions = true;
+  //                           });
+  //                         } else {
+  //                           setState(() {
+  //                             showSuggestions = false;
+  //                           });
+  //                         }
+  //                       },
+  //                     ),
+  //                   ),
+  //                   if (showSuggestions)
+  //                     ListView.builder(
+  //                       shrinkWrap: true,
+  //                       itemCount: suggestedUsers.length,
+  //                       itemBuilder: (context, index) {
+  //                         return ListTile(
+  //                           title: Text(suggestedUsers[index]),
+  //                           onTap: () {
+  //                             final currentText = _replyController.text;
+  //                             final cursorPosition =
+  //                                 _replyController.selection.base.offset;
+  //                             final newText = currentText.substring(0, cursorPosition) + suggestedUsers[index] + ' ' +
+  //                                 currentText.substring(cursorPosition);
+  //
+  //                             setState(() {
+  //                               _replyController.text = newText;
+  //                               mentionedUserIds.add(suggestedUsers[index]);
+  //                               showSuggestions = false;
+  //                             });
+  //                           },
+  //                         );
+  //                       },
+  //                     ),
+  //                   SizedBox(height: 20,),
+  //                   RoundGradientButton(
+  //                     title: "Send",
+  //                     onPressed: () async {
+  //                       String commentText = _replyController.text;
+  //                       print("Comment Text: $commentText");
+  //
+  //                       List<String> mentionedUserIdsList = []; // Create a list to store user IDs
+  //
+  //                       for (String mentionedUser in mentionedUserIds) {
+  //                         print("Mentioned User: @$mentionedUser");
+  //                       }
+  //
+  //                       String commentTextWithoutMentions = commentText;
+  //                       for (String mentionedUser in mentionedUserIds) {
+  //                         commentTextWithoutMentions = commentTextWithoutMentions.replaceAll('@$mentionedUser', '');
+  //                       }
+  //                       commentTextWithoutMentions = commentTextWithoutMentions.trim(); // Remove unnecessary spaces
+  //
+  //                       print("Comment Text without Mentions: $commentTextWithoutMentions");
+  //
+  //                       for (String mentionedUser in mentionedUserIds) {
+  //                         try {
+  //                           String userId = await getUserIdByUsername(mentionedUser);
+  //                           mentionedUserIdsList.add(userId); // Store user ID in the list
+  //                           print("Mentioned User: @$mentionedUser ($userId)");
+  //                         } catch (e) {
+  //                           print("Error getting user ID for $mentionedUser: $e");
+  //                         }
+  //                       }
+  //
+  //                       print("Mentioned User IDs List: $mentionedUserIdsList");
+  //
+  //                       await addComment(widget.task.taskId!, commentTextWithoutMentions, mentionedUserIdsList);
+  //                     },
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
+  void _openBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Container(
+              padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 48.0), // Added padding from bottom
+              margin: EdgeInsets.only(bottom: 20.0),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("Add Comments",style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),),
+                    SizedBox(height: 10,),
+                    Container(
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      decoration: BoxDecoration(
+                        color: AppColors.whiteColor,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: TextFormField(
+                        decoration: InputDecoration(
+                          hintText: "Write your Comments",
+                          contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          border: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: AppColors.secondaryColor2,
+                              width: 1.2,
+                            ),
+                          )
+                        ),
+                        controller: _commentController,
+                        onChanged: (text) {
+                          if (text.endsWith('@')) {
+                            setState(() {
+                              showSuggestions = true;
+                            });
+                          } else {
+                            setState(() {
+                              showSuggestions = false;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    if (showSuggestions)
+                      ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: suggestedUsers.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            title: Text(suggestedUsers[index]),
+                            onTap: () {
+                              final currentText = _commentController.text;
+                              final cursorPosition =
+                                  _commentController.selection.base.offset;
+                              final newText = currentText.substring(0, cursorPosition) + suggestedUsers[index] + ' ' +
+                                  currentText.substring(cursorPosition);
+
+                              setState(() {
+                                _commentController.text = newText;
+                                mentionedUserIds.add(suggestedUsers[index]);
+                                showSuggestions = false;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    SizedBox(height: 20,),
+                    RoundGradientButton(
+                      title: "Send",
+                      onPressed: () async {
+                        String commentText = _commentController.text;
+                        print("Comment Text: $commentText");
+
+                        List<String> mentionedUserIdsList = []; // Create a list to store user IDs
+
+                        for (String mentionedUser in mentionedUserIds) {
+                          print("Mentioned User: @$mentionedUser");
+                        }
+
+                        String commentTextWithoutMentions = commentText;
+                        for (String mentionedUser in mentionedUserIds) {
+                          commentTextWithoutMentions = commentTextWithoutMentions.replaceAll('@$mentionedUser', '');
+                        }
+                        commentTextWithoutMentions = commentTextWithoutMentions.trim(); // Remove unnecessary spaces
+
+                        print("Comment Text without Mentions: $commentTextWithoutMentions");
+
+                        for (String mentionedUser in mentionedUserIds) {
+                          try {
+                            String userId = await getUserIdByUsername(mentionedUser);
+                            mentionedUserIdsList.add(userId); // Store user ID in the list
+                            print("Mentioned User: @$mentionedUser ($userId)");
+                          } catch (e) {
+                            print("Error getting user ID for $mentionedUser: $e");
+                          }
+                        }
+                        print("Mentioned User IDs List: $mentionedUserIdsList");
+                        await addComment(widget.task.taskId!, commentTextWithoutMentions, mentionedUserIdsList);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  List<String> _getTaggedUserNames(String text) {
+    List<String> taggedUserNames = [];
+    RegExp exp = RegExp(r"@(\w+)");
+    Iterable<RegExpMatch> matches = exp.allMatches(text);
+    // Extract tagged user names and add them to the list
+    for (RegExpMatch match in matches) {
+      taggedUserNames.add(match.group(1)!);
+    }
+
+    return taggedUserNames;
   }
 }
 

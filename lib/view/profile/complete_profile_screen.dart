@@ -1,10 +1,7 @@
 import 'dart:convert';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/login/login_screen.dart';
-import 'package:Taskapp/view/profile/company_registration.dart';
-import 'package:Taskapp/view/subscription/chooseplan.dart';
 import 'package:Taskapp/view/welcome/backToLogin/backToLogin.dart';
-import 'package:Taskapp/view/welcome/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -99,17 +96,23 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
       if (_selectedUserType == UserTypeIndividual) {
         // Register the default organization for individual users
-        final orgId = await _registerDefaultOrganization(requestBody);
-        if (orgId != null) {
-          // Registration successful, navigate to the next screen with orgId
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => BackToLogin()),
-          );
-        } else {
-          // Failed to create the default organization
-          _showValidationErrorPopup("Failed to create default organization.");
-        }
+        // final orgId = await _registerDefaultOrganization(requestBody);
+        // if (orgId != null) {
+        //   // Registration successful, navigate to the next screen with orgId
+        //   Navigator.push(
+        //     context,
+        //     MaterialPageRoute(builder: (context) => BackToLogin()),
+        //   );
+        // } else {
+        //   // Failed to create the default organization
+        //   _showValidationErrorPopup("Failed to create default organization.");
+        // }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BackToLogin(),
+          ),
+        );
       } else if (_selectedUserType == UserTypeBusiness) {
         // Pass the necessary data to the next screen
         final errorMessage = responseData['message'] ??

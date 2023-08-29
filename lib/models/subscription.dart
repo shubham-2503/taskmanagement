@@ -41,7 +41,7 @@ class SubscriptionPlan {
       status: json['status'],
       validity: json['validity'] ?? 0, // Provide a default value of 0 if validity is null
       createdBy: json['created_by'] ?? "", // Handle null value
-      modifiedBy: json['modified_by'],
+      modifiedBy: json['modified_by'] ?? " ",
       createdDate: json['created_date'],
       modifiedDate: json['modified_date'],
     );

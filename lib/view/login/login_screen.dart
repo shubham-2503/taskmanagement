@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:Taskapp/view/login/forgetpassword/forgetpassword_mailScreen.dart';
 import 'package:Taskapp/view/login/phoneNumber.dart';
 import 'package:Taskapp/view/login/true_caller_auth_services.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -12,7 +11,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_gradient_button.dart';
 import '../../common_widgets/round_textfield.dart';
 import 'package:Taskapp/utils/app_colors.dart';
-import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:Taskapp/view/login/otpScreen.dart';
 import 'package:Taskapp/view/signup/signup_screen.dart';
 
@@ -85,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
           var userId = data['data']['user_id'];
           var orgId = data['data']['org_id'];
           var roleId = data['data']['role_id'];
+          var usertype = data['data']['user_type'];
           print('User ID: $userId');
           print('Org ID: $orgId');
           print('Role ID: $roleId');
@@ -92,9 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('userId', userId);
           await prefs.setString('roleId', roleId);
-          if (orgId != null) {
-            await prefs.setString('org_id', orgId);
-          }
+          await prefs.setString("usertype", usertype);
 
           String errorMessage = "OTP sent successfully";
           ScaffoldMessenger.of(context).showSnackBar(
@@ -108,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (c) => OTPVerificationScreen(userId: userId!, email: email, roleId: roleId!,)), // Replace with your screen
+            MaterialPageRoute(builder: (c) => OTPVerificationScreen(userId: userId!, email: email, roleId: roleId!, userType: usertype,)), // Replace with your screen
           );
         } else {
           print('Login failed - Password is incorrect');
