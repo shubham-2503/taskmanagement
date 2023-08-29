@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:Taskapp/view/login/forgetpassword/forgetpassword_mailScreen.dart';
 import 'package:Taskapp/view/login/phoneNumber.dart';
 import 'package:Taskapp/view/login/true_caller_auth_services.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -14,6 +15,9 @@ import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:Taskapp/view/login/otpScreen.dart';
 import 'package:Taskapp/view/signup/signup_screen.dart';
+
+import '../../models/loginModel.dart';
+import '../../utils/no_internet_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   static String routeName = "/LoginScreen";
@@ -30,7 +34,6 @@ class _LoginScreenState extends State<LoginScreen> {
   TruecallerAuthServices truecallerAuthServices = TruecallerAuthServices();
   bool _isPasswordVisible = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  bool _isButtonClickable = true;
 
 
   String? validateEmail(String? value) {
@@ -101,11 +104,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          Navigator.push(
+          // Navigator.push(context, MaterialPageRoute(builder: (context)=> OTPVerificationScreen(userId: userId, email: email, roleId: roleId, orgId: orgId)));
+
+          Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (context) => OTPVerificationScreen(userId: userId, roleId: roleId, orgId: orgId, email: email),
-            ),
+            MaterialPageRoute(builder: (c) => OTPVerificationScreen(userId: userId!, email: email, roleId: roleId!,)), // Replace with your screen
           );
         } else {
           print('Login failed - Password is incorrect');
@@ -281,7 +284,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-
               SizedBox(height: media.width*0.05),
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -344,21 +346,13 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(height: 10,),
               RoundGradientButton(
                 title: "Login",
-                onPressed: _isButtonClickable
-                    ? () {
-                  if (_formKey.currentState!.validate()) {
-                    setState(() {
-                      _isButtonClickable = false; // Disable the button
-                    });
-
-                    login(
-                      _emailController.text.toString(),
-                      _passwordController.text.toString(),
-                      context,
-                    );
-                  }
-                }
-                    : () {}, // Provide an empty callback when the button is not clickable
+                onPressed: (){
+                  login(
+                    _emailController.text.toString(),
+                    _passwordController.text.toString(),
+                    context,
+                  );
+                } // Provide an empty callback when the button is not clickable
               ),
               const Spacer(),
               Row(

@@ -3,6 +3,7 @@ import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/login/login_screen.dart';
 import 'package:Taskapp/view/profile/company_registration.dart';
 import 'package:Taskapp/view/subscription/chooseplan.dart';
+import 'package:Taskapp/view/welcome/backToLogin/backToLogin.dart';
 import 'package:Taskapp/view/welcome/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -103,7 +104,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           // Registration successful, navigate to the next screen with orgId
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => ChoosePlan(orgId: orgId)),
+            MaterialPageRoute(builder: (context) => BackToLogin()),
           );
         } else {
           // Failed to create the default organization
@@ -117,7 +118,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CompanyRegistrationScreen(userId: userId),
+            builder: (context) => BackToLogin(),
           ),
         );
       }

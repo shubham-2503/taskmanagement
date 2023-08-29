@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:Taskapp/view/on_boarding/start_screen.dart';
 import 'package:Taskapp/view/profile/addOrganization.dart';
 import 'package:Taskapp/view/profile/widgets/confirmationModal.dart';
 import 'package:Taskapp/view/subscription/subscriptions.dart';
@@ -19,7 +20,9 @@ import '../dashboard/dashboard_screen.dart';
 import '../login/login_screen.dart';
 
 class UserProfile extends StatefulWidget {
-  const UserProfile({Key? key}) : super(key: key);
+  final VoidCallback refreshCallback;
+  const UserProfile({Key? key, required this.refreshCallback})
+      : super(key: key);
 
   @override
   State<UserProfile> createState() => _UserProfileState();
@@ -31,22 +34,28 @@ class _UserProfileState extends State<UserProfile> {
   Map<String, dynamic> userProfileData = {};
   Map<String, dynamic> latestSubscription = {};
   Map<String, dynamic>? organization;
-  int selectedOrganizationIndex = -1; // Or any other default value based on your application's logic
+  int _selectedOrganizationIndex = 0; // Or any other default value based on your application's logic
   String selectedOrganizationName = '';
-  String selectedOrgId = "";
+  Map<String, dynamic> selectedOrganization = {};
   String selectOrganizationAdd = "";
   List<Map<String, dynamic>> _organizationList = [];
+  String userId = "";
 
   List otherArr = [
     {"image": "assets/icons/p_contact.png", "name": "Contact Us", "tag": "5"},
-    {"image": "assets/icons/p_privacy.png", "name": "Privacy Policy", "tag": "6"},
+    {
+      "image": "assets/icons/p_privacy.png",
+      "name": "Privacy Policy",
+      "tag": "6"
+    },
     {"image": "assets/icons/p_setting.png", "name": "Setting", "tag": "7"},
   ];
 
   Future<Map<String, dynamic>> fetchUserProfile() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId =
+        prefs.getString("selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -58,7 +67,6 @@ class _UserProfileState extends State<UserProfile> {
     if (orgId.isEmpty) {
       throw Exception('orgId not found locally');
     }
-
 
     final url = 'http://43.205.97.189:8000/api/User/myProfile?org_id=$orgId';
 
@@ -76,7 +84,13 @@ class _UserProfileState extends State<UserProfile> {
       final List<dynamic> responseData = jsonDecode(response.body);
       if (responseData.isNotEmpty) {
         // Get the first organization as the default organization
-        final Map<String, dynamic> userProfileData = responseData[0] as Map<String, dynamic>;
+        final Map<String, dynamic> userProfileData =
+            responseData[0] as Map<String, dynamic>;
+        final String userIds = userProfileData['user_id'];
+        setState(() {
+          userId = userIds;
+        });
+        print("User_id: $userId");
         return userProfileData;
       }
     }
@@ -85,13 +99,65 @@ class _UserProfileState extends State<UserProfile> {
     return {};
   }
 
-  void _logOut() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.remove('user');
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => LoginScreen()));
+  void _logOut(BuildContext context) async {
+    // Show a confirmation dialog to the user
+    bool confirmLogout = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Logout'),
+          content: Text('Are you sure you want to log out?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                // Close the dialog and set confirmLogout to false
+                Navigator.of(context).pop(false);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Close the dialog and set confirmLogout to true
+                Navigator.of(context).pop(true);
+              },
+              child: Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If the user confirmed, proceed with logout
+    if (confirmLogout == true) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.clear(); // Remove all stored data
+
+      // Delay navigation to the LoginScreen by a short duration (e.g., 100 milliseconds)
+      await Future.delayed(Duration(milliseconds: 300));
+
+      // Rebuild the app and start a new route stack with LoginScreen
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+            (route) => false,
+      );
+    }
   }
 
-  Future<void> deleteOrganizationWithConfirmation(BuildContext context, String orgId) async {
+  void _loadUserProfile() async {
+    try {
+      Map<String, dynamic> fetchedData = await fetchUserProfile();
+      setState(() {
+        userProfileData = fetchedData;
+      });
+    } catch (error) {
+      print("Error fetching user profile data: $error");
+      // Handle the error
+    }
+  }
+
+  Future<void> deleteOrganizationWithConfirmation(
+      BuildContext context, String orgId) async {
     print("orgId: $orgId");
     bool confirmDelete = await showDialog(
       context: context,
@@ -118,7 +184,8 @@ class _UserProfileState extends State<UserProfile> {
     );
 
     if (confirmDelete == true) {
-      String apiUrl = "http://43.205.97.189:8000/api/Organization/removeOrganization?org_id=$orgId";
+      String apiUrl =
+          "http://43.205.97.189:8000/api/Organization/removeOrganization?org_id=$orgId";
 
       final response = await http.delete(Uri.parse(apiUrl));
 
@@ -163,8 +230,12 @@ class _UserProfileState extends State<UserProfile> {
   void initState() {
     super.initState();
     _getAppVersion();
+    _loadUserProfile();
     // Call fetchOrganizationList() when the screen is built
-    Provider.of<OrganizationProvider>(context, listen: false).fetchOrganizationList();
+    Provider.of<OrganizationProvider>(context, listen: false)
+        .fetchOrganizationList();
+    Provider.of<OrganizationProvider>(context, listen: false)
+        .fetchOrganizationList();
     fetchUserProfile().then((data) {
       setState(() {
         userProfileData = data;
@@ -175,6 +246,7 @@ class _UserProfileState extends State<UserProfile> {
         if (userProfileData.containsKey('org') &&
             userProfileData['org'].isNotEmpty) {
           organization = userProfileData['org'].last;
+          selectedOrganization = userProfileData['org'][0];
         }
 
         print("subscription: $latestSubscription");
@@ -192,8 +264,6 @@ class _UserProfileState extends State<UserProfile> {
     });
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final organizationProvider = Provider.of<OrganizationProvider>(context);
@@ -204,10 +274,11 @@ class _UserProfileState extends State<UserProfile> {
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: AppColors.whiteColor,
         centerTitle: true,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.whiteColor),
+        iconTheme: IconThemeData(color: AppColors.blackColor),
         title: const Text(
           "Profile",
           style: TextStyle(
@@ -238,10 +309,18 @@ class _UserProfileState extends State<UserProfile> {
                   case 0:
                     break;
                   case 1:
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=>SubscriptionsPlan(),));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SubscriptionsPlan(),
+                        ));
                     break;
                   case 2:
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=>RenewPlanScreen(),));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RenewPlanScreen(),
+                        ));
                     break;
                   default:
                     break;
@@ -275,8 +354,13 @@ class _UserProfileState extends State<UserProfile> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.people,color: AppColors.secondaryColor2,),
-                  SizedBox(width: 20,),
+                  Icon(
+                    Icons.people,
+                    color: AppColors.secondaryColor2,
+                  ),
+                  SizedBox(
+                    width: 20,
+                  ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,8 +372,7 @@ class _UserProfileState extends State<UserProfile> {
                           style: TextStyle(
                               color: AppColors.secondaryColor2,
                               fontSize: 15,
-                              fontWeight: FontWeight.bold
-                          ),
+                              fontWeight: FontWeight.bold),
                         ),
                         RichText(
                           text: TextSpan(
@@ -297,13 +380,11 @@ class _UserProfileState extends State<UserProfile> {
                             style: TextStyle(
                                 color: AppColors.secondaryColor2,
                                 fontSize: 12,
-                                fontWeight: FontWeight.bold
-                            ),
+                                fontWeight: FontWeight.bold),
                             children: [
                               TextSpan(
-                                text: "${userProfileData.containsKey('role')
-                                    ? userProfileData['role']
-                                    : 'NA'}",
+                                text:
+                                    "${userProfileData.containsKey('role') ? userProfileData['role'] : 'NA'}",
                                 style: TextStyle(
                                   // Add any specific styles for the plan name here, if needed
                                   color: AppColors.blackColor,
@@ -318,195 +399,161 @@ class _UserProfileState extends State<UserProfile> {
                   ),
                 ],
               ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "My Organization",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddOrganization(
+                            userId: userProfileData['user_id'],
+                          ),
+                        ),
+                      );
+                    },
+                    child: IconButton(
+                      icon: Icon(Icons.add_circle),
+                      onPressed: (){
+                        print("UserId: $userId");
+                        Navigator.push(context, MaterialPageRoute(builder: (context)=>AddOrganization(userId: userId)));
+                      },
+                    )
+                  ),
+                ],
+              ),
               SizedBox(height: 20,),
-          // Add this line before using the _organizationList in the GridView
               Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-      decoration: BoxDecoration(
-        color: AppColors.whiteColor,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "My Organization",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.secondaryColor2,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                width: double.infinity,
+                height: 220,
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor1,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
                 ),
-              ),
-              GestureDetector(
-                onTap: (){
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>AddOrganization(userId: userProfileData['user_id'])));
-                },
-                child: Image.asset(
-                  "assets/icons/more_icon.png",
-                  width: 12,
-                  height: 12,
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: (_organizationList.length * 38.0) + 80, // Height calculation
-            child: GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, // Number of columns in the GridView
-                crossAxisSpacing: 20.0, // Spacing between columns
-                mainAxisSpacing: 10.0, // Spacing between rows
-              ),
-              itemCount: _organizationList.length,
-              itemBuilder: (context, index) {
-                print('Building item for index $index');
-                final org = _organizationList[index];
-                return GestureDetector(
-                  // Inside the `onTap` method in the GridView builder
-                  onTap: () async {
-                    organizationProvider.switchOrganization(index, context);
-
-                    // Wait for the UI updates to complete
-                    await Future.delayed(Duration(milliseconds: 200)); // Adjust the delay as needed
-
-                    // Update the selected organization information
-                    setState(() {
-                      selectedOrganizationName = org['name'];
-                      selectOrganizationAdd = org['address'];
-                    });
-
-                    // // Navigate to DashboardScreen
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(builder: (context) => DashboardScreen()),
-                    // );
-                    _showNotification('Organization switched to ${org['name']}'); // Show notification
-                  },
-                  child: Stack(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: _selectedOrganizationIndex == index
-                              ? AppColors.secondaryColor2 // Selected organization color
-                              : AppColors.whiteColor,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              org["name"],
-                              style: TextStyle(
-                                color: _selectedOrganizationIndex == index
-                                    ? Colors.white // Selected organization text color
-                                    : AppColors.blackColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              org["address"],
-                              style: TextStyle(
-                                color: _selectedOrganizationIndex == index
-                                    ? Colors.white // Selected organization text color
-                                    : AppColors.blackColor,
-                                fontSize: 10,
-                              ),
-                            ),
-                            RichText(
-                              text: TextSpan(
-                                text: "Employee: ",
-                                style: TextStyle(
-                                    color: AppColors.blackColor,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: "${org['employees']}",
-                                    style: TextStyle(
-                                      color: AppColors.blackColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: InkWell(
-                          child: PopupMenuButton<int>(
-                            itemBuilder: (context) => [
-                              PopupMenuItem(
-                                value: 0,
-                                child: Text("Edit Organization"),
-                              ),
-                              PopupMenuItem(
-                                value: 1,
-                                child: Text("Delete Organization"),
-                              ),
-                            ],
-                            onSelected: (value) {
-                              switch (value) {
-                                case 0:
-                                // Handle Edit Organization
-                                  break;
-                                case 1:
-                                  print("org: $org");
-                                  if (org != null && org.containsKey("org_id")) { // Use "org_id" key
-                                    showModalBottomSheet(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return DeleteConfirmationModal(
-                                          onConfirm: () {
-                                            deleteOrganizationWithConfirmation(context, org["org_id"]); // Use "org_id" key
-                                            Navigator.pop(context); // Close the modal after deletion
-                                          },
-                                        );
-                                      },
+                      const SizedBox(height: 8),
+                      Scrollbar(
+                        controller: ScrollController(),
+                        thickness: 8,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount: _organizationList.length,
+                            itemBuilder: (context, index) {
+                              final org = _organizationList[index];
+                              final orgId = org['org_id'];
+                              final isSelected = orgId == selectedOrganization['org_id'];
+                              final visibleOrgName = organization != null && organization!.containsKey('org_name')
+                                  ? organization!['org_name']
+                                  : 'No Organization';
+
+
+                              return GestureDetector(
+                                onTap: () async {
+                                  final prefs = await SharedPreferences.getInstance();
+                                  if (userProfileData.isNotEmpty) {
+                                    prefs.setString('selectedOrgId', orgId);
+
+                                    organizationProvider.switchOrganization(
+                                      index,
+                                      context,
                                     );
-                                  } else {
-                                    print("Organization data is not available or doesn't contain 'org_id'."); // Adjust the error message
+
+                                    setState(() {
+                                      selectedOrganizationName = org['name'];
+                                      selectOrganizationAdd = org['address'];
+                                      selectedOrganization = org;
+                                    });
+
+                                    _showNotification('Organization switched to ${org['name']}');
                                   }
-                                  break;
-                                default:
-                                  break;
-                              }
+                                },
+                                child: Container(
+                                  margin: EdgeInsets.all(8.0),
+                                  padding: EdgeInsets.all(16.0),
+                                  decoration: BoxDecoration(
+                                    color: visibleOrgName == org['name'] ? AppColors.secondaryColor2 : AppColors.whiteColor,
+                                    borderRadius: BorderRadius.circular(15),
+                                    border: isSelected
+                                        ? Border.all(
+                                      color: AppColors.primaryColor2,
+                                      width: 3,
+                                    )
+                                        : Border.all(
+                                      color: AppColors.blackColor,
+                                      width: 2,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(color: Colors.black12, blurRadius: 2),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        org["name"],
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.white : AppColors.blackColor,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      RichText(
+                                        text: TextSpan(
+                                          text: "Employee: ",
+                                          style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          children: [
+                                            TextSpan(
+                                              text: "${org['employees']}",
+                                              style: TextStyle(
+                                                color: AppColors.blackColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
                             },
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Icon(Icons.more_vert),
-                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    ),
-          const SizedBox(
+                ),
+              ),
+              const SizedBox(
                 height: 45,
               ),
               Container(
                 padding:
-                const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                    const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
                 decoration: BoxDecoration(
                     color: AppColors.primaryColor1,
                     borderRadius: BorderRadius.circular(15),
@@ -522,7 +569,9 @@ class _UserProfileState extends State<UserProfile> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              SizedBox(width: 10,),
+                              SizedBox(
+                                width: 10,
+                              ),
                               Text(
                                 "Profile Information",
                                 style: TextStyle(
@@ -534,13 +583,7 @@ class _UserProfileState extends State<UserProfile> {
                             ],
                           ),
                           Text(
-                            "Hi,I am ${userProfileData.containsKey('name')
-                                ? userProfileData['name']
-                                : 'John'},I am ${ userProfileData.containsKey('role')
-                                ? userProfileData['role']
-                                : 'Admin'} at ${organization != null && organization!.containsKey('org_name')
-                                ? organization!['org_name']
-                                : 'No Organization'}",
+                            "Hi,I am ${userProfileData.containsKey('name') ? userProfileData['name'] : 'John'},I am ${userProfileData.containsKey('role') ? userProfileData['role'] : 'Admin'} at ${organization != null && organization!.containsKey('org_name') ? organization!['org_name'] : 'No Organization'}",
                             style: TextStyle(
                               color: AppColors.secondaryColor1,
                               fontSize: 10,
@@ -550,7 +593,9 @@ class _UserProfileState extends State<UserProfile> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 10,),
+                    SizedBox(
+                      height: 10,
+                    ),
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Row(
@@ -568,13 +613,11 @@ class _UserProfileState extends State<UserProfile> {
                                     style: TextStyle(
                                         color: AppColors.secondaryColor2,
                                         fontSize: 12,
-                                        fontWeight: FontWeight.bold
-                                    ),
+                                        fontWeight: FontWeight.bold),
                                     children: [
                                       TextSpan(
-                                        text: "${userProfileData.containsKey('name')
-                                            ? userProfileData['name']
-                                            : 'John'}",
+                                        text:
+                                            "${userProfileData.containsKey('name') ? userProfileData['name'] : 'John'}",
                                         style: TextStyle(
                                           // Add any specific styles for the plan name here, if needed
                                           color: AppColors.blackColor,
@@ -591,13 +634,11 @@ class _UserProfileState extends State<UserProfile> {
                                     style: TextStyle(
                                         color: AppColors.secondaryColor2,
                                         fontSize: 12,
-                                        fontWeight: FontWeight.bold
-                                    ),
+                                        fontWeight: FontWeight.bold),
                                     children: [
                                       TextSpan(
-                                        text: "${userProfileData.containsKey('phone')
-                                            ? userProfileData['phone']
-                                            : 'No Phone'}",
+                                        text:
+                                            "${userProfileData.containsKey('phone') ? userProfileData['phone'] : 'No Phone'}",
                                         style: TextStyle(
                                           color: AppColors.blackColor,
                                           fontSize: 12,
@@ -613,15 +654,11 @@ class _UserProfileState extends State<UserProfile> {
                                     style: TextStyle(
                                         color: AppColors.secondaryColor2,
                                         fontSize: 12,
-                                        fontWeight: FontWeight.bold
-                                    ),
+                                        fontWeight: FontWeight.bold),
                                     children: [
                                       TextSpan(
-                                        text: "${
-                                            userProfileData.containsKey('email')
-                                                ? userProfileData['email']
-                                                : 'No Email'
-                                        }",
+                                        text:
+                                            "${userProfileData.containsKey('email') ? userProfileData['email'] : 'No Email'}",
                                         style: TextStyle(
                                           // Add any specific styles for the plan name here, if needed
                                           color: AppColors.blackColor,
@@ -638,12 +675,14 @@ class _UserProfileState extends State<UserProfile> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 10,),
+                    SizedBox(
+                      height: 10,
+                    ),
                     SizedBox(
                         height: 30,
                         width: 70,
-                        child:RoundButton(
-                          onPressed: (){
+                        child: RoundButton(
+                          onPressed: () {
                             // Navigator.push(
                             //   context,
                             //   MaterialPageRoute(
@@ -652,8 +691,7 @@ class _UserProfileState extends State<UserProfile> {
                             // );
                           },
                           title: "Edit",
-                        )
-                    )
+                        ))
                   ],
                 ),
               ),
@@ -661,10 +699,11 @@ class _UserProfileState extends State<UserProfile> {
                 height: 45,
               ),
               Visibility(
-                visible: latestSubscription != null && latestSubscription.isNotEmpty,
+                visible:
+                    latestSubscription != null && latestSubscription.isNotEmpty,
                 child: Container(
                   padding:
-                  const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
                   decoration: BoxDecoration(
                       color: AppColors.primaryColor1,
                       borderRadius: BorderRadius.circular(15),
@@ -687,7 +726,9 @@ class _UserProfileState extends State<UserProfile> {
                                   fit: BoxFit.contain,
                                   color: AppColors.secondaryColor2,
                                 ),
-                                SizedBox(width: 10,),
+                                SizedBox(
+                                  width: 10,
+                                ),
                                 Text(
                                   "My Subscribed Plan",
                                   style: TextStyle(
@@ -699,9 +740,7 @@ class _UserProfileState extends State<UserProfile> {
                               ],
                             ),
                             Text(
-                              "You are using the ${latestSubscription.containsKey('name')
-                                  ? latestSubscription['name']
-                                  : 'No Subscription'}",
+                              "You are using the ${latestSubscription.containsKey('name') ? latestSubscription['name'] : 'No Subscription'}",
                               style: TextStyle(
                                 color: AppColors.secondaryColor1,
                                 fontSize: 10,
@@ -711,7 +750,9 @@ class _UserProfileState extends State<UserProfile> {
                           ],
                         ),
                       ),
-                      SizedBox(height: 10,),
+                      SizedBox(
+                        height: 10,
+                      ),
                       Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Row(
@@ -724,27 +765,27 @@ class _UserProfileState extends State<UserProfile> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Center(
-                                    child: Text("Plan Details",
+                                    child: Text(
+                                      "Plan Details",
                                       style: TextStyle(
                                           color: AppColors.secondaryColor2,
-                                          fontWeight: FontWeight.bold
-                                      ),
+                                          fontWeight: FontWeight.bold),
                                     ),
                                   ),
-                                  SizedBox(height: 10,),
+                                  SizedBox(
+                                    height: 10,
+                                  ),
                                   RichText(
                                     text: TextSpan(
                                       text: "Plan name: ",
                                       style: TextStyle(
                                           color: AppColors.secondaryColor2,
                                           fontSize: 12,
-                                          fontWeight: FontWeight.bold
-                                      ),
+                                          fontWeight: FontWeight.bold),
                                       children: [
                                         TextSpan(
-                                          text: "${latestSubscription.containsKey('name')
-                                              ? latestSubscription['name']
-                                              : 'No Subscription'}",
+                                          text:
+                                              "${latestSubscription.containsKey('name') ? latestSubscription['name'] : 'No Subscription'}",
                                           style: TextStyle(
                                             // Add any specific styles for the plan name here, if needed
                                             color: AppColors.blackColor,
@@ -761,11 +802,11 @@ class _UserProfileState extends State<UserProfile> {
                                       style: TextStyle(
                                           color: AppColors.secondaryColor2,
                                           fontSize: 12,
-                                          fontWeight: FontWeight.bold
-                                      ),
+                                          fontWeight: FontWeight.bold),
                                       children: [
                                         TextSpan(
-                                          text: latestSubscription.containsKey('startDate')
+                                          text: latestSubscription
+                                                  .containsKey('startDate')
                                               ? " Active"
                                               : " Inactive",
                                           style: TextStyle(
@@ -783,15 +824,11 @@ class _UserProfileState extends State<UserProfile> {
                                       style: TextStyle(
                                           color: AppColors.secondaryColor2,
                                           fontSize: 12,
-                                          fontWeight: FontWeight.bold
-                                      ),
+                                          fontWeight: FontWeight.bold),
                                       children: [
                                         TextSpan(
-                                          text: "${
-                                              latestSubscription.containsKey('startDate')
-                                                  ? _formatDate(latestSubscription['startDate'])
-                                                  : 'N/A'
-                                          }",
+                                          text:
+                                              "${latestSubscription.containsKey('startDate') ? _formatDate(latestSubscription['startDate']) : 'N/A'}",
                                           style: TextStyle(
                                             // Add any specific styles for the plan name here, if needed
                                             color: AppColors.blackColor,
@@ -808,15 +845,11 @@ class _UserProfileState extends State<UserProfile> {
                                       style: TextStyle(
                                           color: AppColors.secondaryColor2,
                                           fontSize: 12,
-                                          fontWeight: FontWeight.bold
-                                      ),
+                                          fontWeight: FontWeight.bold),
                                       children: [
                                         TextSpan(
-                                          text: "${
-                                              latestSubscription.containsKey('endDate')
-                                                  ? _formatDate(latestSubscription['endDate'])
-                                                  : 'N/A'
-                                          }",
+                                          text:
+                                              "${latestSubscription.containsKey('endDate') ? _formatDate(latestSubscription['endDate']) : 'N/A'}",
                                           style: TextStyle(
                                             // Add any specific styles for the plan name here, if needed
                                             color: AppColors.blackColor,
@@ -833,13 +866,11 @@ class _UserProfileState extends State<UserProfile> {
                                       style: TextStyle(
                                           color: AppColors.secondaryColor2,
                                           fontSize: 12,
-                                          fontWeight: FontWeight.bold
-                                      ),
+                                          fontWeight: FontWeight.bold),
                                       children: [
                                         TextSpan(
-                                          text: "${latestSubscription.containsKey('price')
-                                              ? latestSubscription['price']
-                                              : 'NA'}",
+                                          text:
+                                              "${latestSubscription.containsKey('price') ? latestSubscription['price'] : 'NA'}",
                                           style: TextStyle(
                                             // Add any specific styles for the plan name here, if needed
                                             color: AppColors.blackColor,
@@ -859,10 +890,12 @@ class _UserProfileState extends State<UserProfile> {
                   ),
                 ),
               ),
-              SizedBox(height: 30,),
+              SizedBox(
+                height: 30,
+              ),
               Container(
                 padding:
-                const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
                 decoration: BoxDecoration(
                     color: AppColors.whiteColor,
                     borderRadius: BorderRadius.circular(15),
@@ -908,7 +941,7 @@ class _UserProfileState extends State<UserProfile> {
                               dif: 0.0,
                               indicatorSize: Size.square(30.0),
                               animationDuration:
-                              const Duration(milliseconds: 200),
+                                  const Duration(milliseconds: 200),
                               animationCurve: Curves.linear,
                               onChanged: (b) => setState(() => positive = b),
                               iconBuilder: (context, local, global) {
@@ -924,15 +957,14 @@ class _UserProfileState extends State<UserProfile> {
                                     Positioned(
                                         left: 10.0,
                                         right: 10.0,
-
                                         height: 30.0,
                                         child: DecoratedBox(
                                           decoration: BoxDecoration(
                                             gradient: LinearGradient(
                                                 colors: AppColors.secondaryG),
                                             borderRadius:
-                                            const BorderRadius.all(
-                                                Radius.circular(30.0)),
+                                                const BorderRadius.all(
+                                                    Radius.circular(30.0)),
                                           ),
                                         )),
                                     child,
@@ -969,7 +1001,7 @@ class _UserProfileState extends State<UserProfile> {
               ),
               Container(
                 padding:
-                const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
                 decoration: BoxDecoration(
                     color: AppColors.whiteColor,
                     borderRadius: BorderRadius.circular(15),
@@ -1007,18 +1039,27 @@ class _UserProfileState extends State<UserProfile> {
                   ],
                 ),
               ),
-              SizedBox(height: 25,),
+              SizedBox(
+                height: 25,
+              ),
               Center(
                 child: InkWell(
-                  onTap: _logOut,
-                  child: Text("Logout",style: TextStyle(
-                    color: AppColors.blackColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),),
+                  onTap:(){
+                    _logOut(context);
+                  },
+                  child: Text(
+                    "Logout",
+                    style: TextStyle(
+                      color: AppColors.blackColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
-              SizedBox(height: 25,),
+              SizedBox(
+                height: 25,
+              ),
               Center(child: Text('App Version: $_appVersion'))
             ],
           ),
@@ -1072,11 +1113,11 @@ void _showMoreOptionsModal(BuildContext context, Map<String, dynamic> org) {
   );
 }
 
-
-
 String _formatDate(String dateString) {
-  final inputFormat = DateFormat('yyyy-MM-ddTHH:mm:ss'); // Replace with the actual format of your input date string
-  final outputFormat = DateFormat('MMM dd, yyyy'); // Replace with the desired output format
+  final inputFormat = DateFormat(
+      'yyyy-MM-ddTHH:mm:ss'); // Replace with the actual format of your input date string
+  final outputFormat =
+      DateFormat('MMM dd, yyyy'); // Replace with the desired output format
   final date = inputFormat.parse(dateString);
   return outputFormat.format(date);
 }

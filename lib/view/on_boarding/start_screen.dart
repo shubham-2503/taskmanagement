@@ -58,7 +58,9 @@ class _StartScreenState extends State<StartScreen> {
                 child: MaterialButton(
                   minWidth: double.maxFinite,
                   height: 50,
-                  onPressed: () async {Navigator.pushNamed(context, LoginScreen.routeName);},
+                  onPressed: () async {
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>LoginScreen()));
+                  },
                   color: AppColors.primaryColor2,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25)),

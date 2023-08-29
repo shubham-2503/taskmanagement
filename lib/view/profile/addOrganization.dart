@@ -1,11 +1,14 @@
 import 'dart:convert';
 
+import 'package:Taskapp/view/subscription/planSelection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../common_widgets/round_gradient_button.dart';
 import '../../common_widgets/round_textfield.dart';
 import 'package:http/http.dart' as http;
+
+import '../../utils/app_colors.dart';
 
 class AddOrganization extends StatefulWidget {
   final String userId;
@@ -71,8 +74,15 @@ class _AddOrganizationState extends State<AddOrganization> {
             ],
           ),
         );
+        final responseData = jsonDecode(response.body);
+        final orgId = responseData['data']['org_id']; // Assuming 'org_id' is the key in the response
         print('Organization added successfully');
-        Navigator.pop(context); // Navigate back after successful addition
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PlanSelectionScreen(orgId: orgId),
+          ),
+        );
       } else if (response.statusCode == 401) {
         // Unauthorized
         showDialog(
@@ -148,8 +158,6 @@ class _AddOrganizationState extends State<AddOrganization> {
     }
   }
 
-
-
   @override
   void dispose() {
     _companyNameController.dispose();
@@ -175,9 +183,12 @@ class _AddOrganizationState extends State<AddOrganization> {
           padding: EdgeInsets.only(top: 100, left: 20, right: 20),
           child: Column(
             children: [
-              Image.asset("assets/images/pm-3.jpeg", width: media.width),
-              Text("Add New Organization"),
-              Spacer(),
+              Text("Add New Organization",style: TextStyle(
+                color: AppColors.secondaryColor2,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),),
+              SizedBox(height: 40,),
               RoundTextField(
                 textEditingController: _companyNameController,
                 hintText: "Company Name",

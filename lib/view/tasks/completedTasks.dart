@@ -61,8 +61,10 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
 
           // Extract the team name from the "teams" list.
           final List<dynamic> teams = taskData['teams'];
-          final String assignedTeam =
-          teams.isNotEmpty ? teams[0]['teamName'] as String : '';
+          final List<String> assignedTeam = teams.isNotEmpty
+              ? users.map((user) => user['teamName'] as String).toList()
+              : [];
+          final List<String> assignedTeams = assignedTeam;
 
           return Task(
             taskId: taskData['id'],
@@ -73,7 +75,7 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
             priority: taskData['priority'] ?? '',
             dueDate: taskData['due_Date'],
             createdBy: taskData['created_by'] ?? '',
-            assignedTeam: assignedTeam, // New field containing the team name
+            assignedTeam: assignedTeams, // New field containing the team name
           );
         }).toList();
 
@@ -396,7 +398,6 @@ void _showTaskDetailsBottomSheet(BuildContext context, Task task) {
 }
 
 String formatDate(String? dateString) {
-  print('Raw Date String: $dateString');
   if (dateString == null || dateString.isEmpty) {
     return 'N/A'; // Return "N/A" for null or empty date strings
   }

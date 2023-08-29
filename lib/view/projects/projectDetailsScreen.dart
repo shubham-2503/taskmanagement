@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:Taskapp/view/projects/Projecttaskcreation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/project_model.dart';
 import '../../models/task_model.dart';
 import '../../utils/app_colors.dart';
 import 'myProjects/editMyProjects.dart';
@@ -11,6 +12,7 @@ import 'package:intl/intl.dart';
 
 
 class ProjectDetailsScreen extends StatefulWidget {
+  final Project project;
   final String? projectId;
   final String projectName;
   final String assigneeTo;
@@ -19,6 +21,8 @@ class ProjectDetailsScreen extends StatefulWidget {
   final String createdBy;
   String? dueDate;
   final List<String>? attachments;
+  final bool active;
+
 
   ProjectDetailsScreen({
     required this.projectName,
@@ -26,7 +30,7 @@ class ProjectDetailsScreen extends StatefulWidget {
     required this.assigneeTeam,
     this.status,
     this.dueDate, required this.projectId,
-    required this.createdBy, this.attachments,
+    required this.createdBy, this.attachments, required this.active, required this.project,
   });
 
   @override
@@ -42,9 +46,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
   void initState() {
     super.initState();
     final projectId = widget.projectId;
-    _selectedStatus = widget.status ?? 'Active';
-    _isActive = widget.status == 'Active' ?? true;
-
     // Call the API to fetch the tasks using the provided project ID
     fetchProjectTasks(widget.projectId!);
   }
@@ -133,10 +134,11 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
         final List<dynamic> responseData = jsonDecode(response.body);
         setState(() {
           tasks = responseData.map((taskData) {
-            String status = taskData['status'] == true ? 'Active' : 'In-Active';
-
             List<String> assignedToUsers = (taskData['users'] as List<dynamic>)
                 .map((userData) => userData['user_name'].toString())
+                .toList();
+            List<String> assignedTeam = (taskData['teams'] as List<dynamic>)
+                .map((teamData) => teamData['teamName'].toString())
                 .toList();
 
             return Task(
@@ -144,7 +146,8 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
               taskName: taskData['task_name'] ?? '',
               description: taskData['description'],
               assignedTo: assignedToUsers,
-              status: status,
+              assignedTeam: assignedTeam,
+              status: taskData['status'],
               owner: taskData['created_by'],
               priority: taskData['priority'] ?? '',
               dueDate: taskData['due_Date'] ?? '',
@@ -160,10 +163,25 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     }
   }
 
+  Color getStatusColor(String status) {
+    switch (status) {
+      case 'InProgress':
+        return Colors.blue;
+      case 'Completed':
+        return Colors.red;
+      case 'ToDo':
+        return AppColors.primaryColor2;
+      case 'transferred':
+        return Colors.black54;
+      default:
+        return Colors.grey; // Default color if status doesn't match any case
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final ProjectId = widget.projectId;
-    print("ProjectIds: $ProjectId");
     final projectName = widget.projectName;
     final assignee = widget.assigneeTo;
     final assigneeteam = widget.assigneeTeam;
@@ -171,6 +189,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     final status = widget.status;
     final owner = widget.createdBy;
     final attachment = widget.attachments;
+    bool active = widget.active;
 
     return Scaffold(
       body: Container(
@@ -182,7 +201,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
@@ -204,24 +223,23 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                       ],
                     ),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         IconButton(onPressed: (){
                           print("Assigned Team: $assigneeteam");
-                          Navigator.push(context, MaterialPageRoute(builder: (context)=>EditMyProjectPage(initialTitle: projectName, initialAssignedTo: assignee,initialAssignedTeam:assigneeteam, initialStatus: _selectedStatus ?? " ", initialDueDate: dueDate ?? "", projectId: ProjectId!, )));
+                          Navigator.push(context, MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project,)));
                         }, icon: Icon(Icons.edit,color: AppColors.primaryColor1,)),
                         SizedBox(width: 3,),
                         IconButton(
-                          onPressed: () {
-                            Navigator.push(
+                          onPressed: () async {
+                            final result = await Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => ProjectTaskCreationScreen(
-                                  ProjectId: ProjectId!, // Pass the projectId to the next screen
-                                  ProjectName: widget.projectName,
-                                ),
-                              ),
+                              MaterialPageRoute(builder: (context) => ProjectTaskCreationScreen(ProjectId: ProjectId!, ProjectName: widget.projectName)),
                             );
+                            if (result == true) {
+                              // Refresh the data by calling your fetchTeamProjects method
+                              fetchProjectTasks(ProjectId!); // Or any other method to refresh data
+                            }
                           },
                           icon: Icon(Icons.add_task, color: AppColors.secondaryColor1),
                         ),
@@ -241,10 +259,11 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                       fontSize: 12,
                     ),
                   ),
-                  Text(_selectedStatus ?? 'Active', style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.primaryColor2
-                  ),),
+                  Text("$status"),
+                  // Text(_selectedStatus ?? 'Active', style: TextStyle(
+                  //     fontSize: 12,
+                  //     color: AppColors.primaryColor2
+                  // ),),
                   Visibility(
                     visible: attachment != null && assigneeteam.isNotEmpty,
                     child: Row(
@@ -376,13 +395,14 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                                 itemCount: tasks.length,
                                 itemBuilder: (context, index) {
                                   Task task = tasks[index];
+                                  Color statusColor = getStatusColor(task.status);
                                   return Row(
                                     children: [
                                       Expanded(
                                         child: Row(
                                           children: [
                                             CircleAvatar(
-                                              backgroundColor: task.status == 'active' ? Colors.green : Colors.red,
+                                              backgroundColor: statusColor,
                                               radius: 6,
                                             ),
                                             SizedBox(width: 10,),
@@ -413,12 +433,11 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                                                       onTap: () {
                                                         // Close the modal
                                                         Navigator.pop(context);
-
                                                         // Show the popup dialog with task details and options
                                                         showDialog(
                                                           context: context,
                                                           builder: (context) {
-                                                            Task task = tasks[0];
+                                                            Task task = tasks[index];
                                                             // Initialize TextEditingController for each field
                                                             TextEditingController projectNameController = TextEditingController(text: projectName);
                                                             TextEditingController taskNameController = TextEditingController(text: task.taskName);
@@ -536,7 +555,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                                                         showDialog(
                                                           context: context,
                                                           builder: (context) {
-                                                            Task task = tasks[0]; // Assuming tasks is a List containing the task object
+                                                            Task task = tasks[index]; // Assuming tasks is a List containing the task object
                                                             return AlertDialog(
                                                               title: Row(
                                                                 mainAxisAlignment: MainAxisAlignment.center,

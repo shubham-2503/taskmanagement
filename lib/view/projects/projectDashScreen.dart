@@ -1,5 +1,7 @@
 import 'package:Taskapp/Providers/project_provider.dart';
 import 'package:Taskapp/common_widgets/round_button.dart';
+import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
+import 'package:Taskapp/view/projects/myProjects/createdbyMe.dart';
 import 'package:Taskapp/view/projects/myTeamProjects/my_team_projects.dart';
 import 'package:Taskapp/view/projects/projectCreation.dart';
 import 'package:Taskapp/view/projects/myProjects/project_assigned.dart';
@@ -9,12 +11,15 @@ import '../../models/project_model.dart';
 import '../../utils/app_colors.dart';
 
 class ProjectDashScreen extends StatefulWidget {
+  static String routeName = "/ProjectDashScreen";
+
   @override
   _ProjectDashScreenState createState() => _ProjectDashScreenState();
 }
 
 class _ProjectDashScreenState extends State<ProjectDashScreen> {
-  String selectedOption = 'myTeamProjects';
+  String selectedOption = 'TeamProjects';
+  bool _shouldRefresh = false;
 
   void refreshScreen() {
     setState(() {});
@@ -22,13 +27,18 @@ class _ProjectDashScreenState extends State<ProjectDashScreen> {
 
   Widget getCategoryWidget(List<Project> projects, Function() refreshCallback) {
     switch (selectedOption) {
-      case 'myTeamProjects':
+      case 'TeamProjects':
         return MyTeamProjectScreen(
           projects: projects,
           refreshCallback: refreshCallback,
         );
-      case 'assignedProjects':
+      case 'MyProjects':
         return AssignedToMe(
+          projects: projects,
+          refreshCallback: refreshCallback,
+        );
+      case 'createdbyMe':
+        return CreatedbyMe(
           projects: projects,
           refreshCallback: refreshCallback,
         );
@@ -42,81 +52,83 @@ class _ProjectDashScreenState extends State<ProjectDashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: AppColors.primaryColor2,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.push(context, MaterialPageRoute(builder: (context)=>DashboardScreen()));
+        return true; // Allow the back action to proceed
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.whiteColor,
+        appBar: AppBar(
+          iconTheme: IconThemeData(
+            color: AppColors.primaryColor2,
+          ),
+          elevation: 0,
         ),
-      ),
-      body: Consumer<ProjectDataProvider>(
-        builder: (context, projectProvider, child) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 5.0),
-            child: Column(
-              children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(width: 10),
-                      SizedBox(
-                        height: 40,
-                        width: 100,
-                        child: RoundButton(
-                          title: "My Team\nProjects",
-                          onPressed: () {
-                            setState(() {
-                              selectedOption = 'myTeamProjects';
-                            });
-                            refreshScreen(); // Refresh the screen after changing the option
-                          },
+        body: Consumer<ProjectDataProvider>(
+          builder: (context, projectProvider, child) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 5.0),
+              child: Column(
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(width: 10),
+                        SizedBox(
+                          height: 40,
+                          width: 100,
+                          child: RoundButton(
+                            title: "Team\nProjects",
+                            onPressed: () {
+                              setState(() {
+                                selectedOption = 'TeamProjects';
+                              });
+                              refreshScreen();
+                            },
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 30),
-                      SizedBox(
-                        height: 40,
-                        width: 100,
-                        child: RoundButton(
-                          title: "Assigned \nProjects",
-                          onPressed: () {
-                            setState(() {
-                              selectedOption = 'assignedProjects';
-                            });
-                            refreshScreen(); // Refresh the screen after changing the option
-                          },
+                        SizedBox(width: 30),
+                        SizedBox(
+                          height: 40,
+                          width: 100,
+                          child: RoundButton(
+                            title: "My Projects",
+                            onPressed: () {
+                              setState(() {
+                                selectedOption = 'MyProjects';
+                              });
+                              refreshScreen();
+                            },
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 10,),
-                    ],
+                        SizedBox(width: 10),
+                        SizedBox(
+                          height: 40,
+                          width: 110,
+                          child: RoundButton(
+                            title: "Created By\n Me",
+                            onPressed: () {
+                              setState(() {
+                                selectedOption = 'createdbyMe';
+                              });
+                              refreshScreen();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: getCategoryWidget(projectProvider.projects, refreshScreen),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: "Add New Project",
-        backgroundColor: AppColors.secondaryColor2,
-        onPressed: () async {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProjectCreationScreen(),
-            ),
-          ).then((result) {
-            // The result will contain data sent back from the Create Project screen
-            if (result != null && result is Project) {
-              // Update the project list with the newly created project using projectProvider
-              Provider.of<ProjectDataProvider>(context, listen: false).addProject(result);
-            }
-          });
-        },
-        child: Icon(Icons.add),
+                  Expanded(
+                    child: getCategoryWidget(projectProvider.projects, refreshScreen),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

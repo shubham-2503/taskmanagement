@@ -2,15 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:Taskapp/common_widgets/round_textfield.dart';
 import 'package:Taskapp/models/fetch_user_model.dart';
-import 'package:Taskapp/view/projects/projectDashScreen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-import 'package:search_choices/search_choices.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../Providers/project_provider.dart';
 import '../../View_model/fetchApiSrvices.dart';
@@ -18,32 +14,74 @@ import '../../common_widgets/round_button.dart';
 import '../../models/project_model.dart';
 import '../../models/project_team_model.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/constant.dart';
 
 class ProjectCreationScreen extends StatefulWidget {
+  final int? Count;
+
+  const ProjectCreationScreen({super.key, this.Count});
   @override
   _ProjectCreationScreenState createState() => _ProjectCreationScreenState();
 }
 
 class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
-  late String _projectTitle;
-  late String _attachment = '';
-  DateTime? _startDate;
-  DateTime? _endDate;
-  bool value = false;
-  List<dynamic> statuses = [];
-  String? _selectedStatus;
-  List<dynamic> priorities = [];
-  String? _selectedPriority;
-  TextEditingController _titleController = TextEditingController();
-  TextEditingController _documentsController = TextEditingController();
-  List<User> users =[];
-  List<Team> teams = [];
-  List<String> _selectedMembers = [];
-  List<String> _selectedTeams = [];
   TextEditingController _assigneeMembersController = TextEditingController();
   TextEditingController _assigneeTeamsController = TextEditingController();
+  TextEditingController _titleController = TextEditingController();
+  TextEditingController _descriptionController = TextEditingController();
+  TextEditingController _statusController = TextEditingController();
+  List<String> _selectedMembers = [];
+  List<String> _selectedTeams = [];
+  late String _attachment = '';
+  String? _selectedStatus;
+  DateTime? _startDate;
+  DateTime? _endDate;
+  List<dynamic> statuses = [];
+  TextEditingController _attachmentController = TextEditingController();
 
-  void createProject() async {
+  void showSnackbar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: TextStyle(
+            color: Colors.black54,
+          ),
+        ),
+        backgroundColor: AppColors.primaryColor1,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void createProject(int ProjectCount) async {
+    if (_titleController.text.isEmpty) {
+      showSnackbar(context, "Title is required");
+      return;
+    }
+
+    if (_descriptionController.text.isEmpty) {
+      showSnackbar(context, 'Description is required.');
+      return;
+    }
+
+
+
+    if (_startDate == null) {
+      showSnackbar(context, 'Start Date is required.');
+      return;
+    }
+
+    if (_endDate == null) {
+      showSnackbar(context, 'End Date is required.');
+      return;
+    }
+
+    if (_selectedStatus==null) {
+      showSnackbar(context, 'Status is required.');
+      return;
+    }
+
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -69,7 +107,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
       };
 
       final body = jsonEncode({
-        "name": _projectTitle,
+        "name": _titleController.text.toString(),
         "start_date": _startDate?.toUtc().toIso8601String(),
         "end_date": _endDate?.toUtc().toIso8601String(),
         "status" : _selectedStatus,
@@ -88,6 +126,11 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['status'] == true) {
+          ProjectCountManager projectCountManager = ProjectCountManager(prefs);
+          await projectCountManager.incrementProjectCount();
+          await projectCountManager.fetchTotalProjectCount();
+          await projectCountManager.updateProjectCount();
+
           final project = data['data']['project'];
 
           // Handle the project data as needed
@@ -97,11 +140,14 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
           // Create a Project instance with relevant data
           Project createdProject = Project(
             id: project['id'],
-            name: project['name'],owner: project['created_by'], status: project['status']
+            name: project['name'],owner: project['created_by'], status: project['status'], description: project['description'],
             // Set other properties as needed
           );
 
-          Navigator.pop(context,createdProject);
+          // Navigator.pop(context);
+          // final ProjectDataProvider projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
+          // projectProvider.addProject(createdProject);
+
           showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -131,11 +177,11 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                 ),
                 actions: [
                   InkWell(
-                    onTap: () async {
-                       // Close the dialog
-                      Navigator.pop(context,createdProject);
-                    },
-                    child: Text(
+                  onTap: () async {
+                    Navigator.pop(context,true);
+                    Navigator.pop(context,true);
+                   },
+                   child: Text(
                       "OK",
                       style: TextStyle(
                         color: AppColors.blackColor,
@@ -159,32 +205,35 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
   }
 
   void _showTeamsDropdown(BuildContext context) async {
-    List<Team> _teams = await _fetchTeams();
+    List<Team> teams = await _fetchTeams();
+
+    List<String> selectedTeamsIds = _selectedTeams.toList(); // Store the initial selected ids
 
     final selectedTeamIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        List<String> selectedTeamsIds = _selectedTeams.toList();
-        return AlertDialog(
-          title: Text('Select Teams'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return SingleChildScrollView(
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Teams'),
+              content: SingleChildScrollView(
                 child: Column(
                   children: [
                     Column(
-                      children: _teams.map((team) {
+                      children: teams.map((team) {
                         bool isSelected = selectedTeamsIds.contains(team.id);
 
-                        return CheckboxListTile(
+                        return ListTile(
                           title: Text(team.teamName),
-                          value: isSelected,
-                          onChanged: (value) {
+                          trailing: isSelected
+                              ? Icon(Icons.remove_circle, color: AppColors.primaryColor2)
+                              : Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+                          onTap: () {
                             setState(() {
-                              if (value == true) {
-                                _selectedTeams.add(team.id);
+                              if (isSelected) {
+                                selectedTeamsIds.remove(team.id);
                               } else {
-                                _selectedTeams.remove(team.id);
+                                selectedTeamsIds.add(team.id);
                               }
                             });
                           },
@@ -193,17 +242,17 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Done'),
-              onPressed: () {
-                Navigator.of(context).pop(selectedTeamsIds);
-              },
-            ),
-          ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    Navigator.of(context).pop(selectedTeamsIds);
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -211,7 +260,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
     if (selectedTeamIds != null) {
       _selectedTeams = selectedTeamIds;
       List<String> selectedTeamsText = _selectedTeams
-          .map((id) => _teams.firstWhere((team) => team.id == id).teamName.toString())
+          .map((id) => teams.firstWhere((team) => team.id == id).teamName.toString())
           .toList();
       _assigneeTeamsController.text = selectedTeamsText.join(', ');
     }
@@ -220,30 +269,33 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
   void _showMembersDropdown(BuildContext context) async {
     List<User> allUsers = await _fetchUsers();
 
+    List<String> selectedIds = _selectedMembers.toList(); // Store the initial selected ids
+
     final selectedUserIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        List<String> selectedIds = _selectedMembers.toList();
-        return AlertDialog(
-          title: Text('Select Members'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return SingleChildScrollView(
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Members'),
+              content: SingleChildScrollView(
                 child: Column(
                   children: [
                     Column(
                       children: allUsers.map((user) {
                         bool isSelected = selectedIds.contains(user.userId);
 
-                        return CheckboxListTile(
+                        return ListTile(
                           title: Text(user.userName),
-                          value: isSelected,
-                          onChanged: (value) {
+                          trailing: isSelected
+                              ? Icon(Icons.remove_circle, color: AppColors.primaryColor2)
+                              : Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+                          onTap: () {
                             setState(() {
-                              if (value == true) {
-                                _selectedMembers.add(user.userId);
+                              if (isSelected) {
+                                selectedIds.remove(user.userId);
                               } else {
-                                _selectedMembers.remove(user.userId);
+                                selectedIds.add(user.userId);
                               }
                             });
                           },
@@ -252,17 +304,17 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Done'),
-              onPressed: () {
-                Navigator.of(context).pop(selectedIds);
-              },
-            ),
-          ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    Navigator.of(context).pop(selectedIds);
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -286,7 +338,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
         PlatformFile file = result.files.first;
         setState(() {
           _attachment = file.path ?? '';
-          _documentsController.text = _attachment;
+          _attachmentController.text = _attachment;
         });
       }
     } on PlatformException catch (e) {
@@ -318,26 +370,6 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
     }
   }
 
-  Future<void> fetchPriorities() async {
-    try {
-      List<dynamic> fetchedPriorities = await ApiServices.fetchPriorities();
-      setState(() {
-        priorities = fetchedPriorities;
-        // Check if priorities list is not empty
-        if (priorities.isNotEmpty) {
-          // Initialize _selectedPriority to the first priority ID in the list
-          _selectedPriority = priorities[0]['id'];
-        } else {
-          // If priorities list is empty, set _selectedPriority to null
-          _selectedPriority = null;
-        }
-      });
-    } catch (e) {
-      print('Error fetching priorities: $e');
-      // Handle error if necessary
-    }
-  }
-
   Future<void> fetchStatusData() async {
     try {
       List<dynamic> fetchedStatuses = await ApiServices.fetchStatusData();
@@ -347,6 +379,10 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
         if (statuses.isNotEmpty) {
           // Initialize _selectedStatus to the first status ID in the list
           _selectedStatus = statuses[0]['id'].toString();
+          statuses = fetchedStatuses
+              .where((status) => status['name'] != 'Completed')
+              .toList();
+
         } else {
           // If statuses list is empty, set _selectedStatus to null
           _selectedStatus = null;
@@ -361,9 +397,10 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
   @override
   void dispose() {
     _titleController.dispose();
-    _documentsController.dispose();
+    _attachmentController.dispose();
     _assigneeMembersController.dispose();
     _assigneeTeamsController.dispose();
+    _statusController.dispose();
     super.dispose();
   }
 
@@ -372,10 +409,9 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
     super.initState();
     _fetchTeams();
     _fetchUsers();
-    fetchPriorities();
     fetchStatusData();
     _titleController = TextEditingController();
-    _documentsController = TextEditingController();
+    _attachmentController = TextEditingController();
     _assigneeMembersController = TextEditingController();
     _assigneeTeamsController = TextEditingController();
   }
@@ -410,11 +446,19 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                         icon: "assets/images/title.jpeg",
                         onChanged: (value) {
                           setState(() {
-                            _projectTitle = value;
+                            _titleController.text = value;
                           });
                         },
-                        textInputType: TextInputType.text,
-                        textEditingController: _titleController,
+                      ),
+                      SizedBox(height: 20.0),
+                      RoundTextField(
+                        hintText: "Description",
+                        icon: "assets/images/title.jpeg",
+                        onChanged: (value) {
+                          setState(() {
+                            _descriptionController.text = value;
+                          });
+                        },
                       ),
                       SizedBox(height: 20.0),
                       RoundTextField(
@@ -427,7 +471,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                             _attachment = value;
                           });
                         },
-                        textEditingController: _documentsController,
+                        textEditingController: _attachmentController,
                       ),
                       SizedBox(height: 20.0),
                       Text("Assigned To"),
@@ -530,51 +574,59 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                         ],
                       ),
                       SizedBox(height: 20.0),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 150,
-                            decoration: BoxDecoration(
-                              color: AppColors.lightGrayColor,
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedStatus,
-                              decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 15,
-                                  horizontal: 15,
-                                ),
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                hintText: "Status",
-                                hintStyle: TextStyle(
-                                  fontSize: 8,
+                      Padding(
+                        padding: EdgeInsets.only(left: 20,right: 20),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.lightGrayColor,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedStatus,
+                            decoration: InputDecoration(
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 15,
+                                horizontal: 15,
+                              ),
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              hintText: "Status",
+                              hintStyle: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                              icon: Padding(
+                                padding: const EdgeInsets.only(left: 16.0),
+                                child: Image.asset(
+                                  "assets/images/pri.png",
+                                  width: 20,
                                   color: Colors.grey,
                                 ),
                               ),
-                              items: statuses.map<DropdownMenuItem<String>>((status) {
-                                return DropdownMenuItem<String>(
-                                  value: status['id'].toString(), // Assuming 'id' is of type String or can be converted to String
-                                  child: Text(status['name']),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedStatus = value; // Call the callback function with the selected value
-                                });
-                              },
                             ),
+                            items: statuses.map<DropdownMenuItem<String>>((status) {
+                              return DropdownMenuItem<String>(
+                                value: status['id'].toString(), // Assuming 'id' is of type String or can be converted to String
+                                child: Text(status['name']),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedStatus = value;
+                              });
+                            },
                           ),
-                        ],
+                        ),
                       ),
                       SizedBox(height: 40.0),
                       SizedBox(
                           height: 40,
                           width: 90,
                           child: RoundButton(
-                              title: "Create Project", onPressed: createProject)),
+                              title: "Create Project", onPressed: (){
+                                createProject(widget.Count!);
+                                print("Count: ${widget.Count}");
+                          })),
                     ],
                   ),
                 ),
@@ -616,3 +668,6 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
 
 
 }
+
+
+

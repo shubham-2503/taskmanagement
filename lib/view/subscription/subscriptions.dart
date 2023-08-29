@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:Taskapp/common_widgets/round_button.dart';
+import 'package:Taskapp/view/subscription/renewPlan.dart';
 import 'package:Taskapp/view/welcome/backToLogin/backToLogin.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/subscription.dart';
 import '../../utils/app_colors.dart';
 
 class SubscriptionsPlan extends StatefulWidget {
@@ -19,32 +21,25 @@ class _SubscriptionsPlanState extends State<SubscriptionsPlan> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
-      if (orgId == null) {
-        // If the user hasn't switched organizations, use the organization ID obtained during login time
-        orgId = prefs.getString('org_id') ?? "";
-      }
-
-      print("OrgId: $orgId");
-
-      if (orgId == null) {
-        throw Exception('orgId not found locally');
-      }
       final response = await http.get(
-        Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans?org_id=$orgId'),
-        headers: {'accept': '*/*',
-        },
+        Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
+        headers: {'accept': '*/*'},
       );
 
       print('API Response: ${response.body}');
       print("StatusCode: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        print('Decoded Data: $data');
+        final List<dynamic> responseData = jsonDecode(response.body);
+        print('API Response: $responseData');
+
+        final List<SubscriptionPlan> subscriptionPlans = responseData.map(
+              (jsonPlan) => SubscriptionPlan.fromJson(jsonPlan),
+        ).toList();
+
         setState(() {
-          plans = data.map((plan) => SubscriptionPlan.fromJson(plan)).toList();
+          plans = subscriptionPlans;
         });
       } else {
         print('API Error: ${response.statusCode}');
@@ -75,10 +70,10 @@ class _SubscriptionsPlanState extends State<SubscriptionsPlan> {
               children: [
                 InkWell(
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.push(context,MaterialPageRoute(builder: (context)=>RenewPlanScreen()));
                   },
                   child: Text(
-                    "Skip Now",
+                    "Renew Plan",
                     style: TextStyle(
                       fontSize: 15,
                       color: AppColors.secondaryColor2,
@@ -177,7 +172,7 @@ class _SubscriptionsPlanState extends State<SubscriptionsPlan> {
                                         ),
                                         SizedBox(height: 10),
                                         Text(
-                                          plan.price,
+                                          plan.price.toString(),
                                           style: TextStyle(
                                             color: AppColors.secondaryColor1,
                                             fontSize: 12,
@@ -187,7 +182,7 @@ class _SubscriptionsPlanState extends State<SubscriptionsPlan> {
                                         SizedBox(height: 10),
                                         Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: plan.getFeaturesList().map(
+                                          children: plan.features.split(',').map(
                                                 (feature) => Text(
                                               '• $feature',
                                               style: TextStyle(
@@ -198,7 +193,6 @@ class _SubscriptionsPlanState extends State<SubscriptionsPlan> {
                                             ),
                                           ).toList(),
                                         ),
-
                                         SizedBox(height: 15),
                                       ],
                                     ),
@@ -221,44 +215,3 @@ class _SubscriptionsPlanState extends State<SubscriptionsPlan> {
   }
 }
 
-class SubscriptionPlan {
-  final String id;
-  final String name;
-  final String description;
-  final String price;
-  final String features;
-  final int userCount;
-  final int storageLimit;
-  final String status;
-  final String validity;
-
-  SubscriptionPlan({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.price,
-    required this.features,
-    required this.userCount,
-    required this.storageLimit,
-    required this.status,
-    required this.validity,
-  });
-
-  factory SubscriptionPlan.fromJson(Map<String, dynamic> json) {
-    return SubscriptionPlan(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      price: json['price'],
-      features: json['features'],
-      userCount: json['user_count'],
-      storageLimit: json['storage_limit'],
-      status: json['status'],
-      validity: json['validity'],
-    );
-  }
-
-  List<String> getFeaturesList() {
-    return features.split(','); // Split the features string into a list of strings
-  }
-}

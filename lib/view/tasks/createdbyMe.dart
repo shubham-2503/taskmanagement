@@ -2,32 +2,31 @@ import 'dart:convert';
 import 'package:Taskapp/view/tasks/MistaskCreation.dart';
 import 'package:Taskapp/view/tasks/taskDetails.dart';
 import 'package:Taskapp/view/tasks/taskModal.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../../common_widgets/round_textfield.dart';
-import '../../models/fetch_user_model.dart';
-import '../../models/project_team_model.dart';
 import '../../models/task_model.dart';
 import '../../utils/app_colors.dart';
-import '../../utils/modalwidget_user_teams.dart';
 
 
-class MyTaskScreen extends StatefulWidget {
+
+class CreatedByMe extends StatefulWidget {
   final VoidCallback refreshCallback;
   final Map<String, String?> selectedFilters;
 
-  const MyTaskScreen({super.key, required this.refreshCallback, required this.selectedFilters});
+  const CreatedByMe({super.key, required this.refreshCallback, required this.selectedFilters});
 
   @override
-  State<MyTaskScreen> createState() => _MyTaskScreenState();
+  State<CreatedByMe> createState() => _CreatedByMeState();
 }
 
-class _MyTaskScreenState extends State<MyTaskScreen> {
-  List<Task> filteredMyTasks = [];
-  List<Task> mytasks = [];
+class _CreatedByMeState extends State<CreatedByMe> {
+  List<Task> filteredTasks = [];
+  List<Task> ByMytasks = [];
 
-  Future<void> fetchMyTasks() async {
+  Future<void> fetchCreatedByMeTasks() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -51,7 +50,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
         ...widget.selectedFilters,
       };
 
-      final url = Uri.http('43.205.97.189:8000', '/api/Task/myTasks', queryParameters);
+      final url = Uri.http('43.205.97.189:8000', '/api/Task/createdByMe', queryParameters);
 
       final headers = {
         'accept': '*/*',
@@ -72,14 +71,14 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
               : [];
           final List<String> assignedTo = assignedUsers; // Assign the list of users directly
 
-         // Extract the team name from the "teams" list.
+          // Extract the team name from the "teams" list.
           // Extract the team name from the "teams" list.
           final List<dynamic> teams = taskData['teams'];
           final List<String> assignedTeams = teams.isNotEmpty
               ? teams.map((team) => team['teamName'].toString()).toList()
               : [];
           // Assuming the 'assignedTo' and 'assignedTeam' properties of 'task' are either List<String> or comma-separated strings.
-          print("AssignedTeam: $assignedTeams");
+
 
           return Task(
             taskId: taskData['id'],
@@ -95,8 +94,8 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
         }).toList();
 
         setState(() {
-          mytasks = fetchedTasks;
-          filteredMyTasks = fetchedTasks;
+          ByMytasks = fetchedTasks;
+          filteredTasks = fetchedTasks;
         });
       } else {
         print('Error fetching tasks: ${response.statusCode}');
@@ -110,20 +109,21 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
     setState(() {
       if (query.length >= 3) {
         print("Filtering with query: $query");
-        filteredMyTasks = mytasks.where((mytask) =>
+        filteredTasks = ByMytasks.where((mytask) =>
             mytask.taskName.toLowerCase().contains(query.toLowerCase())).toList();
       } else {
         // Filter with an empty query or a query with less than 3 characters
-        filteredMyTasks = mytasks.toList();
+        filteredTasks = ByMytasks.toList();
       }
     });
   }
+
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    fetchMyTasks();
+    fetchCreatedByMeTasks();
   }
 
   @override
@@ -144,7 +144,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                   );
 
                   if (result == true) {
-                   fetchMyTasks();
+                    fetchCreatedByMeTasks();
                   }
                 },
                 icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
@@ -161,7 +161,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
         child: Column(
           children: [
             Text(
-              'My Tasks',
+              'Created By Me',
               style: TextStyle(
                   color: AppColors.secondaryColor2,
                   fontWeight: FontWeight.bold,
@@ -169,9 +169,9 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: filteredMyTasks.length,
+                itemCount: filteredTasks.length,
                 itemBuilder: (BuildContext context, int index) {
-                  Task task = filteredMyTasks[index];
+                  Task task = filteredTasks[index];
                   // Determine color based on the task's status
                   Color statusColor = Colors.grey; // Default color
                   switch (task.status) {
@@ -245,7 +245,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                               onPressed: () {
                                 _showViewTaskDialog(task);
                               },
-                            ), // Add a Spacer to push the menu image to the end
+                            ),// Add a Spacer to push the menu image to the end
                             GestureDetector(
                               onTap: () async {
                                 bool? shouldRefresh = await showModalBottomSheet<bool>(
@@ -256,7 +256,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                                 );
 
                                 if (shouldRefresh ?? false) {
-                                  await fetchMyTasks();
+                                  await fetchCreatedByMeTasks();
                                 }
                               },
                               child: Image.asset(
@@ -363,7 +363,6 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                     ],
                   ),
                 SizedBox(height: 16),
-                // Add a button to add members to the team
                 Row(
                   children: [
                     IconButton(
@@ -391,8 +390,16 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
   }
 }
 
+String? formatDate(String? dateString) {
+  if (dateString == null || dateString.isEmpty) {
+    return null;
+  }
 
+  final dateTime = DateTime.parse(dateString);
+  final formattedDate = DateFormat('yyyy-MM-dd').format(dateTime);
 
+  return formattedDate;
+}
 
 
 

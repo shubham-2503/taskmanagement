@@ -1,6 +1,6 @@
 import 'package:Taskapp/common_widgets/round_button.dart';
 import 'package:Taskapp/models/task_model.dart';
-import 'package:Taskapp/view/tasks/editTask.dart';
+import 'package:Taskapp/view/tasks/editMytasks.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -77,8 +77,8 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                             actions: [
                               InkWell(
                                 onTap: () {
-                                  Navigator.pop(context);
-                                  Navigator.pop(context);
+                                  Navigator.pop(context,true);
+                                  Navigator.pop(context,true);
                                 },
                                 child: Text(
                                   "OK",
@@ -256,39 +256,15 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                 ],
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              "Created By",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
-            ),
-            SizedBox(height: 10,),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.grey,
-                  width: 1.0,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      "${widget.task.createdBy}",
-                      style: TextStyle(fontSize: 18),
-                    ),
-                  ),
-                ],
-              ),
-            ),
             SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(height: 30,width: 70,child: RoundButton(
                   onPressed: (){
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=>EditTaskPage(initialTitle: widget.task.taskName, initialProject: "", initialAssignedTo: "${widget.task.assignedTo}", initialStatus: "${widget.task.status}", initialDescription: "${widget.task.description}", initialPriority: "${widget.task.priority}", taskId: "${widget.task.taskId}", initialDueDate: "${formatDate(widget.task.dueDate)}", initialAssignedTeam: "${widget.task.assignedTeam}")));
+                    // Navigator.push(context, MaterialPageRoute(builder: (context)=>EditTaskPage(initialTitle: widget.task.taskName, initialProject: "",
+                    //     initialAssignedTo: widget.task.assignedTo, initialStatus: "${widget.task.status}", initialDescription: "${widget.task.description}", initialPriority: "${widget.task.priority}", taskId: "${widget.task.taskId}", initialDueDate: "${formatDate(widget.task.dueDate)}", initialAssignedTeam: widget.task.assignedTeam,task: widget.task,)));
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>EditTask(task: widget.task)));
                   },
                   title: "Edit",
                 ),),
@@ -307,7 +283,6 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
     );
   }
 }
-
 
 String formatDate(String? dateString) {
   print('Raw Date String: $dateString');

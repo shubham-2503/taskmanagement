@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:Taskapp/common_widgets/round_button.dart';
-import 'package:Taskapp/view/tasks/editTask.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/comment_model.dart';
 import '../../models/fetch_user_model.dart';
+import '../../models/task_model.dart';
 import '../../utils/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
@@ -17,30 +17,10 @@ enum Activity {
 }
 
 class TaskDetailsScreen extends StatefulWidget {
-  final String taskId;
-  final String? projectName;
-  final String taskTitle;
-  final String? assignedTo;
-  final String? assignedTeam;
-  final String? status;
-  final String? priority;
-  final String? description;
-  final String? owner;
-  final String? dueDate;
-  final List<String>? attachments; // Add the list of attachments
+  final Task task; // Add the list of attachments
 
   TaskDetailsScreen({
-    this.projectName,
-    required this.taskTitle,
-    required this.assignedTo,
-    this.status,
-    required this.taskId,
-    this.priority,
-    this.assignedTeam,
-    this.description,
-    this.owner,
-    this.dueDate,
-    this.attachments, // Pass the list of attachments from the previous screen
+    required this.task,
   });
 
   @override
@@ -78,7 +58,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
     return Colors.transparent; // Default color
   }
-
 
   Color getTextColor(String entry) {
     if (entry.startsWith('Comment:')) {
@@ -483,14 +462,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
       final response = await http.get(
         Uri.parse(
-            'http://43.205.97.189:8000/api/History/history?taskId=${widget.taskId}'),
+            'http://43.205.97.189:8000/api/History/history?taskId=${widget.task.taskId}'),
         headers: {
           'accept': '*/*',
           'Authorization': 'Bearer $storedData',
         },
       );
 
-      print("TaskId: ${widget.taskId}");
+      print("TaskId: ${widget.task.taskId}");
       print("Response: ${response.statusCode}");
       print("Statuscode: ${response.body}");
 
@@ -700,7 +679,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
   }
 
-
   Future<List<Map<String, dynamic>>> fetchActivityHistory(String taskId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
@@ -838,7 +816,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
       case Activity.Comments:
         return FutureBuilder<List<Comment>>(
-          future: fetchComments(widget.taskId!),
+          future: fetchComments(widget.task.taskId!),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return CircularProgressIndicator();
@@ -970,7 +948,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                                       String replyWithMention = "${comment.commenterName} $replyText";
 
                                                       // Send the reply to the backend
-                                                      await replyComment(comment.commentId, replyWithMention, widget.taskId, mentionedUserIds);
+                                                      await replyComment(comment.commentId, replyWithMention, widget.task.taskId!, mentionedUserIds);
 
                                                       // Process the replyWithMention as needed (e.g., store it).
                                                       _replyController.clear(); // Clear the reply text field
@@ -1094,7 +1072,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
       default:
         return FutureBuilder<List<Map<String, dynamic>>>(
-          future: fetchActivityHistory(widget.taskId!),
+          future: fetchActivityHistory(widget.task.taskId!),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return CircularProgressIndicator(); // Show a loading indicator while fetching data.
@@ -1333,7 +1311,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
   }
 
-
   Color getPriorityColor(String? priority) {
     if (priority == null) {
       return Colors.grey; // Return a default color when priority is null
@@ -1358,288 +1335,206 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final projectName = widget.projectName;
-    final taskTitle = widget.taskTitle;
-    final assignee = widget.assignedTo;
-    final status = widget.status;
-    final priorityColor = getPriorityColor(widget.priority);
-    final assigneeTeam = widget.assignedTeam;
-    final description = widget.description;
-    final dueDate = widget.dueDate;
-    final owner = widget.owner;
-
     return Scaffold(
+      appBar: AppBar(
+        // title: Text("Add new Comments"),
+        actions: [
+          IconButton(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return Dialog(
+                    child:  SingleChildScrollView(
+                      reverse: true,
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Stack(
+                                  children: [
+                                    TypeAheadFormField<String>(
+                                      textFieldConfiguration: TextFieldConfiguration(
+                                        controller: _commentController,
+                                        onChanged: (text) {
+                                          if (text.endsWith("@") && text.length > 1) {
+                                            fetchUsers();
+                                            setState(() {
+                                              showSuggestions = true;
+                                            });
+                                          } else {
+                                            setState(() {
+                                              showSuggestions = false;
+                                            });
+                                          }
+                                        },
+                                        decoration: InputDecoration(
+                                          hintText: "Write your comment...",
+                                        ),
+                                      ),
+                                      suggestionsCallback: (pattern) async {
+                                        final atIndex = pattern.indexOf("@");
+                                        if (atIndex != -1 && atIndex + 1 < pattern.length) {
+                                          final searchQuery =
+                                          pattern.substring(atIndex + 1).toLowerCase();
+                                          final filteredUsers = suggestedUsers
+                                              .where((user) =>
+                                              user.toLowerCase().contains(searchQuery))
+                                              .toList();
+                                          return filteredUsers;
+                                        } else {
+                                          return suggestedUsers;
+                                        }
+                                      },
+                                      itemBuilder: (context, suggestion) {
+                                        return ListTile(
+                                          leading: CircleAvatar(
+                                            child: Text(suggestion.substring(0, 1)),
+                                          ),
+                                          title: Text(suggestion),
+                                        );
+                                      },
+                                      onSuggestionSelected: (suggestion) async {
+                                        // Append the selected suggestion to the comment box
+                                        // Fetch the userId corresponding to the mentioned username
+                                        final userId = await getUserIdByUsername(suggestion);
+                                        // Add the userId to the mentionedUserIds list
+                                        setState(() {
+                                          mentionedUserIds.add(userId);
+                                        });
+
+                                        // Append the selected suggestion to the comment box
+                                        final currentText = _commentController.text;
+                                        final lastAtSymbolIndex = currentText.lastIndexOf("@");
+                                        final newText =
+                                            currentText.substring(0, lastAtSymbolIndex) +
+                                                "@$suggestion ";
+
+                                        // Clear the input field
+                                        _commentController.clear();
+                                        _commentController.text = newText;
+                                      },
+                                    ),
+                                    Visibility(
+                                      visible: showSuggestions,
+                                      child: Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        child: Card(
+                                          elevation: 4.0,
+                                          child: SizedBox(
+                                            height: 200,
+                                            child: ListView.builder(
+                                              itemCount: suggestedUsers.length,
+                                              itemBuilder: (context, index) {
+                                                final suggestion = suggestedUsers[index];
+                                                return ListTile(
+                                                  leading: CircleAvatar(
+                                                    child: Text(suggestion.substring(0, 1)),
+                                                  ),
+                                                  title: Text(suggestion),
+                                                  onTap: () async {
+                                                    // Append the selected suggestion to the comment box
+                                                    // Fetch the userId corresponding to the mentioned username
+                                                    final userId =
+                                                    await getUserIdByUsername(suggestion);
+                                                    // Add the userId to the mentionedUserIds list
+                                                    setState(() {
+                                                      mentionedUserIds.add(userId);
+                                                    });
+
+                                                    // Append the selected suggestion to the comment box
+                                                    final currentText =
+                                                        _commentController.text;
+                                                    final lastAtSymbolIndex =
+                                                    currentText.lastIndexOf("@");
+                                                    final newText =
+                                                        currentText.substring(0, lastAtSymbolIndex) +
+                                                            "@$suggestion ";
+
+                                                    // Clear the input field
+                                                    _commentController.clear();
+                                                    _commentController.text = newText;
+                                                  },
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 10.0),
+                              GestureDetector(
+                                onTap: () async {
+                                  // Implement the send comments logic here
+                                  await addComment(
+                                    widget.task.taskId!,
+                                    _commentController.text!,
+                                  );
+
+                                  // Fetch the comments again to refresh the list
+                                  await fetchComments(widget.task.taskId!);
+
+                                  // Optionally, you can use setState to trigger a UI refresh if needed
+                                  setState((){
+                                    // After successfully adding the comment, clear the input field
+                                    _commentController.clear();
+                                  });
+
+                                  // Now, navigate back to the previous screen (assuming the comments section is on the previous screen)
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Comment added successfully'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 12.0,
+                                    horizontal: 16.0,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryColor1,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    'Send',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+            icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+          ),
+          Text(
+            "Add comments",
+            style: TextStyle(color: AppColors.secondaryColor2, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
         body: Container(
             padding: EdgeInsets.only(top: 40, left: 20, right: 20),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(
-                children: [
-                  InkWell(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: Icon(Icons.arrow_back_ios),
-                  ),
-                  Image.asset(
-                    "assets/images/magic.png",
-                    width: 30,
-                  ),
-                  SizedBox(width: 5),
-                  RichText(
-                    text: TextSpan(
-                      text: "Task Title: ",
-                      style: TextStyle(
-                          color: AppColors.secondaryColor2,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                      children: [
-                        TextSpan(
-                          text: taskTitle,
-                          style: TextStyle(
-                            // Add any specific styles for the plan name here, if needed
-                            color: AppColors.blackColor,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: priorityColor,
-                    ),
-                  ),
-                  SizedBox(
-                    width: 12,
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => EditTaskPage(
-                                    initialTitle: taskTitle,
-                                    initialProject: "",
-                                    initialAssignedTo: widget.assignedTo!,
-                                    initialStatus: status!,
-                                    initialDescription: description!,
-                                    initialPriority: widget.priority!,
-                                    taskId: widget.taskId,
-                                    initialDueDate: formatDate(dueDate) ?? '',
-                                    initialAssignedTeam: widget.assignedTeam!,
-                                  )));
-                    },
-                    icon: Icon(
-                      Icons.edit,
-                      color: AppColors.secondaryColor2,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      // print("id: ${widget.taskId}");
-                      // _deleteTask(widget.taskId);
-                    },
-                    icon: Icon(
-                      Icons.delete,
-                      color: AppColors.secondaryColor2,
-                    ),
-                  )
-                ],
-              ),
-              SizedBox(
-                height: 25,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      text: "Task Description: ",
-                      style: TextStyle(
-                          color: AppColors.secondaryColor2,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                      children: [
-                        TextSpan(
-                          text: description,
-                          style: TextStyle(
-                            // Add any specific styles for the plan name here, if needed
-                            color: AppColors.blackColor,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    width: 70,
-                  ),
-                  // hasAttachments()
-                  //     ?
-                  // Row(
-                  //   children: [
-                  //     Icon(Icons.attach_file, color: AppColors.secondaryColor2),
-                  //     Text("Count: ${widget.attachments!.length}"),
-                  //   ],
-                  // )
-                  //     : SizedBox(),
-                  Row(
-                    children: [
-                      Icon(Icons.attach_file, color: AppColors.secondaryColor2),
-                      // Text("Count: "),
-                    ],
-                  )
-                ],
-              ),
-              SizedBox(height: 10.0),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      // Row(
-                      //   children: [
-                      //     Icon(
-                      //       Icons.person,
-                      //       color: AppColors.secondaryColor2,
-                      //     ),
-                      //     SizedBox(
-                      //       width: 10,
-                      //     ),
-                      //     Text(
-                      //       'AssigneeTo:',
-                      //       style: TextStyle(
-                      //         fontSize: 12,
-                      //       ),
-                      //     ),
-                      //     SizedBox(
-                      //       width: 10,
-                      //     ),
-                      //     Text(
-                      //       assignee!,
-                      //       style: TextStyle(
-                      //           fontSize: 12, color: AppColors.primaryColor2),
-                      //     ),
-                      //   ],
-                      // ),
-                      // SizedBox(
-                      //   width: 30,
-                      // ),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.timelapse,
-                            color: AppColors.secondaryColor2,
-                          ),
-                          SizedBox(
-                            width: 5,
-                          ),
-                          Text(
-                            'Status:',
-                            style: TextStyle(
-                              fontSize: 12,
-                            ),
-                          ),
-                          SizedBox(
-                            width: 5,
-                          ),
-                          Text(
-                            status!,
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.primaryColor2),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 10.0),
-                  // Row(
-                  //   children: [
-                  //     Row(
-                  //       children: [
-                  //         Icon(
-                  //           Icons.person,
-                  //           color: AppColors.secondaryColor2,
-                  //         ),
-                  //         SizedBox(
-                  //           width: 10,
-                  //         ),
-                  //         Text(
-                  //           'AssigneeTeam:',
-                  //           style: TextStyle(
-                  //             fontSize: 12,
-                  //           ),
-                  //         ),
-                  //         SizedBox(
-                  //           width: 10,
-                  //         ),
-                  //         Text(
-                  //           assigneeTeam!,
-                  //           style: TextStyle(
-                  //               fontSize: 12, color: AppColors.primaryColor2),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //     SizedBox(
-                  //       width: 30,
-                  //     ),
-                  //     Row(
-                  //       children: [
-                  //         Icon(
-                  //           Icons.create,
-                  //           color: AppColors.secondaryColor2,
-                  //         ),
-                  //         SizedBox(
-                  //           width: 10,
-                  //         ),
-                  //         Text(
-                  //           'Created By:',
-                  //           style: TextStyle(
-                  //             fontSize: 12,
-                  //           ),
-                  //         ),
-                  //         SizedBox(width: 10.0),
-                  //         Text(
-                  //           owner!,
-                  //           style: TextStyle(
-                  //               fontSize: 12, color: AppColors.primaryColor2),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //   ],
-                  // ),
-                  SizedBox(height: 10.0),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_month,
-                        color: AppColors.secondaryColor2,
-                      ),
-                      SizedBox(
-                        width: 10,
-                      ),
-                      Text(
-                        'DueDate:',
-                        style: TextStyle(
-                          fontSize: 12,
-                        ),
-                      ),
-                      SizedBox(width: 10.0),
-                      Text(
-                        formatDate(dueDate) ?? '',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.primaryColor2),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              SizedBox(height: 16.0),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -1694,181 +1589,235 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                 ],
               ),
               _buildReportTypeText(),
-               SingleChildScrollView(
-                    reverse: true,
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Stack(
-                                children: [
-                                  TypeAheadFormField<String>(
-                                    textFieldConfiguration: TextFieldConfiguration(
-                                      controller: _commentController,
-                                      onChanged: (text) {
-                                        if (text.endsWith("@") && text.length > 1) {
-                                          fetchUsers();
-                                          setState(() {
-                                            showSuggestions = true;
-                                          });
-                                        } else {
-                                          setState(() {
-                                            showSuggestions = false;
-                                          });
-                                        }
-                                      },
-                                      decoration: InputDecoration(
-                                        hintText: "Write your comment...",
-                                      ),
-                                    ),
-                                    suggestionsCallback: (pattern) async {
-                                      final atIndex = pattern.indexOf("@");
-                                      if (atIndex != -1 && atIndex + 1 < pattern.length) {
-                                        final searchQuery =
-                                        pattern.substring(atIndex + 1).toLowerCase();
-                                        final filteredUsers = suggestedUsers
-                                            .where((user) =>
-                                            user.toLowerCase().contains(searchQuery))
-                                            .toList();
-                                        return filteredUsers;
-                                      } else {
-                                        return suggestedUsers;
-                                      }
-                                    },
-                                    itemBuilder: (context, suggestion) {
-                                      return ListTile(
-                                        leading: CircleAvatar(
-                                          child: Text(suggestion.substring(0, 1)),
-                                        ),
-                                        title: Text(suggestion),
-                                      );
-                                    },
-                                    onSuggestionSelected: (suggestion) async {
-                                      // Append the selected suggestion to the comment box
-                                      // Fetch the userId corresponding to the mentioned username
-                                      final userId = await getUserIdByUsername(suggestion);
-                                      // Add the userId to the mentionedUserIds list
-                                      setState(() {
-                                        mentionedUserIds.add(userId);
-                                      });
-
-                                      // Append the selected suggestion to the comment box
-                                      final currentText = _commentController.text;
-                                      final lastAtSymbolIndex = currentText.lastIndexOf("@");
-                                      final newText =
-                                          currentText.substring(0, lastAtSymbolIndex) +
-                                              "@$suggestion ";
-
-                                      // Clear the input field
-                                      _commentController.clear();
-                                      _commentController.text = newText;
-                                    },
-                                  ),
-                                  Visibility(
-                                    visible: showSuggestions,
-                                    child: Positioned(
-                                      top: 0,
-                                      left: 0,
-                                      right: 0,
-                                      child: Card(
-                                        elevation: 4.0,
-                                        child: SizedBox(
-                                          height: 200,
-                                          child: ListView.builder(
-                                            itemCount: suggestedUsers.length,
-                                            itemBuilder: (context, index) {
-                                              final suggestion = suggestedUsers[index];
-                                              return ListTile(
-                                                leading: CircleAvatar(
-                                                  child: Text(suggestion.substring(0, 1)),
-                                                ),
-                                                title: Text(suggestion),
-                                                onTap: () async {
-                                                  // Append the selected suggestion to the comment box
-                                                  // Fetch the userId corresponding to the mentioned username
-                                                  final userId =
-                                                  await getUserIdByUsername(suggestion);
-                                                  // Add the userId to the mentionedUserIds list
-                                                  setState(() {
-                                                    mentionedUserIds.add(userId);
-                                                  });
-
-                                                  // Append the selected suggestion to the comment box
-                                                  final currentText =
-                                                      _commentController.text;
-                                                  final lastAtSymbolIndex =
-                                                  currentText.lastIndexOf("@");
-                                                  final newText =
-                                                      currentText.substring(0, lastAtSymbolIndex) +
-                                                          "@$suggestion ";
-
-                                                  // Clear the input field
-                                                  _commentController.clear();
-                                                  _commentController.text = newText;
-                                                },
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(width: 10.0),
-                            GestureDetector(
-                              onTap: () async {
-                                // Implement the send comments logic here
-                                await addComment(
-                                  widget.taskId,
-                                  _commentController.text!,
-                                );
-
-                                // Fetch the comments again to refresh the list
-                                await fetchComments(widget.taskId);
-
-                                // Optionally, you can use setState to trigger a UI refresh if needed
-                                setState((){
-                                  // After successfully adding the comment, clear the input field
-                                  _commentController.clear();
-                                });
-
-                                // Now, navigate back to the previous screen (assuming the comments section is on the previous screen)
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Comment added successfully'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 12.0,
-                                  horizontal: 16.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryColor1,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  'Send',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-            ])));
+               // SingleChildScrollView(
+               //      reverse: true,
+               //      child: Column(
+               //        children: [
+               //          Row(
+               //            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+               //            children: [
+               //              Expanded(
+               //                child: Stack(
+               //                  children: [
+               //                    TypeAheadFormField<String>(
+               //                      textFieldConfiguration: TextFieldConfiguration(
+               //                        controller: _commentController,
+               //                        onChanged: (text) {
+               //                          if (text.endsWith("@") && text.length > 1) {
+               //                            fetchUsers();
+               //                            setState(() {
+               //                              showSuggestions = true;
+               //                            });
+               //                          } else {
+               //                            setState(() {
+               //                              showSuggestions = false;
+               //                            });
+               //                          }
+               //                        },
+               //                        decoration: InputDecoration(
+               //                          hintText: "Write your comment...",
+               //                        ),
+               //                      ),
+               //                      suggestionsCallback: (pattern) async {
+               //                        final atIndex = pattern.indexOf("@");
+               //                        if (atIndex != -1 && atIndex + 1 < pattern.length) {
+               //                          final searchQuery =
+               //                          pattern.substring(atIndex + 1).toLowerCase();
+               //                          final filteredUsers = suggestedUsers
+               //                              .where((user) =>
+               //                              user.toLowerCase().contains(searchQuery))
+               //                              .toList();
+               //                          return filteredUsers;
+               //                        } else {
+               //                          return suggestedUsers;
+               //                        }
+               //                      },
+               //                      itemBuilder: (context, suggestion) {
+               //                        return ListTile(
+               //                          leading: CircleAvatar(
+               //                            child: Text(suggestion.substring(0, 1)),
+               //                          ),
+               //                          title: Text(suggestion),
+               //                        );
+               //                      },
+               //                      onSuggestionSelected: (suggestion) async {
+               //                        // Append the selected suggestion to the comment box
+               //                        // Fetch the userId corresponding to the mentioned username
+               //                        final userId = await getUserIdByUsername(suggestion);
+               //                        // Add the userId to the mentionedUserIds list
+               //                        setState(() {
+               //                          mentionedUserIds.add(userId);
+               //                        });
+               //
+               //                        // Append the selected suggestion to the comment box
+               //                        final currentText = _commentController.text;
+               //                        final lastAtSymbolIndex = currentText.lastIndexOf("@");
+               //                        final newText =
+               //                            currentText.substring(0, lastAtSymbolIndex) +
+               //                                "@$suggestion ";
+               //
+               //                        // Clear the input field
+               //                        _commentController.clear();
+               //                        _commentController.text = newText;
+               //                      },
+               //                    ),
+               //                    Visibility(
+               //                      visible: showSuggestions,
+               //                      child: Positioned(
+               //                        top: 0,
+               //                        left: 0,
+               //                        right: 0,
+               //                        child: Card(
+               //                          elevation: 4.0,
+               //                          child: SizedBox(
+               //                            height: 200,
+               //                            child: ListView.builder(
+               //                              itemCount: suggestedUsers.length,
+               //                              itemBuilder: (context, index) {
+               //                                final suggestion = suggestedUsers[index];
+               //                                return ListTile(
+               //                                  leading: CircleAvatar(
+               //                                    child: Text(suggestion.substring(0, 1)),
+               //                                  ),
+               //                                  title: Text(suggestion),
+               //                                  onTap: () async {
+               //                                    // Append the selected suggestion to the comment box
+               //                                    // Fetch the userId corresponding to the mentioned username
+               //                                    final userId =
+               //                                    await getUserIdByUsername(suggestion);
+               //                                    // Add the userId to the mentionedUserIds list
+               //                                    setState(() {
+               //                                      mentionedUserIds.add(userId);
+               //                                    });
+               //
+               //                                    // Append the selected suggestion to the comment box
+               //                                    final currentText =
+               //                                        _commentController.text;
+               //                                    final lastAtSymbolIndex =
+               //                                    currentText.lastIndexOf("@");
+               //                                    final newText =
+               //                                        currentText.substring(0, lastAtSymbolIndex) +
+               //                                            "@$suggestion ";
+               //
+               //                                    // Clear the input field
+               //                                    _commentController.clear();
+               //                                    _commentController.text = newText;
+               //                                  },
+               //                                );
+               //                              },
+               //                            ),
+               //                          ),
+               //                        ),
+               //                      ),
+               //                    ),
+               //                  ],
+               //                ),
+               //              ),
+               //              SizedBox(width: 10.0),
+               //              GestureDetector(
+               //                onTap: () async {
+               //                  // Implement the send comments logic here
+               //                  await addComment(
+               //                    widget.task.taskId!,
+               //                    _commentController.text!,
+               //                  );
+               //
+               //                  // Fetch the comments again to refresh the list
+               //                  await fetchComments(widget.task.taskId!);
+               //
+               //                  // Optionally, you can use setState to trigger a UI refresh if needed
+               //                  setState((){
+               //                    // After successfully adding the comment, clear the input field
+               //                    _commentController.clear();
+               //                  });
+               //
+               //                  // Now, navigate back to the previous screen (assuming the comments section is on the previous screen)
+               //                  ScaffoldMessenger.of(context).showSnackBar(
+               //                    SnackBar(
+               //                      content: Text('Comment added successfully'),
+               //                      duration: Duration(seconds: 2),
+               //                    ),
+               //                  );
+               //                },
+               //                child: Container(
+               //                  padding: EdgeInsets.symmetric(
+               //                    vertical: 12.0,
+               //                    horizontal: 16.0,
+               //                  ),
+               //                  decoration: BoxDecoration(
+               //                    color: AppColors.primaryColor1,
+               //                    borderRadius: BorderRadius.circular(10),
+               //                  ),
+               //                  child: Text(
+               //                    'Send',
+               //                    style: TextStyle(
+               //                      color: Colors.white,
+               //                      fontSize: 14,
+               //                      fontWeight: FontWeight.bold,
+               //                    ),
+               //                  ),
+               //                ),
+               //              ),
+               //            ],
+               //          ),
+               //        ],
+               //      ),
+               //    ),
+               //    Column(
+               //      children: [
+               //        MentionTextField(
+               //          controller: _commentController,
+               //          users: suggestedUsers, // Replace with your list of suggested users
+               //          hintText: "Write your comment...",
+               //        ),
+               //        SizedBox(height: 10.0),
+               //        GestureDetector(
+               //          onTap: () async {
+               //            // Implement the send comments logic here
+               //            await addComment(
+               //              widget.task.taskId!,
+               //              _commentController.text!,
+               //            );
+               //
+               //            // Fetch the comments again to refresh the list
+               //            await fetchComments(widget.task.taskId!);
+               //
+               //            // Optionally, you can use setState to trigger a UI refresh if needed
+               //            setState(() {
+               //              // After successfully adding the comment, clear the input field
+               //              _commentController.clear();
+               //            });
+               //
+               //            // Now, navigate back to the previous screen (assuming the comments section is on the previous screen)
+               //            ScaffoldMessenger.of(context).showSnackBar(
+               //              SnackBar(
+               //                content: Text('Comment added successfully'),
+               //                duration: Duration(seconds: 2),
+               //              ),
+               //            );
+               //          },
+               //          child: Container(
+               //            padding: EdgeInsets.symmetric(
+               //              vertical: 12.0,
+               //              horizontal: 16.0,
+               //            ),
+               //            decoration: BoxDecoration(
+               //              color: AppColors.primaryColor1,
+               //              borderRadius: BorderRadius.circular(10),
+               //            ),
+               //            child: Text(
+               //              'Send',
+               //              style: TextStyle(
+               //                color: Colors.white,
+               //                fontSize: 14,
+               //                fontWeight: FontWeight.bold,
+               //              ),
+               //            ),
+               //          ),
+               //        ),
+               //      ],
+               //    ),
+                ])));
   }
 }
 

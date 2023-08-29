@@ -16,6 +16,7 @@ class ProjectTaskDetailsScreen extends StatefulWidget {
   final String assignee;
   final String? status;
 
+
   ProjectTaskDetailsScreen({
     required this.projectName,
     required this.taskTitle,

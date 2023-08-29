@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import '../../Providers/taskProvider.dart';
+import '../../View_model/fetchApiSrvices.dart';
 import '../../common_widgets/round_textfield.dart';
 import '../../common_widgets/snackbar.dart';
 import '../../models/project_team_model.dart';
@@ -28,7 +30,9 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   List<dynamic> priorities = [];
-  late String _priority;
+  late String _priority = " ";
+  TextEditingController _titleController = TextEditingController();
+  TextEditingController _descriptionController = TextEditingController();
   TextEditingController _assigneeMembersController = TextEditingController();
   TextEditingController _assigneeTeamsController = TextEditingController();
   TextEditingController _attachmentController = TextEditingController();
@@ -53,15 +57,26 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
 
 
   Future<void> fetchStatusData() async {
-    final response = await http.get(Uri.parse('http://43.205.97.189:8000/api/Platform/getStatus'));
-
-    if (response.statusCode == 200) {
+    try {
+      List<dynamic> fetchedStatuses = await ApiServices.fetchStatusData();
       setState(() {
-        statuses = json.decode(response.body);
-        _selectedStatus = statuses[0]['id'];
+        statuses = fetchedStatuses;
+        // Check if statuses list is not empty
+        if (statuses.isNotEmpty) {
+          // Initialize _selectedStatus to the first status ID in the list
+          _selectedStatus = statuses[0]['id'].toString();
+          statuses = fetchedStatuses
+              .where((status) => status['name'] != 'Completed')
+              .toList();
+
+        } else {
+          // If statuses list is empty, set _selectedStatus to null
+          _selectedStatus = null;
+        }
       });
-    } else {
-      print('Failed to fetch status. Status code: ${response.statusCode}');
+    } catch (e) {
+      print('Error fetching statuses: $e');
+      // Handle error if necessary
     }
   }
 
@@ -296,7 +311,6 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
                     Column(
                       children: allUsers.map((user) {
                         bool isSelected = selectedIds.contains(user.userId);
-
                         return CheckboxListTile(
                           title: Text(user.userName),
                           value: isSelected,
@@ -383,6 +397,7 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
                             _taskTitle = value;
                           });
                         },
+                        textEditingController: _titleController,
                       ),
                       SizedBox(height: 16.0),
                       RoundTextField(
@@ -394,6 +409,7 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
                             _taskDescription = value;
                           });
                         },
+                        textEditingController: _descriptionController,
                       ),
                       SizedBox(height: 16.0),
                       RoundTextField(
@@ -429,132 +445,143 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: RoundTextField(
-                              hintText: "Start Date",
-                              icon: "assets/icons/calendar_icon.png",
-                              isReadOnly: true,
-                              onTap: () {
-                                _selectStartDate(context);
-                              },
-                              textEditingController: TextEditingController(
-                                text: _startDate != null
-                                    ? DateFormat('yyyy-MM-dd')
-                                    .format(_startDate!)
-                                    : '',
-                              ),
-                              onChanged: (value) {
-                                setState(() {
+                            child: Container(
+                              padding: EdgeInsets.only(left: 20,right: 20),
+                              child: RoundTextField(
+                                hintText: "Start Date",
+                                icon: "assets/icons/calendar_icon.png",
+                                isReadOnly: true,
+                                onTap: () {
                                   _selectStartDate(context);
-                                });
-                              },
+                                },
+                                textEditingController: TextEditingController(
+                                  text: _startDate != null
+                                      ? DateFormat('yyyy-MM-dd')
+                                      .format(_startDate!)
+                                      : '',
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectStartDate(context);
+                                  });
+                                },
+                              ),
                             ),
                           ),
-                          SizedBox(width: 16.0),
                           Expanded(
-                            child: RoundTextField(
-                              hintText: "End Date",
-                              icon: "assets/icons/calendar_icon.png",
-                              isReadOnly: true,
-                              onTap: () {
-                                _selectEndDate(context);
-                              },
-                              textEditingController: TextEditingController(
-                                text: _endDate != null
-                                    ? DateFormat('yyyy-MM-dd')
-                                    .format(_endDate!)
-                                    : '',
+                            child: Container(
+                              padding: EdgeInsets.only(left: 20,right: 20),
+                              child: RoundTextField(
+                                hintText: "End Date",
+                                icon: "assets/icons/calendar_icon.png",
+                                isReadOnly: true,
+                                onTap: () {
+                                  _selectEndDate(context);
+                                },
+                                textEditingController: TextEditingController(
+                                  text: _endDate != null
+                                      ? DateFormat('yyyy-MM-dd')
+                                      .format(_endDate!)
+                                      : '',
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectStartDate(context);
+                                  });
+                                },
                               ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectStartDate(context);
-                                });
-                              },
                             ),
                           ),
                         ],
                       ),
                       SizedBox(height: 16.0),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGrayColor,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _priority,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 15,
-                              horizontal: 15,
-                            ),
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            hintText: "Priority",
-                            hintStyle: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.grayColor,
-                            ),
-                            icon: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: Image.asset(
-                                "assets/images/pri.png",
-                                width: 20,
-                                color: Colors.grey,
+                      Padding(
+                        padding: EdgeInsets.only(left: 20,right: 20),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.lightGrayColor,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _priority,
+                            decoration: InputDecoration(
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 15,
+                                horizontal: 15,
+                              ),
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              hintText: "Priority",
+                              hintStyle: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.grayColor,
+                              ),
+                              icon: Padding(
+                                padding: const EdgeInsets.only(left: 16.0),
+                                child: Image.asset(
+                                  "assets/images/pri.png",
+                                  width: 20,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ),
+                            items: priorities.map((priority) {
+                              return DropdownMenuItem<String>(
+                                value: priority['id'],
+                                child: Text(priority['name']),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _priority = value!;
+                              });
+                            },
                           ),
-                          items: priorities.map((priority) {
-                            return DropdownMenuItem<String>(
-                              value: priority['id'],
-                              child: Text(priority['name']),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _priority = value!;
-                            });
-                          },
                         ),
                       ),
                       SizedBox(height: 16.0),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGrayColor,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedStatus,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 15,
-                              horizontal: 15,
-                            ),
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            hintText: "Status",
-                            hintStyle: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                            icon: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: Image.asset(
-                                "assets/images/pri.png",
-                                width: 20,
+                      Padding(
+                        padding: EdgeInsets.only(left: 20,right: 20),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.lightGrayColor,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedStatus,
+                            decoration: InputDecoration(
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 15,
+                                horizontal: 15,
+                              ),
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              hintText: "Status",
+                              hintStyle: TextStyle(
+                                fontSize: 12,
                                 color: Colors.grey,
                               ),
+                              icon: Padding(
+                                padding: const EdgeInsets.only(left: 16.0),
+                                child: Image.asset(
+                                  "assets/images/pri.png",
+                                  width: 20,
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ),
+                            items: statuses.map<DropdownMenuItem<String>>((status) {
+                              return DropdownMenuItem<String>(
+                                value: status['id'].toString(), // Assuming 'id' is of type String or can be converted to String
+                                child: Text(status['name']),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedStatus = value;
+                              });
+                            },
                           ),
-                          items: statuses.map<DropdownMenuItem<String>>((status) {
-                            return DropdownMenuItem<String>(
-                              value: status['id'].toString(), // Assuming 'id' is of type String or can be converted to String
-                              child: Text(status['name']),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedStatus = value;
-                            });
-                          },
                         ),
                       ),
                       SizedBox(height: 30.0),
@@ -623,33 +650,40 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
   }
 
   void createTask() async {
-    if (_taskTitle.isEmpty) {
+    if (_titleController.text.isEmpty) {
       showSnackbar(context, "Title is required");
+      return;
     }
 
-    if (_taskDescription.isEmpty) {
+    if (_descriptionController.text.isEmpty) {
       showSnackbar(context, "Description is required");
+      return;
     }
 
 
     if (_startDate == null) {
       showSnackbar(context, "Start Date is required");
+      return;
     }
 
     if (_endDate == null) {
       showSnackbar(context, "End date is required");
+      return;
     }
 
     if (_priority.isEmpty) {
       showSnackbar(context, "Priority is required");
+      return;
     }
 
     if (_selectedStatus == null) {
       showSnackbar(context, "Status is required");
+      return;
     }
 
     if (projectNameController == null) {
       showSnackbar(context, "Project is required");
+      return;
     }
 
     // String projectname = projectNameController.text;
@@ -675,8 +709,8 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
       "attachment": attachment,
       "start_date": startDate,
       "end_date": endDate,
-      "assigned_user": assignedMembers,
-      "assigned_team": assignedTeams,
+      "assigned_user": _selectedMembers,
+      "assigned_team": _selectedTeams,
       "status": _selectedStatus, // Replace with the appropriate status ID
     };
 
@@ -715,7 +749,10 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
       print("StatusCode: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        // Task creation successful
+        TaskCountManager taskCountManager = TaskCountManager(prefs);
+        await taskCountManager.incrementTaskCount();
+        await taskCountManager.fetchTotalTaskCount();
+        await taskCountManager.updateTaskCount();
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -746,7 +783,8 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
               actions: [
                 InkWell(
                     onTap: (){
-                      Navigator.pop(context);
+                      Navigator.pop(context,true);
+                      Navigator.pop(context,true);
                     },
                     child: Text("OK",style: TextStyle(
                         color: AppColors.blackColor,

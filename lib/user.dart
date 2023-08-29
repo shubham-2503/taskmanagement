@@ -12,7 +12,8 @@ import 'common_widgets/round_textfield.dart';
 import 'models/user_invitation_modal.dart';
 
 class InviteScreen extends StatefulWidget {
-  const InviteScreen({Key? key}) : super(key: key);
+  final VoidCallback refreshCallback;
+  const InviteScreen({Key? key, required this.refreshCallback}) : super(key: key);
 
   @override
   State<InviteScreen> createState() => _InviteScreenState();
@@ -24,7 +25,7 @@ class _InviteScreenState extends State<InviteScreen> {
   List<UserInvitationStatus> filteredUsers = [];
   late Timer _timer;
 
-  Future<void> fetchUserInvitationStatus() async {
+  Future<void> fetchUserInvitationStatusAndRefresh() async {
     try {
       List<UserInvitationStatus> invitationStatusList = await ApiService.fetchUserInvitationStatus();
 
@@ -59,7 +60,7 @@ class _InviteScreenState extends State<InviteScreen> {
   void initState() {
     super.initState();
     // Call fetchUserInvitationStatus method once when the screen loads
-    fetchUserInvitationStatus();
+    fetchUserInvitationStatusAndRefresh();
     // _timer = Timer.periodic(Duration(seconds: 2), (Timer t) async{
     //   await fetchUserInvitationStatus();
     // });
@@ -362,7 +363,11 @@ class _InviteScreenState extends State<InviteScreen> {
           content: Text(errorMessage),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+               Navigator.pop(context);
+               Navigator.pop(context);
+               fetchUserInvitationStatusAndRefresh();
+              },
               child: Text("OK"),
             ),
           ],
@@ -382,7 +387,8 @@ class _InviteScreenState extends State<InviteScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        iconTheme: IconThemeData(color: Colors.white),
+        automaticallyImplyLeading: false,
+        iconTheme: IconThemeData(color: Colors.black),
         actions: [
           Padding(
             padding: const EdgeInsets.all(10.0),
@@ -461,6 +467,14 @@ class _InviteScreenState extends State<InviteScreen> {
             );
           },
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primaryColor1,
+        onPressed: () {
+          // Fetch user invitation status and reload the screen
+          fetchUserInvitationStatusAndRefresh();
+        },
+        child: Icon(Icons.refresh, color: AppColors.secondaryColor2),
       ),
     );
   }

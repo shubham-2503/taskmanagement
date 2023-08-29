@@ -52,7 +52,6 @@ class DoubleTapExitDetector {
   }
 }
 
-
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -61,52 +60,56 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  bool user = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initCheck();
-  }
-
-  void _initCheck() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool? userFromPrefs = prefs.getBool('user');
-    setState(() {
-      user = userFromPrefs ?? false; // Assign a default value of 'false' if userFromPrefs is null
-    });
-  }
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<OrganizationProvider>(create: (context) => OrganizationProvider()),
-        ChangeNotifierProvider<SessionProvider>(create: (context) => SessionProvider()),
-        ChangeNotifierProvider<TaskProvider>(create: (context) => TaskProvider()),
-        ChangeNotifierProvider<ProjectDataProvider>(create: (context) =>ProjectDataProvider()),
+        ChangeNotifierProvider<OrganizationProvider>(
+            create: (context) => OrganizationProvider()),
+        ChangeNotifierProvider<SessionProvider>(
+            create: (context) => SessionProvider()),
+        ChangeNotifierProvider<TaskProvider>(
+            create: (context) => TaskProvider()),
+        ChangeNotifierProvider<ProjectDataProvider>(
+            create: (context) => ProjectDataProvider()),
       ],
       builder: (context, _) {
-        // Initialize session provider and check login status
-        final sessionProvider = Provider.of<SessionProvider>(context);
-        sessionProvider.checkLoginStatus();
-
         return MaterialApp(
           title: 'Task Management',
           debugShowCheckedModeBanner: false,
           routes: routes,
           theme: ThemeData(
-            primaryColor: AppColors.primaryColor1,
+            primaryColor: AppColors.whiteColor,
             useMaterial3: true,
             fontFamily: "Poppins",
           ),
-          home:WillPopScope(
-              onWillPop: () => DoubleTapExitDetector.onWillPop(context),
-              child: sessionProvider.isLoggedIn ? DashboardScreen() : StartScreen()),
+          home: FutureBuilder<void>(
+            future: Provider.of<SessionProvider>(context, listen: false)
+                .checkLoginStatus(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.done) {
+                // Access the SessionProvider to get isLoggedIn status
+                final sessionProvider =
+                Provider.of<SessionProvider>(context);
+                return WillPopScope(
+                  onWillPop: () =>
+                      DoubleTapExitDetector.onWillPop(context),
+                  child: sessionProvider.isLoggedIn
+                      ? DashboardScreen()
+                      : StartScreen(),
+                );
+              }
+              // Show a loading indicator while checking login status
+              return CircularProgressIndicator();
+            },
+          ),
         );
       },
     );
   }
 }
+
 
 

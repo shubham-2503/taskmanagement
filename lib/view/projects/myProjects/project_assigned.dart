@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:Taskapp/view/projects/projectCreation.dart';
 import 'package:Taskapp/view/projects/projectDetailsScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../Providers/project_provider.dart';
 import '../../../common_widgets/round_button.dart';
 import '../../../common_widgets/round_textfield.dart';
 import '../../../models/project_model.dart';
@@ -23,9 +26,10 @@ class AssignedToMe extends StatefulWidget {
 }
 
 class _AssignedToMeState extends State<AssignedToMe> {
-
   List<Project> projects = [];
   late List<Project> filteredprojects = [];
+  late Future<void> fetchDataFuture;
+  int projectCount = 0;
 
   Future<void> fetchMyProjects() async {
     try {
@@ -55,6 +59,8 @@ class _AssignedToMeState extends State<AssignedToMe> {
 
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
+        projectCount = responseData.length;
+        print("Count: ${projectCount}");
         final List<Future<Project>> fetchedProjects = responseData.map((projectData) async {
           String projectId = projectData['project_id'] ?? '';
 
@@ -71,6 +77,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
           }).toList();
 
           return Project(
+            description: projectData['description'] ?? '',
             id: projectId,
             name: projectData['projectName'] ?? '',
             owner: projectData['created_by'] ?? '',
@@ -78,6 +85,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
             // tasks: tasks,
             teams: teams,
             users: users, status: projectData['status'] ?? " ",
+            active: projectData['active'] ?? " ",
           );
         }).toList();
 
@@ -114,6 +122,8 @@ class _AssignedToMeState extends State<AssignedToMe> {
     });
   }
 
+
+
   @override
   void initState() {
     super.initState();
@@ -121,6 +131,13 @@ class _AssignedToMeState extends State<AssignedToMe> {
     projects.sort((a, b) {
       return _getStatusOrder(a.status).compareTo(_getStatusOrder(b.status));
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Manually fetch data when user visits the screen
+    fetchDataFuture = fetchMyProjects();
   }
 
   int _getStatusOrder(String status) {
@@ -141,8 +158,12 @@ class _AssignedToMeState extends State<AssignedToMe> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Consumer<ProjectDataProvider>(
+        builder: (context, projectProvider, child) {
+          List<Project> projects = projectProvider.projects;
+       return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         iconTheme: IconThemeData(
             color: AppColors.whiteColor
         ),
@@ -153,12 +174,26 @@ class _AssignedToMeState extends State<AssignedToMe> {
               onChanged: (query) => filterProjects(query), hintText: 'Search',
               icon: "assets/images/search_icon.png",
             ),),
+          ),
+          IconButton(
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ProjectCreationScreen(Count: projectCount,)),
+              );
+
+              if (result == true) {
+                // Refresh the data by calling your fetchTeamProjects method
+                fetchMyProjects(); // Or any other method to refresh data
+              }
+            },
+            icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
           )
         ],
       ),
       body: Container(
         child: Padding(
-          padding: const EdgeInsets.only(top: 30),
+          padding: const EdgeInsets.only(top: 10),
           child: Column(
             children: [
               Text(
@@ -183,11 +218,6 @@ class _AssignedToMeState extends State<AssignedToMe> {
                   itemBuilder: (BuildContext context, int index) {
                     Project project = filteredprojects[index];
                     Color statusColor = Colors.black;
-                    if (project.status == 'Active') {
-                      statusColor = Colors.orange;
-                    } else if (project.status == 'In-Active') {
-                      statusColor = Colors.green;
-                    }
                     return Container(
                         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
                         padding: EdgeInsets.symmetric(vertical: 8,horizontal: 9),
@@ -320,8 +350,11 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                                       context,
                                                       MaterialPageRoute(
                                                         builder: (context) => ProjectDetailsScreen(
+                                                          project: project,
+                                                          active: project.active!,
                                                           projectId: projectIds[projectIndex], // Use the selected projectId from the list
                                                           projectName: project.name,
+                                                          status: project.status,
                                                           assigneeTo: project.users!.map((user) => user.userName).join(', '),
                                                           dueDate: formatDate(project.dueDate) ?? '',
                                                           createdBy: project.owner,
@@ -364,11 +397,12 @@ class _AssignedToMeState extends State<AssignedToMe> {
         ),
       ),
     );
-  }
+  },);}
 
   void _deleteProject(String projectId) async {
     try {
-      // Show a confirmation dialog for deleting the project
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      ProjectCountManager projectCountManager = ProjectCountManager(prefs);
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -384,7 +418,8 @@ class _AssignedToMeState extends State<AssignedToMe> {
               ),
               TextButton(
                 onPressed: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Close the confirmation dialog
+
                   try {
                     SharedPreferences prefs = await SharedPreferences.getInstance();
                     final storedData = prefs.getString('jwtToken');
@@ -422,7 +457,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
                             actions: [
                               InkWell(
                                 onTap: () {
-                                  Navigator.pop(context);
+                                  Navigator.pop(context,true);
                                 },
                                 child: Text(
                                   "OK",
@@ -433,14 +468,13 @@ class _AssignedToMeState extends State<AssignedToMe> {
                           );
                         },
                       );
-                      print('Project deleted successfully.');
-                      // Perform any necessary tasks after successful deletion
-                      // Update state to remove the deleted project from the list
+                      await projectCountManager.decrementProjectCount();
+                      await projectCountManager.fetchTotalProjectCount();
+                      await projectCountManager.updateProjectCount();
                       setState(() {
                         projects.removeWhere((project) => project.id == projectId);
+                        filteredprojects.removeWhere((project) => project.id == projectId);
                       });
-                      // Navigate back to the previous screen
-                      Navigator.pop(context);
                     } else {
                       print('Failed to delete Project.');
                       // Handle other status codes, if needed
@@ -460,6 +494,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
     }
   }
 }
+
 String? formatDate(String? dateString) {
   if (dateString == null || dateString.isEmpty) {
     return null;

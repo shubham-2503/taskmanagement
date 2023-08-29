@@ -177,6 +177,7 @@ class ApiServices{
           }).toList();
 
           return Project(
+            description: projectData['description'],
             id: projectId,
             name: projectData['projectName'] ?? '',
             owner: projectData['created_by'] ?? '',
@@ -274,8 +275,10 @@ class ApiServices{
 
           // Extract the team name from the "teams" list.
           final List<dynamic> teams = taskData['teams'];
-          final String assignedTeam =
-          teams.isNotEmpty ? teams[0]['teamName'] as String : '';
+          final List<String> assignedTeam = teams.isNotEmpty
+              ? users.map((user) => user['teamName'] as String).toList()
+              : [];
+          final List<String> assignedTeams = assignedTeam;
           // Assuming the 'assignedTo' and 'assignedTeam' properties of 'task' are either List<String> or comma-separated strings.
 
 
@@ -284,7 +287,7 @@ class ApiServices{
             taskName: taskData['task_name'] ?? '',
             owner: taskData['created_by'] ?? '',
             assignedTo:assignedTo,
-            assignedTeam: assignedTeam,
+            assignedTeam: assignedTeams,
             status: taskData['status'] ?? '',
             description: taskData['description'] ?? '',
             priority: taskData['priority'] ?? '',

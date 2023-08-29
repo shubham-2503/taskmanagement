@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:Taskapp/Providers/project_provider.dart';
 import 'package:Taskapp/view/projects/projectDetailsScreen.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../../../common_widgets/round_button.dart';
@@ -12,6 +14,8 @@ import '../../../models/task_model.dart';
 import '../../../models/user.dart';
 import '../../../utils/app_colors.dart';
 import 'package:intl/intl.dart';
+
+import '../projectCreation.dart';
 
 class MyTeamProjectScreen extends StatefulWidget {
   final VoidCallback refreshCallback;
@@ -25,25 +29,22 @@ class MyTeamProjectScreen extends StatefulWidget {
 class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
   List<Project> projects = [];
   late List<Project> filteredprojects = [];
+  int projectCount = 0;
 
   Future<void> fetchTeamProjects() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId =
-          prefs.getString("selectedOrgId"); // Get the selected organization ID
+      String? orgId = prefs.getString("selectedOrgId");
 
       if (orgId == null) {
         orgId = prefs.getString('org_id') ?? "";
       }
 
-      print("OrgId: $orgId");
-
       if (orgId == null) {
         throw Exception('orgId not found locally');
       }
-      final url =
-          'http://43.205.97.189:8000/api/Project/myTeamProjects?org_id=$orgId';
+      final url = 'http://43.205.97.189:8000/api/Project/myTeamProjects?org_id=$orgId';
 
       final headers = {
         'accept': '*/*',
@@ -54,52 +55,47 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
 
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
-        final List<Future<Project>> fetchedProjects =
-            responseData.map((projectData) async {
-          // Convert the 'status' field to a string representation
-          String status =
-              projectData['status'] == true ? 'Active' : 'In-Active';
+        final List<Project> fetchedProjects = responseData.map((projectData) {
+          projectCount = responseData.length;
+          print("Count: ${projectCount}");
+          String status = projectData['status'] == true ? 'Active' : 'In-Active';
           String projectId = projectData['project_id'] ?? '';
 
-          // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
-          List<Team> teams =
-              (projectData['teams'] as List<dynamic>).map((teamData) {
+          List<Team> teams = (projectData['teams'] as List<dynamic>).map((teamData) {
             return Team(
               id: teamData['teamId'] ?? '',
               teamName: teamData['teamName'] ?? '',
             );
           }).toList();
 
-          List<User> users =
-              (projectData['users'] as List<dynamic>).map((userData) {
-            return User.fromJson(userData); // Create User object from JSON data
+          List<User> users = (projectData['users'] as List<dynamic>).map((userData) {
+            return User.fromJson(userData);
           }).toList();
 
           return Project(
+            description: projectData['description'] ?? '',
             id: projectId,
             name: projectData['projectName'] ?? '',
             owner: projectData['created_by'] ?? '',
-            status: status,
-            dueDate: projectData['due_Date'] is bool
-                ? null
-                : projectData['due_Date'],
-            // tasks: tasks,
+            status: projectData['status'] ?? " ",
+            dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
             teams: teams,
             users: users,
+            active: projectData['active'] ?? " ",
           );
         }).toList();
 
-        final List<Project> projectsWithTasks =
-            await Future.wait(fetchedProjects);
+        // Use Provider to update projects list
+        final projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
+        projectProvider.updateProjects(fetchedProjects);
 
+        // Update filtered projects as well
         setState(() {
-          projects = projectsWithTasks;
-          filteredprojects= List.from(projects);
+          filteredprojects = List.from(fetchedProjects);
         });
 
         // Store the projectId locally using SharedPreferences
-        final List<String> projectIds =
-            projectsWithTasks.map((project) => project.id).toList();
+        final List<String> projectIds = fetchedProjects.map((project) => project.id).toList();
         await prefs.setStringList('projectIds', projectIds);
         print("ProjectID: $projectIds");
       } else {
@@ -113,7 +109,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
   @override
   void initState() {
     super.initState();
-    // Sort the projects based on status
+    print("InitState is called");
     fetchTeamProjects();
     projects.sort((a, b) {
       return _getStatusOrder(a.status).compareTo(_getStatusOrder(b.status));
@@ -163,6 +159,20 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
               onChanged: (query) => filterProjects(query), hintText: 'Search',
               icon: "assets/images/search_icon.png",
             ),),
+          ),
+          IconButton(
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ProjectCreationScreen(Count: projectCount,)),
+              );
+
+              if (result == true) {
+                // Refresh the data by calling your fetchTeamProjects method
+                fetchTeamProjects(); // Or any other method to refresh data
+              }
+            },
+            icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
           )
         ],
       ),
@@ -236,29 +246,21 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                         ),
                                       ],
                                     ),
-                                    Wrap(
-                                      crossAxisAlignment:
-                                          WrapCrossAlignment.center,
-                                      spacing: 5,
+                                    Row(
                                       children: [
                                         Text(
-                                          'Assigned To: ',
+                                          'Status: ',
                                           style: TextStyle(
-                                            color: AppColors.secondaryColor2,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                              color: AppColors.blackColor,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold),
                                         ),
                                         Text(
-                                          project.users
-                                                  ?.map((user) => user.userName)
-                                                  .join(', ') ??
-                                              '', // Use null-aware and null coalescing operators
+                                          project.status,
                                           style: TextStyle(
-                                            color: AppColors.blackColor,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                              color: AppColors.secondaryColor2,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500),
                                         ),
                                       ],
                                     ),
@@ -311,6 +313,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                                       MaterialPageRoute(
                                                         builder: (context) =>
                                                             ProjectDetailsScreen(
+                                                              active: project.active!,
                                                           projectId: projectIds[
                                                               projectIndex], // Use the selected projectId from the list
                                                           projectName: project.name,
@@ -319,6 +322,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                                                       user.userName)
                                                                   .join(', ') ??
                                                               '',
+                                                          status: project.status,
                                                           dueDate: formatDate(
                                                                   project
                                                                       .dueDate) ??
@@ -330,7 +334,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                                                       user.teamName)
                                                                   .join(', ') ??
                                                               '',
-                                                          attachments: [],
+                                                          attachments: [], project: project,
                                                         ),
                                                       ),
                                                     );
@@ -371,7 +375,8 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
 
   void _deleteProject(String projectId) async {
     try {
-      // Show a confirmation dialog for deleting the project
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      ProjectCountManager projectCountManager = ProjectCountManager(prefs);
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -387,7 +392,8 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
               ),
               TextButton(
                 onPressed: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Close the confirmation dialog
+
                   try {
                     SharedPreferences prefs = await SharedPreferences.getInstance();
                     final storedData = prefs.getString('jwtToken');
@@ -425,7 +431,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                             actions: [
                               InkWell(
                                 onTap: () {
-                                  Navigator.pop(context);
+                                  Navigator.pop(context,true);
                                 },
                                 child: Text(
                                   "OK",
@@ -437,13 +443,13 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                         },
                       );
                       print('Project deleted successfully.');
-                      // Perform any necessary tasks after successful deletion
-                      // Update state to remove the deleted project from the list
+                      await projectCountManager.decrementProjectCount();
+                      await projectCountManager.fetchTotalProjectCount();
+                      await projectCountManager.updateProjectCount();
                       setState(() {
                         projects.removeWhere((project) => project.id == projectId);
+                        filteredprojects.removeWhere((project) => project.id == projectId);
                       });
-                      // Navigate back to the previous screen
-                      Navigator.pop(context);
                     } else {
                       print('Failed to delete Project.');
                       // Handle other status codes, if needed

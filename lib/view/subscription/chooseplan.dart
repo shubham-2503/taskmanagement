@@ -6,6 +6,7 @@ import 'package:Taskapp/view/welcome/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/subscription.dart';
 import '../../utils/app_colors.dart';
 
 class ChoosePlan extends StatefulWidget {
@@ -95,30 +96,6 @@ class _ChoosePlanState extends State<ChoosePlan> {
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(color: Colors.black),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                InkWell(
-                  onTap: () {
-                    Navigator.pushNamed(context, BackToLogin.routeName);
-                  },
-                  child: Text(
-                    "Skip Now",
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.secondaryColor2,
-                      fontFamily: "Poppins",
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -205,7 +182,7 @@ class _ChoosePlanState extends State<ChoosePlan> {
                                         ),
                                         SizedBox(height: 10),
                                         Text(
-                                          plan.price,
+                                          plan.price.toString(),
                                           style: TextStyle(
                                             color: AppColors.secondaryColor1,
                                             fontSize: 12,
@@ -213,20 +190,22 @@ class _ChoosePlanState extends State<ChoosePlan> {
                                           ),
                                         ),
                                         SizedBox(height: 10),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: plan.getFeaturesList().map(
-                                                (feature) => Text(
-                                              '• $feature',
-                                              style: TextStyle(
-                                                color: AppColors.primaryColor2,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
+                                        Expanded(
+                                          child: Wrap(
+                                            crossAxisAlignment: WrapCrossAlignment.start,
+                                            spacing: 5, // Add spacing between features
+                                            children: plan.features.split(',').map(
+                                                  (feature) => Text(
+                                                '• $feature',
+                                                style: TextStyle(
+                                                  color: AppColors.primaryColor2,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                               ),
-                                            ),
-                                          ).toList(),
+                                            ).toList(),
+                                          ),
                                         ),
-
                                         SizedBox(height: 15),
                                         SizedBox(
                                           height: 30,
@@ -266,44 +245,3 @@ class _ChoosePlanState extends State<ChoosePlan> {
   }
 }
 
-class SubscriptionPlan {
-  final String id;
-  final String name;
-  final String description;
-  final String price;
-  final String features;
-  final int userCount;
-  final int storageLimit;
-  final String status;
-  final String validity;
-
-  SubscriptionPlan({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.price,
-    required this.features,
-    required this.userCount,
-    required this.storageLimit,
-    required this.status,
-    required this.validity,
-  });
-
-  factory SubscriptionPlan.fromJson(Map<String, dynamic> json) {
-    return SubscriptionPlan(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      price: json['price'],
-      features: json['features'],
-      userCount: json['user_count'],
-      storageLimit: json['storage_limit'],
-      status: json['status'],
-      validity: json['validity'],
-    );
-  }
-
-  List<String> getFeaturesList() {
-    return features.split(','); // Split the features string into a list of strings
-  }
-}

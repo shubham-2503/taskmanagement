@@ -17,6 +17,9 @@ import 'package:intl/intl.dart';
 import 'myFilter.dart';
 
 class ReportScreen extends StatefulWidget {
+  final VoidCallback refreshCallback;
+
+  const ReportScreen({super.key, required this.refreshCallback});
   @override
   _ReportScreenState createState() => _ReportScreenState();
 }
@@ -189,7 +192,7 @@ class _ReportScreenState extends State<ReportScreen> {
         int completedProjectCount =
             projects.where((project) => project.status == 'Completed').length;
         int offTrackProjectCount =
-            projects.where((project) => project.status == 'OffTrack').length;
+            projects.where((project) => project.status == 'ToDo').length;
         int noProgressProjectCount =
             projects.where((project) => project.status == 'InProgress').length;
 
@@ -332,6 +335,7 @@ class _ReportScreenState extends State<ReportScreen> {
         appBar: PreferredSize(
           preferredSize: Size.fromHeight(100),
           child: AppBar(
+            automaticallyImplyLeading: false,
             backgroundColor: AppColors.primaryColor1,
             elevation: 0.0,
             shape: RoundedRectangleBorder(

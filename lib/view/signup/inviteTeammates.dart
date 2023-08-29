@@ -77,8 +77,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
     }
 
     // Email regex pattern
-    final emailRegex = RegExp(
-        r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+(\.[a-zA-Z]+)?$');
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
 
     if (!emailRegex.hasMatch(value)) {
       return 'Please enter a valid email';
@@ -109,16 +108,36 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
     });
   }
 
+  void _removeTeammate(int index) {
+    setState(() {
+      teammates.removeAt(index);
+    });
+  }
+
   void _inviteTeammate() async {
+    if (teammates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please add teammates before sending invitations')),
+      );
+      return;
+    }
     for (var teammate in teammates) {
+
       if (teammate.nameController.text.isEmpty) {
         DialogUtils.showSnackbar(context, 'Name is required');
         return; // Exit the function early if any name field is empty
       }
-      if (teammate.emailController.text.isEmpty) {
+      String email = teammate.emailController.text;
+      final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+      if (!emailRegex.hasMatch(email)) {
+        DialogUtils.showSnackbar(context, 'Invalid email format');
+        return;
+      }
+
+      /*  if (teammate.emailController.text.isEmpty) {
         DialogUtils.showSnackbar(context, 'Email is required');
         return; // Exit the function early if any email field is empty
-      }
+      }*/
       if (teammate.phoneController.text.isEmpty) {
         DialogUtils.showSnackbar(context, 'Phone number is required');
         return; // Exit the function early if any phone number field is empty
@@ -179,19 +198,20 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
       print('API Response: ${response.body}');
       print('StatusCode: ${response.statusCode}');
 
-      if (response.statusCode == 200) {
+
+      if (response.statusCode == 200  ) {
         // Invitation successful, handle the response if needed
         print('Invitation successful');
         String errorMessage = "Invitation sent Successfully";
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text("Sent"),
+            title: const Text("Sent"),
             content: Text(errorMessage),
             actions: [
               TextButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context)=>DashboardScreen(),)),
-                child: Text("OK"),
+                onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>const DashboardScreen(),)),
+                child: const Text("OK"),
               ),
             ],
           ),
@@ -205,12 +225,12 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text("Error"),
+            title: const Text("Error"),
             content: Text(errorMessage),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text("OK"),
+                child: const Text("OK"),
               ),
             ],
           ),
@@ -225,18 +245,18 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        iconTheme: IconThemeData(color: Colors.deepPurple),
+        iconTheme: const IconThemeData(color: Colors.deepPurple),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: Container(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
+                const Center(
                   child: Text(
                     'Invite a Teammate',
                     style: TextStyle(
@@ -247,8 +267,8 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 12),
-                Center(
+                const SizedBox(height: 12),
+                const Center(
                   child: Text(
                     "Collaborate with your team to work efficiently",
                     style: TextStyle(
@@ -258,11 +278,12 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 SingleChildScrollView(
                   child: Column(
                     children: teammates.map((teammate) {
                       return Column(
+
                         children: [
                           RoundTextField(
                             isRequired: true,
@@ -271,7 +292,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                             textInputType: TextInputType.text,
                             textEditingController: teammate.nameController,
                           ),
-                          SizedBox(height: 20,),
+                          const SizedBox(height: 20,),
                           RoundTextField(
                             isRequired: true,
                             hintText: "Email",
@@ -280,7 +301,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                             textEditingController: teammate.emailController,
                             validator: validateEmail,
                           ),
-                          SizedBox(height: 20,),
+                          const SizedBox(height: 20,),
                           RoundTextField(
                             isRequired: true,
                             hintText: "Phone Number",
@@ -299,7 +320,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                                       value: country['code'],
                                       child: Text(
                                         country['code'],
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -312,7 +333,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                                         alignment: Alignment.centerRight,
                                         child: Text(
                                           country['code'],
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black, // Customize the selected item color
@@ -322,10 +343,11 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                                     }).toList();
                                   },
                                 ),
-                                SizedBox(width: 8), // Add some spacing between the dropdown and phone number input
+                                const SizedBox(width: 8),
+                                // Add some spacing between the dropdown and phone number input
                                 Expanded(
                                   child: TextFormField(
-                                    decoration: InputDecoration(
+                                    decoration: const InputDecoration(
                                       border: InputBorder.none,
                                       contentPadding: EdgeInsets.zero,
                                     ),
@@ -350,7 +372,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                               ],
                             ),
                           ),
-                          SizedBox(width: 10), // Add spacing between the fields
+                          const SizedBox(width: 10), // Add spacing between the fields
                           Container(
                             decoration: BoxDecoration(
                               color: AppColors.lightGrayColor,
@@ -358,7 +380,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                             ),
                             child: DropdownButtonFormField<String>(
                               value: teammate.selectedRole,
-                              decoration: InputDecoration(
+                              decoration: const InputDecoration(
                                 labelText: 'Role',
                                 // ...
                               ),
@@ -375,21 +397,33 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                               },
                             ),
                           ),
+                          Row(
+                            children: [
+                              IconButton(
+                                onPressed: () {
+                                  _removeTeammate(teammates.indexOf(teammate));
+                                },
+                                icon: const Icon(Icons.remove),
+                              ), const Text("REMOVE TEAMMATE"),
+                            ],
+                          ),
                         ],
                       );
                     }).toList(),
                   ),
                 ),
+
+
                 Row(
                   children: [
                     IconButton(
                       onPressed: _addTeammateRow,
-                      icon: Icon(Icons.add),
+                      icon: const Icon(Icons.add),
                     ),
-                    Text("ADD MORE TEAMMATES"),
+                    const Text("ADD MORE TEAMMATES"),
                   ],
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -398,7 +432,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                       width: 150,
                       child: RoundButton(title: "Invite Teammates", onPressed: _inviteTeammate),
                     ),
-                    SizedBox(height: 10,),
+                    const SizedBox(height: 10,),
                     SizedBox(
                       height: 40,
                       width: 90,

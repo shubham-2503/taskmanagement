@@ -1,8 +1,9 @@
 import 'dart:convert';
-import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'view/dashboard/dashboard_screen.dart';
 
 class OrganizationProvider with ChangeNotifier {
   int _selectedOrganizationIndex = 0;
@@ -56,15 +57,14 @@ class OrganizationProvider with ChangeNotifier {
 
   void switchOrganization(int newIndex, BuildContext context) {
     _selectedOrganizationIndex = newIndex;
-    notifyListeners(); // Notifies all the listeners that the state has changed
+    notifyListeners();
 
-    // Fetch the organization ID for the selected index
     String selectedOrgId = _organizationList[newIndex]["org_id"];
     String selectedName = _organizationList[newIndex]["name"];
-
-    // Store the selected organization ID locally in the app
     _storeSelectedOrgId(selectedOrgId, selectedName);
 
+    // Pop the current screen and push it again to trigger rebuild
+    Navigator.popAndPushNamed(context, DashboardScreen.routeName);
   }
 
   Future<void> _storeSelectedOrgId(String selectedOrgId,String selectedName) async {

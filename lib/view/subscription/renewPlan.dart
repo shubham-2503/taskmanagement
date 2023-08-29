@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:Taskapp/common_widgets/round_gradient_button.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../models/subscription.dart';
 import '../../utils/app_colors.dart';
-import 'chooseplan.dart';
 
 class RenewPlanScreen extends StatefulWidget {
   @override
@@ -15,7 +16,46 @@ class RenewPlanScreen extends StatefulWidget {
 class _RenewPlanScreenState extends State<RenewPlanScreen> {
   int selectedPlanIndex = 0; // Index of the selected plan
   bool isCheck = false;
-  List<SubscriptionPlan> plans = [];
+  List<SubscriptionPlan> plans = []; // Define this list to hold the fetched plans
+  int subscriptionDaysCount = 0;
+
+  Future<void> fetchSubscriptionDaysCount() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final response = await http.get(
+        Uri.parse(
+            'http://43.205.97.189:8000/api/Subscription/subscriptionDateCount?org_id=$orgId'),
+        headers: {'accept': '*/*'},
+      );
+
+      print('API Response (Subscription Days Count): ${response.body}');
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final int count = int.parse(response.body); // Convert response body to int
+        setState(() {
+          subscriptionDaysCount = count;
+        });
+      } else {
+        print('API Error: ${response.statusCode}');
+        // Handle the error and display an error message to the user
+      }
+    } catch (e) {
+      print('Exception: $e');
+      // Handle the error and display an error message to the user
+    }
+  }
 
   Future<void> fetchSubscriptionPlans() async {
     try {
@@ -62,6 +102,7 @@ class _RenewPlanScreenState extends State<RenewPlanScreen> {
   void initState() {
     super.initState();
     fetchSubscriptionPlans(); // Fetch the subscription plans from the API
+    fetchSubscriptionDaysCount();
   }
 
   @override
@@ -70,6 +111,7 @@ class _RenewPlanScreenState extends State<RenewPlanScreen> {
         plans.where((plan) => plan.name == 'Premium Plan').toList();
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         elevation: 0,
       ),
       body: Container(
@@ -86,11 +128,12 @@ class _RenewPlanScreenState extends State<RenewPlanScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '15-day free trial',
+              'Only $subscriptionDaysCount-days left', // Concatenate the count with the text
               style: TextStyle(
-                  fontSize: 24.0,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.secondaryColor2),
+                fontSize: 24.0,
+                fontWeight: FontWeight.bold,
+                color: AppColors.secondaryColor2,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(
@@ -140,7 +183,7 @@ class _RenewPlanScreenState extends State<RenewPlanScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            subtitle: Text(plan.price),
+                            subtitle: Text(plan.price.toString()),
                             trailing: IconButton(
                               icon: Icon(Icons.info_outline),
                               onPressed: () {
@@ -182,7 +225,7 @@ class _RenewPlanScreenState extends State<RenewPlanScreen> {
             RoundGradientButton(
                 title: "Renew Plan",
                 onPressed: () {
-                  renewPlan();
+                  renewSubscription();
                 }),
             SizedBox(
               height: 20,
@@ -218,9 +261,68 @@ class _RenewPlanScreenState extends State<RenewPlanScreen> {
     );
   }
 
-  void renewPlan() {
-    // Implement the upgrade logic here
-    print('Plan renew initiated!');
-    // Make API call to upgrade the plan
+  Future<void> renewSubscription() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      final response = await http.post(
+        Uri.parse(
+            'http://43.205.97.189:8000/api/Subscription/renewSubscription?org_id=$orgId'),
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $storedData', // Add the authorization token
+        },
+      );
+
+      print('API Response (Renew Subscription): ${response.body}');
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        final bool success = responseData['status'] ?? false;
+
+        if (success) {
+          // Renewal successful
+          final String message = responseData['message'] ?? "Subscription renewed successfully";
+          _showPopupMessage(context, message);
+        } else {
+          final String errorMessage = responseData['message'] ?? "Subscription renewal failed";
+          _showPopupMessage(context, errorMessage);
+        }
+      } else {
+        print('API Error: ${response.statusCode}');
+        // Handle the error and display an error message to the user
+      }
+    } catch (e) {
+      print('Exception: $e');
+      // Handle the error and display an error message to the user
+    }
+  }
+
+  void _showPopupMessage(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Subscription Renewal"),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context)=>DashboardScreen()));
+              },
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

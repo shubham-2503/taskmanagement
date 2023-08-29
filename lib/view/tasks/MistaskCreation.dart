@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import '../../Providers/project_provider.dart';
+import '../../Providers/taskProvider.dart';
+import '../../View_model/fetchApiSrvices.dart';
 import '../../common_widgets/date_widget.dart';
 import '../../common_widgets/round_textfield.dart';
 import '../../common_widgets/snackbar.dart';
@@ -90,7 +93,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
             status: status,
             dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
             // tasks: tasks,
-            teams: teams,
+            teams: teams, description: projectData['description'] ?? " ",
             // users: users,
           );
         }).toList();
@@ -102,7 +105,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
           owner: '',
           status: 'Active',
           dueDate: null,
-          teams: [], // You can set teams and other fields as needed
+          teams: [], description: '', // You can set teams and other fields as needed
         );
 
         setState(() {
@@ -126,15 +129,26 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
   }
 
   Future<void> fetchStatusData() async {
-    final response = await http.get(Uri.parse('http://43.205.97.189:8000/api/Platform/getStatus'));
-
-    if (response.statusCode == 200) {
+    try {
+      List<dynamic> fetchedStatuses = await ApiServices.fetchStatusData();
       setState(() {
-        statuses = json.decode(response.body);
-        _selectedStatus = statuses[0]['id'];
+        statuses = fetchedStatuses;
+        // Check if statuses list is not empty
+        if (statuses.isNotEmpty) {
+          // Initialize _selectedStatus to the first status ID in the list
+          _selectedStatus = statuses[0]['id'].toString();
+          statuses = fetchedStatuses
+              .where((status) => status['name'] != 'Completed')
+              .toList();
+
+        } else {
+          // If statuses list is empty, set _selectedStatus to null
+          _selectedStatus = null;
+        }
       });
-    } else {
-      print('Failed to fetch status. Status code: ${response.statusCode}');
+    } catch (e) {
+      print('Error fetching statuses: $e');
+      // Handle error if necessary
     }
   }
 
@@ -292,32 +306,35 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
   }
 
   void _showTeamsDropdown(BuildContext context) async {
-    List<Team> _teams = await fetchTeams();
+    List<Team> teams = await fetchTeams();
+
+    List<String> selectedTeamsIds = _selectedTeams.toList(); // Store the initial selected ids
 
     final selectedTeamIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        List<String> selectedTeamsIds = _selectedTeams.toList();
-        return AlertDialog(
-          title: Text('Select Teams'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return SingleChildScrollView(
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Teams'),
+              content: SingleChildScrollView(
                 child: Column(
                   children: [
                     Column(
-                      children: _teams.map((team) {
+                      children: teams.map((team) {
                         bool isSelected = selectedTeamsIds.contains(team.id);
 
-                        return CheckboxListTile(
+                        return ListTile(
                           title: Text(team.teamName),
-                          value: isSelected,
-                          onChanged: (value) {
+                          trailing: isSelected
+                              ? Icon(Icons.remove_circle, color: AppColors.primaryColor2)
+                              : Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+                          onTap: () {
                             setState(() {
-                              if (value == true) {
-                                _selectedTeams.add(team.id);
+                              if (isSelected) {
+                                selectedTeamsIds.remove(team.id);
                               } else {
-                                _selectedTeams.remove(team.id);
+                                selectedTeamsIds.add(team.id);
                               }
                             });
                           },
@@ -326,17 +343,17 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Done'),
-              onPressed: () {
-                Navigator.of(context).pop(selectedTeamsIds);
-              },
-            ),
-          ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    Navigator.of(context).pop(selectedTeamsIds);
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -344,7 +361,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     if (selectedTeamIds != null) {
       _selectedTeams = selectedTeamIds;
       List<String> selectedTeamsText = _selectedTeams
-          .map((id) => _teams.firstWhere((team) => team.id == id).teamName.toString())
+          .map((id) => teams.firstWhere((team) => team.id == id).teamName.toString())
           .toList();
       _assigneeTeamsController.text = selectedTeamsText.join(', ');
     }
@@ -353,31 +370,33 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
   void _showMembersDropdown(BuildContext context) async {
     List<User> allUsers = await fetchUsers();
 
+    List<String> selectedIds = _selectedMembers.toList(); // Store the initial selected ids
+
     final selectedUserIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        List<String> selectedIds = _selectedMembers.toList();
-        return AlertDialog(
-          title: Text('Select Members'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return SingleChildScrollView(
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Members'),
+              content: SingleChildScrollView(
                 child: Column(
                   children: [
-                    _buildSelectedMembersContainer(allUsers), // Add this line
                     Column(
                       children: allUsers.map((user) {
                         bool isSelected = selectedIds.contains(user.userId);
 
-                        return CheckboxListTile(
+                        return ListTile(
                           title: Text(user.userName),
-                          value: isSelected,
-                          onChanged: (value) {
+                          trailing: isSelected
+                              ? Icon(Icons.remove_circle, color: AppColors.primaryColor2)
+                              : Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+                          onTap: () {
                             setState(() {
-                              if (value == true) {
-                                _selectedMembers.add(user.userId);
+                              if (isSelected) {
+                                selectedIds.remove(user.userId);
                               } else {
-                                _selectedMembers.remove(user.userId);
+                                selectedIds.add(user.userId);
                               }
                             });
                           },
@@ -386,17 +405,17 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Done'),
-              onPressed: () {
-                Navigator.of(context).pop(selectedIds);
-              },
-            ),
-          ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    Navigator.of(context).pop(selectedIds);
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -409,31 +428,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       _assigneeMembersController.text = selectedMembersText.join(', ');
     }
   }
-
-  Widget _buildSelectedMembersContainer(List<User> allUsers) {
-    return Container(
-      margin: EdgeInsets.only(top: 10),
-      child: Wrap(
-        spacing: 6,
-        children: _selectedMembers.map((userId) {
-          User user = allUsers.firstWhere((user) => user.userId == userId);
-          return Chip(
-            label: Text(user.userName),
-            deleteIcon: Icon(Icons.clear),
-            onDeleted: () {
-              setState(() {
-                _selectedMembers.remove(userId);
-                _assigneeMembersController.text = _selectedMembers
-                    .map((id) => allUsers.firstWhere((user) => user.userId == id).userName.toString())
-                    .join(', ');
-              });
-            },
-          );
-        }).toList(),
-      ),
-    );
-  }
-
 
   @override
   Widget build(BuildContext context) {
@@ -885,8 +879,10 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       print("StatusCode: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        // Task creation successful
-        Navigator.pop(context,true);
+        TaskCountManager taskCountManager = TaskCountManager(prefs);
+        await taskCountManager.incrementTaskCount();
+        await taskCountManager.fetchTotalTaskCount();
+        await taskCountManager.updateTaskCount();
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -917,8 +913,8 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
               actions: [
                 InkWell(
                     onTap: (){
-                      Navigator.pop(context);
-                      Navigator.pop(context,taskData);
+                      Navigator.pop(context,true);
+                      Navigator.pop(context,true);
                     },
                     child: Text("OK",style: TextStyle(
                         color: AppColors.blackColor,

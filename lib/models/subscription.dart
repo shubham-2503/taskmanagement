@@ -2,12 +2,12 @@ class SubscriptionPlan {
   final String id;
   final String name;
   final String description;
-  final String price;
+  final int price;
   final String features;
   final int userCount;
   final int storageLimit;
-  final String status;
-  final String validity;
+  final bool status;
+  final int validity;
   final String createdBy;
   final String modifiedBy;
   final String createdDate;
@@ -39,8 +39,8 @@ class SubscriptionPlan {
       userCount: json['user_count'],
       storageLimit: json['storage_limit'],
       status: json['status'],
-      validity: json['validity'],
-      createdBy: json['created_by'],
+      validity: json['validity'] ?? 0, // Provide a default value of 0 if validity is null
+      createdBy: json['created_by'] ?? "", // Handle null value
       modifiedBy: json['modified_by'],
       createdDate: json['created_date'],
       modifiedDate: json['modified_date'],

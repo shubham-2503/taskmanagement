@@ -32,7 +32,7 @@ class BackToLogin extends StatelessWidget {
                   width: media.width * 0.75, fit: BoxFit.fitWidth),
               SizedBox(height: media.width * 0.05),
               const Text(
-                "Your Account has been successfully created",
+                "Please check your email for Proceed Further",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: AppColors.blackColor,

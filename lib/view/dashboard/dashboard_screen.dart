@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:Taskapp/organization_proivider.dart';
+import 'package:Taskapp/Providers/session_provider.dart';
 import 'package:Taskapp/user.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/profile/user_profile.dart';
@@ -7,8 +7,6 @@ import 'package:Taskapp/view/reports/reports.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../common_widgets/round_textfield.dart';
 import '../home/home_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -24,16 +22,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   PersistentBottomSheetController? _bottomSheetController;
   int notificationCount = 0;
 
-  final List<Widget> _widgetOptions = <Widget>[
-    HomeScreen(),
-    InviteScreen(),
-    ReportScreen(),
-    UserProfile(),
-  ];
+  late List<Widget> _widgetOptions;
+
+
+  @override
+  bool get wantKeepAlive => true;
+
+  void refreshTabScreen() {
+    setState(() {});
+  }
 
   @override
   void initState() {
     super.initState();
+    _widgetOptions = [
+      HomeScreen(),
+      InviteScreen(refreshCallback: refreshTabScreen),
+      ReportScreen(refreshCallback: refreshTabScreen),
+      UserProfile(refreshCallback: refreshTabScreen),
+    ];
     // Initialize Firebase messaging and handle incoming messages
     FirebaseMessaging.instance.getInitialMessage().then((message) {});
 
@@ -56,6 +63,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sessionProvider = Provider.of<SessionProvider>(context);
+    sessionProvider.checkLoginStatus();
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
       body: IndexedStack(

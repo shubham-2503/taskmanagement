@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:Taskapp/view/tasks/taskDetails.dart';
 import 'package:Taskapp/view/tasks/taskModal.dart';
 import 'package:intl/intl.dart';
@@ -35,7 +36,6 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
 
       print("OrgId: $orgId");
 
-
       if (orgId == null) {
         throw Exception('orgId not found locally');
       }
@@ -51,6 +51,7 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
 
       print("StatusCode: ${response.statusCode}");
       print("Response: ${response.body}");
+
       if (response.statusCode == 200) {
         final List<dynamic> responseData = jsonDecode(response.body);
         List<Task> fetchedTasks = responseData.map((taskData) {
@@ -59,10 +60,18 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
               ? users.map((user) => user['user_name'] as String).toList()
               : [];
           final List<String> assignedTo = assignedUsers;
+
+          final List<dynamic> teams = taskData['teams'];
+          final List<String> assignedTeam = teams.isNotEmpty
+              ? users.map((user) => user['teamName'] as String).toList()
+              : [];
+          final List<String> assignedTeams = assignedTeam;
+
           return Task(
             taskName: taskData['task_name'] ?? '',
             assignedTo: assignedTo, // Update key from 'assignee' to 'created_by'
             status: taskData['status'] ?? '',
+            assignedTeam: assignedTeams,
             description: taskData['description'] ?? '',
             priority: taskData['priority'] ?? '',
             dueDate: taskData['due_Date'],
@@ -70,8 +79,8 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
           );
         }).toList();
 
-        // Filter tasks that are in "Open" status (ToDo tasks)
-        List<Task> openTasks = fetchedTasks.where((task) => task.status == 'ToDo').toList();
+        // Filter tasks that are not in "Completed" status
+        List<Task> openTasks = fetchedTasks.where((task) => task.status != 'Completed').toList();
         setState(() {
           opentasks = openTasks;
           filteredOpenTasks = openTasks;
@@ -113,132 +122,138 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: SizedBox(height: 50,width: 150,child:  RoundTextField(
-              onChanged: (query) => filterOpenTasks(query), hintText: 'Search',
-              icon: "assets/images/search_icon.png",
-            ),),
-          )
-        ],
-      ),
-      body: Container(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 30),
-          child: Column(
-            children: [
-              Text(
-                'Open Tasks',
-                style: TextStyle(
-                    color: AppColors.secondaryColor2,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: filteredOpenTasks.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    Task task = filteredOpenTasks[index];
-                    // Determine color based on the task's status
-                    Color statusColor = Colors.grey; // Default color
-                    switch (task.status) {
-                      case 'InProgress':
-                        statusColor = Colors.blue;
-                        break;
-                      case 'Completed':
-                        statusColor = Colors.red;
-                        break;
-                      case 'ToDo':
-                        statusColor = AppColors.primaryColor2;
-                        break;
-                      case 'transferred':
-                        statusColor = Colors.black54;
-                        break;
-                    // Add more cases for different statuses if needed
-                    }
-                    // Determine color based on the task's priority
-                    Color priorityColor = Colors.grey; // Default color
-                    switch (task.priority) {
-                      case 'High':
-                        priorityColor = AppColors.primaryColor2;
-                        break;
-                      case 'Low':
-                        priorityColor = Colors.green;
-                        break;
-                      case 'Critical':
-                        priorityColor = Colors.red;
-                        break;
-                      case 'Medium':
-                        priorityColor = Colors.blue;
-                        break;
-                    // Add more cases for different priorities if needed
-                    }
-                    return Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 2),
-                        padding:
-                        EdgeInsets.symmetric(vertical: 8, horizontal: 9),
-                        decoration: BoxDecoration(
-                          color: AppColors.whiteColor,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 20),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.push(context, MaterialPageRoute(builder: (context)=>DashboardScreen()));
+        return true; // Allow the back action to proceed
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          actions: [
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: SizedBox(height: 50,width: 150,child:  RoundTextField(
+                onChanged: (query) => filterOpenTasks(query), hintText: 'Search',
+                icon: "assets/images/search_icon.png",
+              ),),
+            )
+          ],
+        ),
+        body: Container(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 30),
+            child: Column(
+              children: [
+                Text(
+                  'Open Tasks',
+                  style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredOpenTasks.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      Task task = filteredOpenTasks[index];
+                      // Determine color based on the task's status
+                      Color statusColor = Colors.grey; // Default color
+                      switch (task.status) {
+                        case 'InProgress':
+                          statusColor = Colors.blue;
+                          break;
+                        case 'Completed':
+                          statusColor = Colors.red;
+                          break;
+                        case 'ToDo':
+                          statusColor = AppColors.primaryColor2;
+                          break;
+                        case 'transferred':
+                          statusColor = Colors.black54;
+                          break;
+                      // Add more cases for different statuses if needed
+                      }
+                      // Determine color based on the task's priority
+                      Color priorityColor = Colors.grey; // Default color
+                      switch (task.priority) {
+                        case 'High':
+                          priorityColor = AppColors.primaryColor2;
+                          break;
+                        case 'Low':
+                          priorityColor = Colors.green;
+                          break;
+                        case 'Critical':
+                          priorityColor = Colors.red;
+                          break;
+                        case 'Medium':
+                          priorityColor = Colors.blue;
+                          break;
+                      // Add more cases for different priorities if needed
+                      }
+                      return Container(
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 2),
+                          padding:
+                          EdgeInsets.symmetric(vertical: 8, horizontal: 9),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              AppColors.primaryColor2.withOpacity(0.3),
-                              AppColors.primaryColor1.withOpacity(0.3)
-                            ]),
+                            color: AppColors.whiteColor,
                             borderRadius: BorderRadius.circular(15),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 20),
-                                  child: Text(
-                                    task.taskName,
-                                    style: TextStyle(
-                                      color: AppColors.secondaryColor2,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 15, horizontal: 20),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: [
+                                AppColors.primaryColor2.withOpacity(0.3),
+                                AppColors.primaryColor1.withOpacity(0.3)
+                              ]),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 20),
+                                    child: Text(
+                                      task.taskName,
+                                      style: TextStyle(
+                                        color: AppColors.secondaryColor2,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              Spacer(), // Add a Spacer to push the menu image to the end
-                              GestureDetector(
-                                onTap: () async {
-                                  bool? shouldRefresh = await showModalBottomSheet<bool>(
-                                    context: context,
-                                    builder: (context) {
-                                      return TaskDetailsModal(task: task);
-                                    },
-                                  );
+                                Spacer(), // Add a Spacer to push the menu image to the end
+                                GestureDetector(
+                                  onTap: () async {
+                                    bool? shouldRefresh = await showModalBottomSheet<bool>(
+                                      context: context,
+                                      builder: (context) {
+                                        return TaskDetailsModal(task: task);
+                                      },
+                                    );
 
-                                  if (shouldRefresh ?? false) {
-                                    await fetchOpenTasks();
-                                  }
-                                },
-                                child: Image.asset(
-                                  "assets/images/menu.png",
-                                  width: 40,
-                                  height: 20,
+                                    if (shouldRefresh ?? false) {
+                                      await fetchOpenTasks();
+                                    }
+                                  },
+                                  child: Image.asset(
+                                    "assets/images/menu.png",
+                                    width: 40,
+                                    height: 20,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ));
-                  },
+                              ],
+                            ),
+                          ));
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -389,7 +404,6 @@ void _showTaskDetailsBottomSheet(BuildContext context, Task task) {
 
 
 String formatDate(String? dateString) {
-  print('Raw Date String: $dateString');
   if (dateString == null || dateString.isEmpty) {
     return 'N/A'; // Return "N/A" for null or empty date strings
   }

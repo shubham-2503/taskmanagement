@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'package:Taskapp/common_widgets/round_button.dart';
 import 'package:Taskapp/common_widgets/round_textfield.dart';
+import 'package:Taskapp/view/teams/editTeam.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,6 +31,49 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<List<String>> fetchUserNames() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      String? orgId = prefs.getString("selectedOrgId");
+
+      if (orgId == null) {
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      if (storedData == null || storedData.isEmpty) {
+        print('Stored token is null or empty. Cannot make API request.');
+        throw Exception('Failed to fetch user names: Stored token is null or empty.');
+      }
+
+      final response = await http.get(
+        Uri.parse('http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $storedData',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final List<String> userNames = data
+            .map((userJson) => userJson['userName'] as String? ?? "")
+            .toList();
+        return userNames;
+      } else {
+        print('Failed to fetch user names: StatusCode: ${response.statusCode}');
+        throw Exception('Failed to fetch user names');
+      }
+    } catch (e) {
+      print('Error fetching user names: $e');
+      throw Exception('Failed to fetch user names');
+    }
   }
 
   Future<void> fetchMyTeams() async {
@@ -87,7 +132,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     }
   }
 
-  Future<void> updateTeamWithMembersAndName(String teamId, String newTeamName, List<String> userIds,) async {
+  Future<void> updateTeamWithMembers(String teamId,List<String> userIds,) async {
     try {
       print("TeamIds: $teamId");
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -114,7 +159,6 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
 
       // Prepare the data for the request
       final Map<String, dynamic> requestBody = {
-        "name": newTeamName,
         "user_id": userIds,
       };
 
@@ -132,20 +176,19 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
       print("StatusCode: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        print('Team updated successfully with new members and name.');
-        String message = "Team updated successfully with new members and name.";
+        print('Team updated successfully with new members.');
+        String message = "Team updated successfully with new members";
         _showDialog(message);
-
         // After successful update, fetch the latest teams data
         await fetchMyTeams();
       } else {
-        print('Failed to update team with new members and name.');
-        String message = "Failed to update team with new members and name.";
+        print('Failed to update team with new members.');
+        String message = "Failed to update team with new members.";
         _showDialog(message);
       }
     } catch (e) {
       print('Error updating team with new members and name: $e');
-      String message = "Error updating team with new members and name: $e";
+      String message = "Error updating team with new members: $e";
       _showDialog(message);
     }
   }
@@ -243,8 +286,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     });
   }
 
-
-  void _deleteTeam(String teamId) async {
+  void _deleteTeam(String teamId,int index) async {
     try {
       // Show a confirmation dialog for deleting the task
       showDialog(
@@ -293,6 +335,11 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                     print("Delete StatusCode: ${response.statusCode}");
 
                     if (response.statusCode == 200) {
+
+                      _teams.removeWhere((team) => team.teamId == teamId);
+                      setState(() {});
+
+
                       showDialog(
                         context: context,
                         builder: (BuildContext context) {
@@ -302,8 +349,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                             actions: [
                               InkWell(
                                   onTap: () async {
-                                    Navigator.pop(context);
-                                    setState(() {});
+                                    Navigator.pop(context,true);
                                   },
                                   child: Text(
                                     "OK",
@@ -317,10 +363,10 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                       );
                       print('Team deleted successfully.');
                       // Perform any necessary tasks after successful deletion
-                      setState(() {
+                      /* setState(() {
                         // Remove the deleted team from the list
                         _teams.removeWhere((team) => team.teamId == teamId);
-                      });
+                      });*/
                     } else {
                       print('Failed to delete team.');
                       // Handle other status codes, if needed
@@ -340,188 +386,24 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     }
   }
 
-  void _showUserListBottomSheet(String teamId, String teamName) async {
-    TextEditingController teamNameController = TextEditingController(text: teamName);
-
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return FutureBuilder<List<User>>(
-              future: fetchUsers(),
-              builder: (context, snapshot) {
-                try {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    print('Error fetching users: ${snapshot.error}');
-                    return Center(child: Text('Error fetching users'));
-                  } else {
-                    List<User> userList = snapshot.data ?? [];
-                    return Container(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Edit Team Name:', // Updated text here
-                            style: TextStyle(
-                              color: AppColors.secondaryColor2,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          TextFormField(
-                            controller: teamNameController,
-                            style: TextStyle(
-                              color: AppColors.primaryColor2,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(),
-                              hintText: 'Enter Team Name',
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Select User',
-                            style: TextStyle(
-                              color: AppColors.secondaryColor2,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: userList.length,
-                              itemBuilder: (context, index) {
-                                User user = userList[index];
-                                bool isSelected = _selectedUsers.contains(user);
-                                return ListTile(
-                                  title: Text(
-                                    user.userName,
-                                    style: TextStyle(
-                                      color: AppColors.primaryColor2,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  trailing: IconButton(
-                                    icon: Icon(
-                                      isSelected
-                                          ? Icons.remove_circle
-                                          : Icons.add_circle,
-                                      color: AppColors.secondaryColor2,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedUsers.remove(user);
-                                        } else {
-                                          _selectedUsers.add(user);
-                                        }
-                                      });
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          // Display the selected users
-                          if (_selectedUsers.isNotEmpty)
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: AppColors.secondaryColor2,
-                                  width: 1,
-                                ),
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Selected Users:',
-                                    style: TextStyle(
-                                      color: AppColors.secondaryColor2,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    children: _selectedUsers.map((user) {
-                                      return Chip(
-                                        label: Text(user.userName),
-                                        onDeleted: () {
-                                          setState(() {
-                                            _selectedUsers.remove(user);
-                                          });
-                                        },
-                                      );
-                                    }).toList(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                                child: Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () async {
-                                  String newTeamName = teamNameController.text;
-                                  List<String> selectedUserIds = _selectedUsers.map((user) => user.userId).toList();
-                                  await updateTeamWithMembersAndName(teamId, newTeamName, selectedUserIds);
-                                  Navigator.pop(context);
-                                  Navigator.pop(context);
-                                },
-                                child: Text('Save'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  print('Error in FutureBuilder: $e');
-                  return Center(child: Text('An error occurred'));
-                }
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('My Teams'),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: SizedBox(height: 50,width: 150,child:  RoundTextField(
-            onChanged: (query) => filterTeams(query), hintText: 'Search',
-            icon: "assets/images/search_icon.png",
-          ),),
-        )
-      ],),
+      appBar: AppBar(title: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Text('My Teams',style:TextStyle(fontSize:19)),
+        ],
+      ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: SizedBox(height: 50,width: 150,child:  RoundTextField(
+              onChanged: (query) => filterTeams(query), hintText: 'Search',
+              icon: "assets/images/search_icon.png",
+            ),),
+          )
+        ],),
       body: Container(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -529,9 +411,9 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
             children: [
               Expanded(
                 child: ListView.builder(
-                  itemCount: filteredTeams.length, // Use _filteredTeams here
+                  itemCount: _teams.length, // Use _filteredTeams here
                   itemBuilder: (context, index) {
-                    MyTeam team = filteredTeams[index];
+                    MyTeam team = _teams[index];
                     return Stack(
                       children: [
                         Container(
@@ -614,8 +496,8 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                             children: [
                               Row(children: [
                                 IconButton(
-                                    onPressed: () {
-                                      _showViewTeamDialog(team);
+                                    onPressed: () async {
+                                      _showViewTeamDialog(team); // Pass both team and userNames
                                     },
                                     icon: Icon(
                                       Icons.remove_red_eye,
@@ -627,12 +509,22 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                     color: AppColors.secondaryColor2,
                                   ),
                                   onPressed: () {
-                                    _deleteTeam(team.teamId!);
+                                    _deleteTeam(team.teamId!,index);
                                   },
                                 ),
                                 IconButton(
-                                  onPressed: () {
-                                    _showEditTeamDialog(team.teamId!,team.teamName, _selectedUsers);
+                                  onPressed: () async {
+                                    bool? changesMade = await showModalBottomSheet<bool>(
+                                      context: context,
+                                      builder: (context) {
+                                        return EditTeamPage(teamId: team.teamId!, name: team.teamName, users: team.users);
+                                      },
+                                    );
+
+                                    // If changes were made, fetch teams again
+                                    if (changesMade == true) {
+                                      await fetchMyTeams();
+                                    }
                                   },
                                   icon: Icon(Icons.edit, color: AppColors.secondaryColor2),
                                 ),
@@ -651,7 +543,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-         _navigateToCreateTeamScreen();
+          _navigateToCreateTeamScreen();
         },
         child: Icon(Icons.add),
       ),
@@ -692,180 +584,10 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
     }
   }
 
-  Future<void> _showEditTeamDialog(String teamId,String teamName, List<User> selectedUsers) async {
-    TextEditingController teamNameController = TextEditingController(text: teamName);
-
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return FutureBuilder<List<User>>(
-              future: fetchUsers(),
-              builder: (context, snapshot) {
-                try {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    print('Error fetching users: ${snapshot.error}');
-                    return Center(child: Text('Error fetching users'));
-                  } else {
-                    List<User> userList = snapshot.data ?? [];
-                    return Container(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Edit Team Name:', // Updated text here
-                            style: TextStyle(
-                              color: AppColors.secondaryColor2,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          TextFormField(
-                            controller: teamNameController,
-                            style: TextStyle(
-                              color: AppColors.primaryColor2,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(),
-                              hintText: 'Enter Team Name',
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Select User',
-                            style: TextStyle(
-                              color: AppColors.secondaryColor2,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: userList.length,
-                              itemBuilder: (context, index) {
-                                User user = userList[index];
-                                bool isSelected = _selectedUsers.contains(user);
-                                return ListTile(
-                                  title: Text(
-                                    user.userName,
-                                    style: TextStyle(
-                                      color: AppColors.primaryColor2,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  trailing: IconButton(
-                                    icon: Icon(
-                                      isSelected
-                                          ? Icons.remove_circle
-                                          : Icons.add_circle,
-                                      color: AppColors.secondaryColor2,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedUsers.remove(user);
-                                        } else {
-                                          _selectedUsers.add(user);
-                                        }
-                                      });
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          // Display the selected users
-                          if (_selectedUsers.isNotEmpty)
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: AppColors.secondaryColor2,
-                                  width: 1,
-                                ),
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Selected Users:',
-                                    style: TextStyle(
-                                      color: AppColors.secondaryColor2,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    children: _selectedUsers.map((user) {
-                                      return Chip(
-                                        label: Text(user.userName),
-                                        onDeleted: () {
-                                          setState(() {
-                                            _selectedUsers.remove(user);
-                                          });
-                                        },
-                                      );
-                                    }).toList(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                                child: Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () async {
-                                  String newTeamName = teamNameController.text;
-                                  List<String> selectedUserIds = _selectedUsers.map((user) => user.userId).toList();
-                                  await updateTeamWithMembersAndName(teamId, newTeamName, selectedUserIds);
-                                  Navigator.pop(context);
-                                  Navigator.pop(context);
-                                },
-                                child: Text('Save'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  print('Error in FutureBuilder: $e');
-                  return Center(child: Text('An error occurred'));
-                }
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
   String findUserIdByUserName(String userName) {
     User? user = _selectedUsers.firstWhere((user) => user.userName == userName,);
     return user?.userId ?? '';
   }
-
 
   void _navigateToCreateTeamScreen() async {
     final shouldRefresh = await Navigator.push(
@@ -878,8 +600,6 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
       fetchMyTeams();
     }
   }
-
-
 
   Future<String> getUserIdByUsername(String username) async {
     try {
@@ -965,124 +685,278 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                       fontWeight: FontWeight.bold),
                 ),
                 ...team.users!.map((user) => ListTile(
-                  title: Text(
-                    user,
-                    style: TextStyle(
-                        color: AppColors.primaryColor2,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  trailing: IconButton(
-                    icon: Icon(
-                      Icons.remove_circle,
-                      color: AppColors.secondaryColor2,
+                    title: Text(
+                      user,
+                      style: TextStyle(
+                          color: AppColors.primaryColor2,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold),
                     ),
-                      onPressed: () async {
-                        try {
-                          // Show a confirmation dialog for deleting the task
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: Text('Confirm Delete'),
-                                content: Text('Are you sure you want to delete this User?'),
-                                actions: [
-                                  TextButton(
-                                    child: Text('Cancel'),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                  TextButton(
-                                    onPressed: () async {
-                                      Navigator.of(context).pop();
-                                      try {
-                                        SharedPreferences prefs = await SharedPreferences.getInstance();
-                                        final storedData = prefs.getString('jwtToken');
-                                        String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+                    trailing: IconButton(
+                        icon: Icon(
+                          Icons.remove_circle,
+                          color: AppColors.secondaryColor2,
+                        ),
+                        onPressed: () async {
+                          try {
+                            // Show a confirmation dialog for deleting the task
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text('Confirm Delete'),
+                                  content: Text('Are you sure you want to delete this User?'),
+                                  actions: [
+                                    TextButton(
+                                      child: Text('Cancel'),
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        Navigator.of(context).pop();
+                                        try {
+                                          SharedPreferences prefs = await SharedPreferences.getInstance();
+                                          final storedData = prefs.getString('jwtToken');
+                                          String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
-                                        if (orgId == null) {
-                                          // If the user hasn't switched organizations, use the organization ID obtained during login time
-                                          orgId = prefs.getString('org_id') ?? "";
+                                          if (orgId == null) {
+                                            // If the user hasn't switched organizations, use the organization ID obtained during login time
+                                            orgId = prefs.getString('org_id') ?? "";
+                                          }
+
+                                          print("OrgId: $orgId");
+
+
+                                          if (orgId == null) {
+                                            throw Exception('orgId not found locally');
+                                          }
+
+                                          final String teamId = team.teamId!;
+                                          final String userName = user; // Replace 'user' with the actual userName of the user you want to delete
+
+                                          final userId = await getUserIdByUsername(user); // Make the userId nullable
+
+                                          print("Userid: $userId");
+
+                                          // Get the teamId and userId of the user to delete
+                                          final String apiUrl = "http://43.205.97.189:8000/api/Team/deleteTeamUser?teamId=${team.teamId}&userId=$userId&org_id=$orgId";
+
+                                          // Prepare the query parameters
+                                          final Map<String, String> queryParams = {
+                                            "teamId": teamId,
+                                            "userId":userId,
+                                          };
+
+                                          print("Body: $queryParams"); // Print the request body to debug
+
+                                          // Make the HTTP DELETE request
+                                          final response = await http.delete(
+                                            Uri.parse(apiUrl),
+                                            headers: {
+                                              'accept': '*/*',
+                                              'Authorization': "Bearer $storedData",
+                                              // Add any necessary authorization or authentication headers here
+                                            },
+                                            body: json.encode(queryParams), // Convert the queryParams to JSON
+                                          );
+
+                                          print("Response Body: ${response.body}");
+                                          print("Statuscode: ${response.statusCode}");
+
+                                          // Check the response status and handle accordingly
+                                          if (response.statusCode == 200) {
+                                            // Deletion successful
+                                            print("User deleted successfully.");
+                                            _showDialog("User deleted Successfully");
+
+                                            await fetchMyTeams();
+                                          } else if (response.statusCode == 401) {
+                                            // Unauthorized
+                                            print("Unauthorized to perform the delete operation.");
+                                          } else if (response.statusCode == 403) {
+                                            // Forbidden
+                                            print("Forbidden to perform the delete operation.");
+                                          } else {
+                                            // Handle other response status codes if needed
+                                            print("An error occurred: ${response.statusCode}");
+                                          }
+                                        } catch (e) {
+                                          print("Error: $e");
                                         }
-
-                                        print("OrgId: $orgId");
-
-
-                                        if (orgId == null) {
-                                          throw Exception('orgId not found locally');
-                                        }
-
-                                        final String teamId = team.teamId!;
-                                        final String userName = user; // Replace 'user' with the actual userName of the user you want to delete
-
-                                        final userId = await getUserIdByUsername(user); // Make the userId nullable
-
-                                        print("Userid: $userId");
-
-                                        // Get the teamId and userId of the user to delete
-                                        final String apiUrl = "http://43.205.97.189:8000/api/Team/deleteTeamUser?teamId=${team.teamId}&userId=$userId&org_id=$orgId";
-
-                                        // Prepare the query parameters
-                                        final Map<String, String> queryParams = {
-                                          "teamId": teamId,
-                                          "userId":userId,
-                                        };
-
-                                        print("Body: $queryParams"); // Print the request body to debug
-
-                                        // Make the HTTP DELETE request
-                                        final response = await http.delete(
-                                          Uri.parse(apiUrl),
-                                          headers: {
-                                            'accept': '*/*',
-                                            'Authorization': "Bearer $storedData",
-                                            // Add any necessary authorization or authentication headers here
-                                          },
-                                          body: json.encode(queryParams), // Convert the queryParams to JSON
-                                        );
-
-                                        print("Response Body: ${response.body}");
-                                        print("Statuscode: ${response.statusCode}");
-
-                                        // Check the response status and handle accordingly
-                                        if (response.statusCode == 200) {
-                                          // Deletion successful
-                                          print("User deleted successfully.");
-                                          _showDialog("User deleted Successfully");
-
-                                          await fetchMyTeams();
-                                        } else if (response.statusCode == 401) {
-                                          // Unauthorized
-                                          print("Unauthorized to perform the delete operation.");
-                                        } else if (response.statusCode == 403) {
-                                          // Forbidden
-                                          print("Forbidden to perform the delete operation.");
-                                        } else {
-                                          // Handle other response status codes if needed
-                                          print("An error occurred: ${response.statusCode}");
-                                        }
-                                      } catch (e) {
-                                        print("Error: $e");
-                                      }
-                                    },
-                                    child: Text('Delete'),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        } catch (e) {
-                          print('Error showing delete confirmation dialog: $e');
+                                      },
+                                      child: Text('Delete'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          } catch (e) {
+                            print('Error showing delete confirmation dialog: $e');
+                          }
                         }
-                      }
-                  )
+                    ),
                 )),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.add_circle, color: AppColors.primaryColor2),
+                      onPressed: () {
+                        _showUserSelectionModal(team);
+                      },
+                    ),
+                    Text("Add Members",
+                      style: TextStyle(
+                          color: AppColors.secondaryColor2,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
         );
       },
     );
+  }
+
+  void _showUserSelectionModal(MyTeam team) async {
+    try {
+      final users = await fetchUsers(); // Fetch users from the API
+
+      List<User> selectedUsers = []; // List to store selected users
+
+      showModalBottomSheet<void>(
+        context: context,
+        builder: (BuildContext context) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: Text('Add Members', style: TextStyle(fontWeight: FontWeight.bold)),
+                    trailing: IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        final bool isUserInTeam = team.users!.contains(user.userName);
+
+                        return ListTile(
+                          title: Text(user.userName, style: TextStyle(color: AppColors.secondaryColor2)),
+                          trailing: isUserInTeam
+                              ? Icon(Icons.check, color: AppColors.secondaryColor2)
+                              : IconButton(
+                            icon: Icon(Icons.add, color: AppColors.primaryColor2),
+                            onPressed: () {
+                              if (!selectedUsers.contains(user)) {
+                                setState(() {
+                                  selectedUsers.add(user);
+                                });
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Selected Members:',
+                        style: TextStyle(
+                          color: AppColors.primaryColor2,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.start,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Container(
+                      child: Wrap(
+                        spacing: 5, // Add space between users
+                        runSpacing: 5, // Vertical spacing between rows
+                        children: selectedUsers.map((user) => Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryColor1,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min, // Adjust the width of each container
+                            children: [
+                              Text(user.userName, style: TextStyle(color: Colors.white)),
+                              IconButton(
+                                icon: Icon(Icons.clear, color: AppColors.blackColor, size: 10),
+                                onPressed: () {
+                                  setState(() {
+                                    selectedUsers.remove(user);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        )).toList(),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        SizedBox(
+                          height: 30,
+                          width: 90,
+                          child: RoundButton(
+                            title: "Apply",
+                            onPressed: () async{
+                              List<String> selectedUserIds = selectedUsers.map((user) => user.userId).toList();
+
+                              await updateTeamWithMembers(team.teamId!, selectedUserIds);
+
+                              Navigator.pop(context);
+                              Navigator.pop(context);
+                              Navigator.pop(context,true);
+                            },
+                          ),
+                        ),
+                        SizedBox(width: 10,),
+                        SizedBox(
+                          height: 30,
+                          width: 90,
+                          child: RoundButton(
+                            title: "Cancel",
+                            onPressed: (){
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      print('Error fetching users: $e');
+      // Handle the error as needed
+    }
   }
 }
