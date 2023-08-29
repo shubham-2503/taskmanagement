@@ -172,11 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       ProjectCountManager projectCountManager = ProjectCountManager(prefs);
-      if (projectCountManager == null) {
-        print("projectCountManager is null");
-        return;
-      }
-
       await projectCountManager.updateProjectCount();
       int count = await projectCountManager.fetchTotalProjectCount();
       print("Total project count: $count"); // Debugging print

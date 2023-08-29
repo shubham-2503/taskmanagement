@@ -31,7 +31,6 @@ class ProjectCountManager {
     String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
-      // If the user hasn't switched organizations, use the organization ID obtained during login time
       orgId = prefs.getString('org_id') ?? "";
     }
 
@@ -40,6 +39,8 @@ class ProjectCountManager {
     if (orgId == null) {
       throw Exception('orgId not found locally');
     }
+
+    print("OrgId: $orgId");
 
     final headers = {
       'accept': '*/*',
@@ -59,7 +60,7 @@ class ProjectCountManager {
       allProjects.addAll(data2);
 
       Set<String> projectIds = {}; // Use a Set to remove duplications
-      projectIds.addAll(allProjects.map((project) => project['unique_id'] as String));
+      projectIds.addAll(allProjects.map((project) => project['project_id'] as String));
 
       int totalProjectCount = projectIds.length;
       print("Total Project Count: $totalProjectCount"); // Print the count

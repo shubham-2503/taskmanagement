@@ -308,7 +308,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                                   int projectIndex = projectIds
                                                       .indexOf(project.id);
                                                   if (projectIndex != -1) {
-                                                    Navigator.push(
+                                                    bool edited = await Navigator.push(
                                                       context,
                                                       MaterialPageRoute(
                                                         builder: (context) =>
@@ -338,6 +338,9 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                                         ),
                                                       ),
                                                     );
+                                                    if(edited == true){
+                                                      await fetchTeamProjects();
+                                                    }
                                                   }
                                                 }
                                               },

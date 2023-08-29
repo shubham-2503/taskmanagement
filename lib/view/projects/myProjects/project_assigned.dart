@@ -340,29 +340,50 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                             child: RoundButton(
                                               title: "View More",
                                               onPressed: () async {
-                                                final SharedPreferences prefs = await SharedPreferences.getInstance();
-                                                final List<String>? projectIds = prefs.getStringList('projectIds');
+                                                final SharedPreferences prefs =
+                                                await SharedPreferences
+                                                    .getInstance();
+                                                final List<String>? projectIds =
+                                                prefs.getStringList(
+                                                    'projectIds');
                                                 if (projectIds != null) {
                                                   // Find the index of the selected project in the list of stored projectIds
-                                                  int projectIndex = projectIds.indexOf(project.id);
+                                                  int projectIndex = projectIds
+                                                      .indexOf(project.id);
                                                   if (projectIndex != -1) {
-                                                    Navigator.push(
+                                                    bool edited = await Navigator.push(
                                                       context,
                                                       MaterialPageRoute(
-                                                        builder: (context) => ProjectDetailsScreen(
-                                                          project: project,
-                                                          active: project.active!,
-                                                          projectId: projectIds[projectIndex], // Use the selected projectId from the list
-                                                          projectName: project.name,
-                                                          status: project.status,
-                                                          assigneeTo: project.users!.map((user) => user.userName).join(', '),
-                                                          dueDate: formatDate(project.dueDate) ?? '',
-                                                          createdBy: project.owner,
-                                                          assigneeTeam: project.teams!.map((user) => user.teamName).join(', '),
-                                                          attachments: [],
-                                                        ),
+                                                        builder: (context) =>
+                                                            ProjectDetailsScreen(
+                                                              active: project.active!,
+                                                              projectId: projectIds[
+                                                              projectIndex], // Use the selected projectId from the list
+                                                              projectName: project.name,
+                                                              assigneeTo: project.users
+                                                                  ?.map((user) =>
+                                                              user.userName)
+                                                                  .join(', ') ??
+                                                                  '',
+                                                              status: project.status,
+                                                              dueDate: formatDate(
+                                                                  project
+                                                                      .dueDate) ??
+                                                                  '',
+                                                              createdBy: project.owner,
+                                                              assigneeTeam: project
+                                                                  .teams
+                                                                  ?.map((user) =>
+                                                              user.teamName)
+                                                                  .join(', ') ??
+                                                                  '',
+                                                              attachments: [], project: project,
+                                                            ),
                                                       ),
                                                     );
+                                                    if(edited == true){
+                                                      await fetchMyProjects();
+                                                    }
                                                   }
                                                 }
                                               },

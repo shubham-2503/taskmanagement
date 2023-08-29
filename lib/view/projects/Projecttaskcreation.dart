@@ -234,34 +234,36 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
       throw Exception('Failed to fetch users');
     }
   }
-
   void _showTeamsDropdown(BuildContext context) async {
-    List<Team> _teams = await fetchTeams();
+    List<Team> teams = await fetchTeams();
+
+    List<String> selectedTeamsIds = _selectedTeams.toList(); // Store the initial selected ids
 
     final selectedTeamIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        List<String> selectedTeamsIds = _selectedTeams.toList();
-        return AlertDialog(
-          title: Text('Select Teams'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return SingleChildScrollView(
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Teams'),
+              content: SingleChildScrollView(
                 child: Column(
                   children: [
                     Column(
-                      children: _teams.map((team) {
+                      children: teams.map((team) {
                         bool isSelected = selectedTeamsIds.contains(team.id);
 
-                        return CheckboxListTile(
+                        return ListTile(
                           title: Text(team.teamName),
-                          value: isSelected,
-                          onChanged: (value) {
+                          trailing: isSelected
+                              ? Icon(Icons.remove_circle, color: AppColors.primaryColor2)
+                              : Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+                          onTap: () {
                             setState(() {
-                              if (value == true) {
-                                _selectedTeams.add(team.id);
+                              if (isSelected) {
+                                selectedTeamsIds.remove(team.id);
                               } else {
-                                _selectedTeams.remove(team.id);
+                                selectedTeamsIds.add(team.id);
                               }
                             });
                           },
@@ -270,17 +272,17 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Done'),
-              onPressed: () {
-                Navigator.of(context).pop(selectedTeamsIds);
-              },
-            ),
-          ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    Navigator.of(context).pop(selectedTeamsIds);
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -288,7 +290,7 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
     if (selectedTeamIds != null) {
       _selectedTeams = selectedTeamIds;
       List<String> selectedTeamsText = _selectedTeams
-          .map((id) => _teams.firstWhere((team) => team.id == id).teamName.toString())
+          .map((id) => teams.firstWhere((team) => team.id == id).teamName.toString())
           .toList();
       _assigneeTeamsController.text = selectedTeamsText.join(', ');
     }
@@ -297,29 +299,33 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
   void _showMembersDropdown(BuildContext context) async {
     List<User> allUsers = await fetchUsers();
 
+    List<String> selectedIds = _selectedMembers.toList(); // Store the initial selected ids
+
     final selectedUserIds = await showDialog<List<String>>(
       context: context,
       builder: (BuildContext context) {
-        List<String> selectedIds = _selectedMembers.toList();
-        return AlertDialog(
-          title: Text('Select Members'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return SingleChildScrollView(
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Members'),
+              content: SingleChildScrollView(
                 child: Column(
                   children: [
                     Column(
                       children: allUsers.map((user) {
                         bool isSelected = selectedIds.contains(user.userId);
-                        return CheckboxListTile(
+
+                        return ListTile(
                           title: Text(user.userName),
-                          value: isSelected,
-                          onChanged: (value) {
+                          trailing: isSelected
+                              ? Icon(Icons.remove_circle, color: AppColors.primaryColor2)
+                              : Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+                          onTap: () {
                             setState(() {
-                              if (value == true) {
-                                _selectedMembers.add(user.userId);
+                              if (isSelected) {
+                                selectedIds.remove(user.userId);
                               } else {
-                                _selectedMembers.remove(user.userId);
+                                selectedIds.add(user.userId);
                               }
                             });
                           },
@@ -328,17 +334,17 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Done'),
-              onPressed: () {
-                Navigator.of(context).pop(selectedIds);
-              },
-            ),
-          ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    Navigator.of(context).pop(selectedIds);
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );

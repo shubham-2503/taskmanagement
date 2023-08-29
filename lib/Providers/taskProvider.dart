@@ -62,10 +62,10 @@ class TaskCountManager {
       alltasks.addAll(data1);
       alltasks.addAll(data2);
 
-      Set<String> projectIds = {}; // Use a Set to remove duplications
-      projectIds.addAll(alltasks.map((project) => project['unique_id'] as String));
+      Set<String> taskIds = {}; // Use a Set to remove duplications
+      taskIds.addAll(alltasks.map((task) => task['id'] as String));
 
-      int totalTaskCount = projectIds.length;
+      int totalTaskCount = taskIds.length;
       print("Total task Count: $totalTaskCount"); // Print the count
 
       return totalTaskCount;
