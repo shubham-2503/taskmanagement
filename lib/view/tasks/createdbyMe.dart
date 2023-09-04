@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:Taskapp/view/tasks/MistaskCreation.dart';
+import 'package:Taskapp/view/tasks/editCreatetasks.dart';
 import 'package:Taskapp/view/tasks/taskDetails.dart';
 import 'package:Taskapp/view/tasks/taskModal.dart';
 import 'package:intl/intl.dart';
@@ -720,23 +721,25 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
               children: [
                 SizedBox(height: 30,width: 70,child: RoundButton(
                   onPressed: () async {
-                    bool edited = await showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text("Edit Task"),
-                          content: EditMyTask(task: widget.task),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop(); // Close the dialog
-                              },
-                              child: Text("Close"),
-                            ),
-                          ],
-                        );
-                      },
-                    );
+                    // bool edited = await showDialog(
+                    //   context: context,
+                    //   builder: (BuildContext context) {
+                    //     return AlertDialog(
+                    //       title: Text("Edit Task"),
+                    //       content: EditCreatedByTask(task: widget.task),
+                    //       actions: <Widget>[
+                    //         TextButton(
+                    //           onPressed: () {
+                    //             Navigator.of(context).pop(); // Close the dialog
+                    //           },
+                    //           child: Text("Close"),
+                    //         ),
+                    //       ],
+                    //     );
+                    //   },
+                    // );
+
+                    bool edited = await Navigator.push(context, MaterialPageRoute(builder: (context)=>EditCreatedByTask(task: widget.task)));
 
                     if (edited == true) {
                       // Fetch tasks using your API call here

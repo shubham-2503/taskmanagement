@@ -15,7 +15,6 @@ import 'package:Taskapp/view/login/otpScreen.dart';
 import 'package:Taskapp/view/signup/signup_screen.dart';
 
 import '../../models/loginModel.dart';
-import '../../utils/no_internet_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   static String routeName = "/LoginScreen";

@@ -46,7 +46,18 @@ class _FilterOptionsModalState extends State<FilterOptionsModal> {
       'status': selectedStatus,
     };
 
-    Navigator.pop(context, filters);
+    Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) =>
+              TaskScreen(), // Replace with your screen widget
+          transitionsBuilder: (_, anim, __, child) {
+            return FadeTransition(
+              opacity: anim,
+              child: child,
+            );
+          },
+        ));
   }
 
   Future<void> fetchAllData() async {
@@ -114,18 +125,18 @@ class _FilterOptionsModalState extends State<FilterOptionsModal> {
                           widget.onApplyFilters(selectedFilters);
 
                           // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>TaskScreen()));
-                          Navigator.pushReplacement(
-                              context,
-                              PageRouteBuilder(
-                                pageBuilder: (_, __, ___) =>
-                                    TaskScreen(), // Replace with your screen widget
-                                transitionsBuilder: (_, anim, __, child) {
-                                  return FadeTransition(
-                                    opacity: anim,
-                                    child: child,
-                                  );
-                                },
-                              ));
+                          // Navigator.pushReplacement(
+                          //     context,
+                          //     PageRouteBuilder(
+                          //       pageBuilder: (_, __, ___) =>
+                          //           TaskScreen(), // Replace with your screen widget
+                          //       transitionsBuilder: (_, anim, __, child) {
+                          //         return FadeTransition(
+                          //           opacity: anim,
+                          //           child: child,
+                          //         );
+                          //       },
+                          //     ));
                           applyFilters(
                             startDate: _startDateController.text,
                             endDate: _endDateController.text,

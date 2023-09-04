@@ -200,7 +200,7 @@ class _ProjectDashScreenState extends State<ProjectDashScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.push(context, MaterialPageRoute(builder: (context)=>DashboardScreen()));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>DashboardScreen()));
         return true; // Allow the back action to proceed
       },
       child: Scaffold(

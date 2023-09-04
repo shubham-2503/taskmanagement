@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:Taskapp/common_widgets/round_button.dart';
 import 'package:Taskapp/common_widgets/round_textfield.dart';
 import 'package:flutter/material.dart';
@@ -62,7 +61,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       final url = 'http://43.205.97.189:8000/api/Task/editTasks';
 
       final headers = {
-        'accept': '/',
+        'accept': '*/*',
         'Authorization': 'Bearer $storedData',
         'Content-Type': 'application/json',
       };
@@ -72,25 +71,30 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       List<User> users = await fetchUsers();
       List<Team> teams = await fetchTeams();
 
-      List<String> selectedMembers = task.assignedTo;
-      List<String> selectedTeams = task.assignedTeam;
+      List<String> selectedMembers = assignedToController.text.split(',');
+      List<String> selectedTeams = assignedTeamController.text.split(',');
+
+      print("selectedTeams: $selectedTeams");
+      print("selectedMember: $selectedMembers");
 
       List<String> selectedMemberIds = [];
       for (String memberName in selectedMembers) {
-        // Assuming you have a way to map member names to their IDs
-        String memberId = getUserIdFromName(memberName, users); // Replace with actual logic
-        selectedMemberIds.add(memberId);
+        String memberId = getUserIdFromName(memberName, users); // Make sure this function works correctly
+        if (memberId != null) {
+          selectedMemberIds.add(memberId);
+        }
       }
 
       List<String> selectedTeamIds = [];
       for (String teamName in selectedTeams) {
-        // Assuming you have a way to map team names to their IDs
-        String teamId = getTeamIdFromName(teamName, teams); // Replace with actual logic
-        selectedTeamIds.add(teamId);
+        String teamId = getTeamIdFromName(teamName, teams); // Make sure this function works correctly
+        if (teamId != null) {
+          selectedTeamIds.add(teamId);
+        }
       }
 
-      print("selectedTeamsIdds: $selectedTeamIds");
-      print("selectedMembersids: $selectedMemberIds");
+      print("selectedTeamIds: $selectedTeamIds");
+      print("selectedMemberIds: $selectedMemberIds");
 
       final body = jsonEncode({
         "task_id": taskId,
@@ -190,6 +194,8 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
     _priority = task.priority;
     _selectedStatus = task.status;
     titleController.text = task.taskName;
+    assignedToController.text = task.assignedTo?.join(', ') ?? '';
+    assignedTeamController.text = task.assignedTeam?.join(', ') ?? '';
     descriptionController.text = task.description ?? " ";
     dateController.text = formatDate(dueDate);
     fetchTaskDetails(); // Call fetchTaskDetails to initialize 'task'
@@ -298,7 +304,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         Uri.parse(
             'http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
-          'accept': '/',
+          'accept': '*/*',
           'Authorization': 'Bearer $storedData',
         },
       );
@@ -359,7 +365,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         Uri.parse(
             'http://43.205.97.189:8000/api/Team/myTeams?org_id=$orgId'), // Update the API endpoint URL
         headers: {
-          'accept': '/',
+          'accept': '*/*',
           'Authorization': 'Bearer $storedData',
         },
       );
@@ -403,106 +409,106 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
     }
   }
 
-  // Future<void> _showTeamsDropdown(BuildContext context) async {
-  //   List<Team> teams = await fetchTeams();
-  //   List<String> selectedTeams = assignedTeamController.text.isNotEmpty ? assignedTeamController.text.split('\n') : List.from(task.assignedTeam);;
-  //
-  //   await showDialog<void>(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       return StatefulBuilder(
-  //         builder: (BuildContext context, StateSetter setState) {
-  //           return AlertDialog(
-  //             title: Text('Select Teams'),
-  //             content: SingleChildScrollView(
-  //               child: Column(
-  //                 children: teams.map((team) {
-  //                   bool isSelected = selectedTeams.contains(team.teamName);
-  //
-  //                   return ListTile(
-  //                     title: Text(team.teamName),
-  //                     trailing: isSelected
-  //                         ? Icon(Icons.cancel, color: Colors.red)
-  //                         : Icon(Icons.add_circle, color: Colors.green),
-  //                     onTap: () {
-  //                       setState(() {
-  //                         if (isSelected) {
-  //                           selectedTeams.remove(team.teamName);
-  //                         } else {
-  //                           selectedTeams.add(team.teamName);
-  //                         }
-  //                       });
-  //                     },
-  //                   );
-  //                 }).toList(),
-  //               ),
-  //             ),
-  //             actions: <Widget>[
-  //               TextButton(
-  //                 child: Text('Done'),
-  //                 onPressed: () {
-  //                   assignedTeamController.text = selectedTeams.join(', ');
-  //                   Navigator.of(context).pop();
-  //                 },
-  //               ),
-  //             ],
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
-  //
-  // Future<void> _showMembersDropdown(BuildContext context) async {
-  //   List<User> allUsers = await fetchUsers();
-  //   List<String> selectedMembers = List.from(task.assignedTo);
-  //
-  //   await showDialog<void>(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       return StatefulBuilder(
-  //         builder: (BuildContext context, StateSetter setState) {
-  //           return AlertDialog(
-  //             title: Text('Select Members'),
-  //             content: SingleChildScrollView(
-  //               child: Column(
-  //                 children: allUsers.map((user) {
-  //                   bool isSelected = selectedMembers.contains(user.userName);
-  //
-  //                   return ListTile(
-  //                     title: Text(user.userName),
-  //                     trailing: isSelected
-  //                         ? Icon(Icons.remove_circle, color: Colors.red)
-  //                         : Icon(Icons.add_circle, color: Colors.green),
-  //                     onTap: () {
-  //                       setState(() {
-  //                         if (isSelected) {
-  //                           selectedMembers.remove(user.userName);
-  //                         } else {
-  //                           selectedMembers.add(user.userName);
-  //                         }
-  //                       });
-  //                     },
-  //                   );
-  //                 }).toList(),
-  //               ),
-  //             ),
-  //             actions: <Widget>[
-  //               TextButton(
-  //                 child: Text('Done'),
-  //                 onPressed: () {
-  //                   assignedToController.text = selectedMembers.join(', ');
-  //                   task.assignedTo = assignedToController.text.isNotEmpty ? assignedToController.text.split(', ') : []; // Update the task's assignedTo
-  //                   Navigator.of(context).pop();
-  //                 },
-  //               ),
-  //             ],
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
+  Future<void> _showTeamsDropdown(BuildContext context) async {
+    List<Team> teams = await fetchTeams();
+    List<String> selectedTeams = assignedTeamController.text.isNotEmpty ? assignedTeamController.text.split('\n') : List.from(task.assignedTeam);;
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Teams'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: teams.map((team) {
+                    bool isSelected = selectedTeams.contains(team.teamName);
+
+                    return ListTile(
+                      title: Text(team.teamName),
+                      trailing: isSelected
+                          ? Icon(Icons.cancel, color: Colors.red)
+                          : Icon(Icons.add_circle, color: Colors.green),
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            selectedTeams.remove(team.teamName);
+                          } else {
+                            selectedTeams.add(team.teamName);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    assignedTeamController.text = selectedTeams.join(', ');
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showMembersDropdown(BuildContext context) async {
+    List<User> allUsers = await fetchUsers();
+    List<String> selectedMembers = List.from(task.assignedTo);
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Members'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: allUsers.map((user) {
+                    bool isSelected = selectedMembers.contains(user.userName);
+
+                    return ListTile(
+                      title: Text(user.userName),
+                      trailing: isSelected
+                          ? Icon(Icons.remove_circle, color: Colors.red)
+                          : Icon(Icons.add_circle, color: Colors.green),
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            selectedMembers.remove(user.userName);
+                          } else {
+                            selectedMembers.add(user.userName);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    assignedToController.text = selectedMembers.join(', ');
+                    task.assignedTo = assignedToController.text.isNotEmpty ? assignedToController.text.split(', ') : []; // Update the task's assignedTo
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   String getUserIdFromName(String name, List<User> users) {
     User? user = users.firstWhere(
@@ -568,6 +574,54 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
                 icon: "assets/images/des.png",
                 textInputType: TextInputType.text,
                 textEditingController: descriptionController,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(left: 10),
+              child: Text(
+                "Members",
+                style: TextStyle(
+                  color: AppColors.secondaryColor2,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+              child: RoundTextField(
+                hintText: "AssigneeMembers",
+                icon: "assets/images/des.png",
+                textInputType: TextInputType.text,
+                isReadOnly: true,
+                textEditingController: assignedToController,
+                onTap: (){
+                  _showMembersDropdown(context);
+                },
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(left: 10),
+              child: Text(
+                "Teams",
+                style: TextStyle(
+                  color: AppColors.secondaryColor2,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+              child: RoundTextField(
+                hintText: "AssigneeTeams",
+                icon: "assets/images/des.png",
+                textInputType: TextInputType.text,
+                isReadOnly: true,
+                textEditingController: assignedTeamController,
+                onTap: (){
+                  _showTeamsDropdown(context);
+                },
               ),
             ),
             Padding(
@@ -727,22 +781,22 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
                   child: RoundButton(
                       title: "Update Task",
                       onPressed: () async {
-                        Task updatedTask = Task(
-                          taskId: widget.task.taskId,
-                          taskName: titleController.text.toString(),
-                          description: descriptionController.text.toString(),
-                          dueDate: formatDate(dueDate),
-                          assignedTo: List.from(_selectedMembers),
-                          assignedTeam: List.from(_selectedTeams),
-                          priority: _priority,
-                          status: _selectedStatus,
-                        );
-                        print("${task.taskId}");
-                        print("${task.taskName}");
-                        print("${task.dueDate}");
-                        print("$_selectedStatus");
-                        print("$_priority");
-                        print("${task.taskId}");
+                        // Task updatedTask = Task(
+                        //   taskId: widget.task.taskId,
+                        //   taskName: titleController.text.toString(),
+                        //   description: descriptionController.text.toString(),
+                        //   dueDate: formatDate(dueDate),
+                        //   assignedTo: List.from(_selectedMembers),
+                        //   assignedTeam: List.from(_selectedTeams),
+                        //   priority: _priority,
+                        //   status: _selectedStatus,
+                        // );
+                        // print("${task.taskId}");
+                        // print("${task.taskName}");
+                        // print("${task.dueDate}");
+                        // print("$_selectedStatus");
+                        // print("$_priority");
+                        // print("${task.taskId}");
                         updateTasks(task.taskId!);
                       }),
                 ),
@@ -781,7 +835,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         Uri.parse(
             'http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
-          'accept': '/',
+          'accept': '*/*',
           'Authorization': 'Bearer $storedData',
         },
       );

@@ -1,16 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:Taskapp/Providers/project_provider.dart';
-import 'package:Taskapp/view/login/forgetpassword/verificationScreens.dart';
+import 'package:Taskapp/utils/noInternetDialog.dart';
 import 'package:Taskapp/view/projects/projectCreation.dart';
 import 'package:Taskapp/view/signup/inviteTeammates.dart';
-import 'package:Taskapp/view/subscription/subscriptions.dart';
 import 'package:Taskapp/view/tasks/completedTasks.dart';
 import 'package:Taskapp/view/tasks/openTasks.dart';
 import 'package:Taskapp/view/tasks/tasks.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:Taskapp/view/teams/teamList.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../Providers/taskProvider.dart';
 import '../../common_widgets/round_button.dart';
@@ -31,6 +34,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  late StreamSubscription subscription;
+  var isDeviceConnected=false;
+  bool isAlertSet =false;
   bool _shouldRefresh = false;
   late ProjectCountManager projectCountManager;
   int totalCompletedTasks = 0;
@@ -53,6 +59,55 @@ class _HomeScreenState extends State<HomeScreen> {
     fetchUserNameAndOrganization();
   }
 
+  getConnectivity()=>
+      subscription = Connectivity().onConnectivityChanged.listen(
+              (ConnectivityResult result)async {
+            isDeviceConnected = await InternetConnectionChecker().hasConnection;
+            if (!isDeviceConnected && isAlertSet == false) {
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>NoInternetConnection()));
+              setState(() => isAlertSet = true);
+            }
+            else if (isDeviceConnected && isAlertSet) {
+              Navigator.pop(context);
+              setState(() => isAlertSet = false);
+            }
+          }
+      );
+
+  @override
+  void dispose()
+  {
+    subscription.cancel();
+    super.dispose();
+
+  }
+
+  showDialogBox() async {
+    showCupertinoDialog<String>(
+      context: context,
+      builder: (BuildContext context) => CupertinoAlertDialog(
+        title: const Text('No Internet Connection'),
+        content: const Text('Please check your Internet connectivity'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context, 'cancel');
+              setState(() => isAlertSet = false);
+              isDeviceConnected = await InternetConnectionChecker().hasConnection;
+              if (!isDeviceConnected) {
+                showDialogBox();
+                setState(() => isAlertSet = true);
+              }else{
+                SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+              }
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _navigateToProjectDashScreen(BuildContext context) async {
     final result = await Navigator.push(
       context,
@@ -66,15 +121,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   fetchUserNameAndOrganization().then((_)
-  //       {
-  //         fetchMyProjects();
-  //         fetchMyTasks();
-  //       });
-  // }
 
   @override
   void initState() {
@@ -88,6 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _updateProjectCountLocally();
     _updateTasksCountLocally();
     refreshScreen(); // Initial data fetching
+    getConnectivity();
   }
 
   @override
@@ -303,16 +350,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(
                       width: 1,
                     ),
-                    IconButton(
-                        onPressed: () {
-                          _showBottomSheet(context);
-                        },
-                        icon: Image.asset(
-                          "assets/images/menu.png",
-                          width: 25,
-                          height: 25,
-                          fit: BoxFit.fitHeight,
-                        )),
                   ],
                 ),
               ],
@@ -721,61 +758,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return _buildBottomSheet(context);
-      },
-    );
-  }
-
-  Widget _buildBottomSheet(BuildContext context) {
-    return Container(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.subscriptions),
-              title: Text('Subscriptions'),
-              onTap: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => SubscriptionsPlan()));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.report),
-              title: Text('Reports'),
-              onTap: () {
-                // Navigator.push(context, MaterialPageRoute(builder: (context)=>ReportScreen(),));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.feedback),
-              title: Text('My Teams'),
-              onTap: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TeamsFormedScreen(),
-                    ));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.settings),
-              title: Text('settings'),
-              onTap: (){
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _showcreateBottomSheet(BuildContext context) {
     showModalBottomSheet(

@@ -517,7 +517,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                     bool? changesMade = await showModalBottomSheet<bool>(
                                       context: context,
                                       builder: (context) {
-                                        return EditTeamPage(teamId: team.teamId!, name: team.teamName, users: team.users);
+                                        return EditTeamPage(teamId: team.teamId!, name: team.teamName, users: team.users,team: team,);
                                       },
                                     );
 

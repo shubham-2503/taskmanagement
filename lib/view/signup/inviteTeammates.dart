@@ -187,7 +187,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
       final response = await http.post(
         url,
         headers: {
-          'accept': '*/*',
+          'accept': '/',
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $storedData',
         },

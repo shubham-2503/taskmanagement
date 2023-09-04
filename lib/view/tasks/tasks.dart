@@ -20,7 +20,7 @@ class TaskScreen extends StatefulWidget {
 }
 
 class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateMixin{
-  String selectedOption = 'MyTask';
+  String selectedOption = 'TeamTask';
   late TabController _tabController;
 
   void refreshScreen() {
@@ -35,10 +35,10 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
       setState(() {
         switch (_tabController.index) {
           case 0:
-            selectedOption = 'MyTask';
+            selectedOption = 'TeamTask';
             break;
           case 1:
-            selectedOption = 'TeamTask';
+            selectedOption = 'MyTask';
             break;
           case 2:
             selectedOption = 'CreatedByMe';
@@ -60,10 +60,10 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
 
   Widget getCategoryWidget() {
     switch (selectedOption) {
-      case 'MyTask':
-        return MyTaskScreen(refreshCallback: refreshScreen, selectedFilters: selectedFilters,);
       case 'TeamTask':
         return TeamTaskScreen(refreshCallback: refreshScreen, selectedFilters: selectedFilters,);
+      case 'MyTask':
+        return MyTaskScreen(refreshCallback: refreshScreen, selectedFilters: selectedFilters,);
       case 'CreatedByMe':
         return CreatedByMe(refreshCallback: refreshScreen, selectedFilters: selectedFilters,);
       default:
@@ -212,7 +212,7 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
     return WillPopScope(
       onWillPop: () async {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>DashboardScreen()));
-        return true;
+        return true; // Allow the back action to proceed
       },
       child: Scaffold(
         appBar: AppBar(
@@ -233,7 +233,7 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
             tabs: [
               Tab(
                 child: Text(
-                  'My Task',
+                  'Team Task',
                   style: TextStyle(
                     color: AppColors.secondaryColor2, // Change the text color as needed
                     fontSize: 13, // Change the font size as needed
@@ -243,7 +243,7 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
               ),
               Tab(
                 child: Text(
-                  'Team Task',
+                  'My Task',
                   style: TextStyle(
                     color: AppColors.secondaryColor2, // Change the text color as needed
                     fontSize: 13, // Change the font size as needed
@@ -276,8 +276,8 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                        MyTaskScreen(refreshCallback: refreshScreen, selectedFilters: selectedFilters),
                         TeamTaskScreen(refreshCallback: refreshScreen, selectedFilters: selectedFilters),
+                        MyTaskScreen(refreshCallback: refreshScreen, selectedFilters: selectedFilters),
                         CreatedByMe(refreshCallback: refreshScreen, selectedFilters: selectedFilters),
                       ],
                     ),
@@ -300,6 +300,7 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
                                         onApplyFilters: (Map<String, String?> selectedFilters) {
                                           print("Selected Filters: $selectedFilters");
                                           filterProvider.updateFilters(selectedFilters); // Update filters using Provider
+                                          // fetchAndRefreshTasks(); // Fetch and refresh tasks after applying filters\
                                           refreshScreen();
                                           setState(() {
                                             fetchAndRefreshTasks();
@@ -399,6 +400,7 @@ class SelectedFiltersDisplay extends StatelessWidget {
         );
       }
     });
+
     return Row(
       children: filterWidgets,
     );
