@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:Taskapp/common_widgets/round_button.dart';
 import 'package:Taskapp/common_widgets/round_textfield.dart';
 import 'package:flutter/material.dart';
@@ -45,7 +46,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
       String? orgId =
-          prefs.getString("selectedOrgId"); // Get the selected organization ID
+      prefs.getString("selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
         // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -61,7 +62,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       final url = 'http://43.205.97.189:8000/api/Task/editTasks';
 
       final headers = {
-        'accept': '*/*',
+        'accept': '/',
         'Authorization': 'Bearer $storedData',
         'Content-Type': 'application/json',
       };
@@ -71,20 +72,6 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       List<User> users = await fetchUsers();
       List<Team> teams = await fetchTeams();
 
-<<<<<<< HEAD
-      List<String> selectedMembers = assignedToController.text.split(',');
-      List<String> selectedTeams = assignedTeamController.text.split(',');
-
-      print("selectedTeams: $selectedTeams");
-      print("selectedMember: $selectedMembers");
-
-      List<String> selectedMemberIds = [];
-      for (String memberName in selectedMembers) {
-        String memberId = getUserIdFromName(memberName, users); // Make sure this function works correctly
-        if (memberId != null) {
-          selectedMemberIds.add(memberId);
-        }
-=======
       List<String> selectedMembers = task.assignedTo;
       List<String> selectedTeams = task.assignedTeam;
 
@@ -93,21 +80,10 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         // Assuming you have a way to map member names to their IDs
         String memberId = getUserIdFromName(memberName, users); // Replace with actual logic
         selectedMemberIds.add(memberId);
->>>>>>> origin/main
       }
 
       List<String> selectedTeamIds = [];
       for (String teamName in selectedTeams) {
-<<<<<<< HEAD
-        String teamId = getTeamIdFromName(teamName, teams); // Make sure this function works correctly
-        if (teamId != null) {
-          selectedTeamIds.add(teamId);
-        }
-      }
-
-      print("selectedTeamIds: $selectedTeamIds");
-      print("selectedMemberIds: $selectedMemberIds");
-=======
         // Assuming you have a way to map team names to their IDs
         String teamId = getTeamIdFromName(teamName, teams); // Replace with actual logic
         selectedTeamIds.add(teamId);
@@ -115,7 +91,6 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
 
       print("selectedTeamsIdds: $selectedTeamIds");
       print("selectedMembersids: $selectedMemberIds");
->>>>>>> origin/main
 
       final body = jsonEncode({
         "task_id": taskId,
@@ -130,7 +105,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       });
 
       final response =
-          await http.patch(Uri.parse(url), headers: headers, body: body);
+      await http.patch(Uri.parse(url), headers: headers, body: body);
       print("StatusCode: ${response.statusCode}");
       print("Body: ${response.body}");
       print("Response: ${jsonDecode(body)}");
@@ -193,7 +168,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
           return AlertDialog(
             title: Text('Error'),
             content:
-                Text('An unexpected error occurred. Please try again later.'),
+            Text('An unexpected error occurred. Please try again later.'),
             actions: [
               TextButton(
                 onPressed: () {
@@ -215,11 +190,6 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
     _priority = task.priority;
     _selectedStatus = task.status;
     titleController.text = task.taskName;
-<<<<<<< HEAD
-    assignedToController.text = task.assignedTo?.join(', ') ?? '';
-    assignedTeamController.text = task.assignedTeam?.join(', ') ?? '';
-=======
->>>>>>> origin/main
     descriptionController.text = task.description ?? " ";
     dateController.text = formatDate(dueDate);
     fetchTaskDetails(); // Call fetchTaskDetails to initialize 'task'
@@ -240,7 +210,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         if (data.isNotEmpty) {
           // Find the task with a matching ID
           final taskJson = data.firstWhere(
-            (task) => task['id'] == widget.task.taskId,
+                (task) => task['id'] == widget.task.taskId,
             orElse: () => null,
           );
 
@@ -271,9 +241,9 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         if (statuses.isNotEmpty) {
           // Find the status in the list that matches the task's status
           Map<String, dynamic> taskStatus = statuses.firstWhere(
-            (status) => status['name'] == task.status,
+                (status) => status['name'] == task.status,
             orElse: () =>
-                statuses[0], // Default to the first status if not found
+            statuses[0], // Default to the first status if not found
           );
           // Set _selectedStatus to the matched status ID
           _selectedStatus = taskStatus['id'].toString();
@@ -295,9 +265,9 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
 
         // Find the priority in the list that matches the task's priority name
         Map<String, dynamic> taskPriority = priorities.firstWhere(
-          (priority) => priority['name'] == task.priority,
+              (priority) => priority['name'] == task.priority,
           orElse: () =>
-              priorities[0], // Default to the first priority if not found
+          priorities[0], // Default to the first priority if not found
         );
         _priority = taskPriority['id'];
       });
@@ -311,7 +281,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
       String? orgId =
-          prefs.getString("selectedOrgId"); // Get the selected organization ID
+      prefs.getString("selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
         // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -328,7 +298,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         Uri.parse(
             'http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
-          'accept': '*/*',
+          'accept': '/',
           'Authorization': 'Bearer $storedData',
         },
       );
@@ -342,7 +312,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         if (responseBody != null && responseBody.isNotEmpty) {
           final List<dynamic> data = jsonDecode(responseBody);
           final List<User> users =
-              data.map((userJson) => User.fromJson(userJson)).toList();
+          data.map((userJson) => User.fromJson(userJson)).toList();
 
           // Process the teams data as needed
           // For example, you can store them in a state variable or display them in a dropdown menu
@@ -372,7 +342,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
       String? orgId =
-          prefs.getString("selectedOrgId"); // Get the selected organization ID
+      prefs.getString("selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
         // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -389,7 +359,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         Uri.parse(
             'http://43.205.97.189:8000/api/Team/myTeams?org_id=$orgId'), // Update the API endpoint URL
         headers: {
-          'accept': '*/*',
+          'accept': '/',
           'Authorization': 'Bearer $storedData',
         },
       );
@@ -406,7 +376,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
             if (data != null) {
               final List<Team> teams = data
                   .map((teamJson) =>
-                      Team.fromJson(teamJson as Map<String, dynamic>))
+                  Team.fromJson(teamJson as Map<String, dynamic>))
                   .toList();
 
               for (var team in teams) {
@@ -433,108 +403,6 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
     }
   }
 
-<<<<<<< HEAD
-  Future<void> _showTeamsDropdown(BuildContext context) async {
-    List<Team> teams = await fetchTeams();
-    List<String> selectedTeams = assignedTeamController.text.isNotEmpty ? assignedTeamController.text.split('\n') : List.from(task.assignedTeam);;
-
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Select Teams'),
-              content: SingleChildScrollView(
-                child: Column(
-                  children: teams.map((team) {
-                    bool isSelected = selectedTeams.contains(team.teamName);
-
-                    return ListTile(
-                      title: Text(team.teamName),
-                      trailing: isSelected
-                          ? Icon(Icons.cancel, color: Colors.red)
-                          : Icon(Icons.add_circle, color: Colors.green),
-                      onTap: () {
-                        setState(() {
-                          if (isSelected) {
-                            selectedTeams.remove(team.teamName);
-                          } else {
-                            selectedTeams.add(team.teamName);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  child: Text('Done'),
-                  onPressed: () {
-                    assignedTeamController.text = selectedTeams.join(', ');
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _showMembersDropdown(BuildContext context) async {
-    List<User> allUsers = await fetchUsers();
-    List<String> selectedMembers = List.from(task.assignedTo);
-
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: Text('Select Members'),
-              content: SingleChildScrollView(
-                child: Column(
-                  children: allUsers.map((user) {
-                    bool isSelected = selectedMembers.contains(user.userName);
-
-                    return ListTile(
-                      title: Text(user.userName),
-                      trailing: isSelected
-                          ? Icon(Icons.remove_circle, color: Colors.red)
-                          : Icon(Icons.add_circle, color: Colors.green),
-                      onTap: () {
-                        setState(() {
-                          if (isSelected) {
-                            selectedMembers.remove(user.userName);
-                          } else {
-                            selectedMembers.add(user.userName);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  child: Text('Done'),
-                  onPressed: () {
-                    assignedToController.text = selectedMembers.join(', ');
-                    task.assignedTo = assignedToController.text.isNotEmpty ? assignedToController.text.split(', ') : []; // Update the task's assignedTo
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-=======
   // Future<void> _showTeamsDropdown(BuildContext context) async {
   //   List<Team> teams = await fetchTeams();
   //   List<String> selectedTeams = assignedTeamController.text.isNotEmpty ? assignedTeamController.text.split('\n') : List.from(task.assignedTeam);;
@@ -635,18 +503,17 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
   //     },
   //   );
   // }
->>>>>>> origin/main
 
   String getUserIdFromName(String name, List<User> users) {
     User? user = users.firstWhere(
-      (user) => user.userName == name,
+          (user) => user.userName == name,
     );
     return user?.userId ?? ''; // Return an empty string if user not found
   }
 
   String getTeamIdFromName(String name, List<Team> teams) {
     Team? team = teams.firstWhere(
-      (team) => team.teamName == name,
+          (team) => team.teamName == name,
     );
     return team?.id ?? ''; // Return an empty string if team not found
   }
@@ -706,57 +573,6 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
             Padding(
               padding: EdgeInsets.only(left: 10),
               child: Text(
-<<<<<<< HEAD
-                "Members",
-                style: TextStyle(
-                  color: AppColors.secondaryColor2,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-              child: RoundTextField(
-                hintText: "AssigneeMembers",
-                icon: "assets/images/des.png",
-                textInputType: TextInputType.text,
-                isReadOnly: true,
-                textEditingController: assignedToController,
-                onTap: (){
-                  _showMembersDropdown(context);
-                },
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.only(left: 10),
-              child: Text(
-                "Teams",
-                style: TextStyle(
-                  color: AppColors.secondaryColor2,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-              child: RoundTextField(
-                hintText: "AssigneeTeams",
-                icon: "assets/images/des.png",
-                textInputType: TextInputType.text,
-                isReadOnly: true,
-                textEditingController: assignedTeamController,
-                onTap: (){
-                  _showTeamsDropdown(context);
-                },
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.only(left: 10),
-              child: Text(
-=======
->>>>>>> origin/main
                 "Due Date",
                 style: TextStyle(
                   color: AppColors.secondaryColor2,
@@ -911,24 +727,6 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
                   child: RoundButton(
                       title: "Update Task",
                       onPressed: () async {
-<<<<<<< HEAD
-                        // Task updatedTask = Task(
-                        //   taskId: widget.task.taskId,
-                        //   taskName: titleController.text.toString(),
-                        //   description: descriptionController.text.toString(),
-                        //   dueDate: formatDate(dueDate),
-                        //   assignedTo: List.from(_selectedMembers),
-                        //   assignedTeam: List.from(_selectedTeams),
-                        //   priority: _priority,
-                        //   status: _selectedStatus,
-                        // );
-                        // print("${task.taskId}");
-                        // print("${task.taskName}");
-                        // print("${task.dueDate}");
-                        // print("$_selectedStatus");
-                        // print("$_priority");
-                        // print("${task.taskId}");
-=======
                         Task updatedTask = Task(
                           taskId: widget.task.taskId,
                           taskName: titleController.text.toString(),
@@ -945,7 +743,6 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
                         print("$_selectedStatus");
                         print("$_priority");
                         print("${task.taskId}");
->>>>>>> origin/main
                         updateTasks(task.taskId!);
                       }),
                 ),
@@ -967,7 +764,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
       String? orgId =
-          prefs.getString("selectedOrgId"); // Get the selected organization ID
+      prefs.getString("selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
         // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -984,7 +781,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         Uri.parse(
             'http://43.205.97.189:8000/api/UserAuth/getOrgUsers?org_id=$orgId'),
         headers: {
-          'accept': '*/*',
+          'accept': '/',
           'Authorization': 'Bearer $storedData',
         },
       );
@@ -995,7 +792,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       if (response.statusCode == 200) {
         final List<dynamic> users = jsonDecode(response.body);
         final user = users.firstWhere(
-          (user) => user['name'].toLowerCase() == username.toLowerCase(),
+              (user) => user['name'].toLowerCase() == username.toLowerCase(),
           orElse: () => null,
         );
 
