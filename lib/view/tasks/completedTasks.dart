@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:Taskapp/view/tasks/taskDetails.dart';
+import 'package:Taskapp/view/tasks/taskModal.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +19,7 @@ class CompletedTaskScreen extends StatefulWidget {
 }
 
 class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
+  TextEditingController _mentionController = TextEditingController();
   List<Task> filteredOpenTasks = [];
   List<Task> opentasks = [];
 
@@ -24,101 +27,74 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId");
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
         orgId = prefs.getString('org_id') ?? "";
       }
+
+      print("OrgId: $orgId");
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
       }
 
-      final myTasksUrl = 'http://43.205.97.189:8000/api/Task/myTasks?org_id=$orgId';
-      final teamTasksUrl = 'http://43.205.97.189:8000/api/Task/teamsTask?org_id=$orgId';
+      final url = 'http://43.205.97.189:8000/api/Task/myTasks?org_id=$orgId'; // Replace this with the correct API endpoint for fetching all tasks
 
       final headers = {
         'accept': '*/*',
         'Authorization': 'Bearer $storedData',
       };
 
-      final myTasksResponse = await http.get(Uri.parse(myTasksUrl), headers: headers);
-      final teamTasksResponse = await http.get(Uri.parse(teamTasksUrl), headers: headers);
+      final response = await http.get(Uri.parse(url), headers: headers);
 
-      print("statusCoide1: ${myTasksResponse.statusCode}");
-      print("StatusCode2: ${teamTasksResponse.statusCode}");
-      print("Body1: ${myTasksResponse.body}");
-      print("Body2: ${teamTasksResponse.body}");
+      print("StatusCode: ${response.statusCode}");
+      print("Response: ${response.body}");
+      if (response.statusCode == 200) {
+        final List<dynamic> responseData = jsonDecode(response.body);
+        List<Task> fetchedTasks = responseData.map((taskData) {
+          final List<dynamic> users = taskData['users'];
+          final List<String> assignedUsers = users.isNotEmpty
+              ? users.map((user) => user['user_name'] as String).toList()
+              : [];
+          final List<String> assignedTo = assignedUsers;
 
-      if (myTasksResponse.statusCode == 200 && teamTasksResponse.statusCode == 200) {
-        final List<dynamic> myTasksData = jsonDecode(myTasksResponse.body);
-        final List<dynamic> teamTasksData = jsonDecode(teamTasksResponse.body);
+          // Extract the team name from the "teams" list.
+          final List<dynamic> teams = taskData['teams'];
+          final List<String> assignedTeam = teams.isNotEmpty
+              ? users.map((user) => user['teamName'] as String).toList()
+              : [];
+          final List<String> assignedTeams = assignedTeam;
 
-        final List<Task> fetchedCompletedTasks = []
-          ..addAll(myTasksData.where((taskData) => taskData['status'] == 'Completed').map((taskData) {
-            final List<dynamic> users = taskData['users'];
-            final List<String> assignedUsers = users.isNotEmpty
-                ? users.map((user) => user['user_name'].toString()).toList()
-                : [];
-            final List<String> assignedTo = assignedUsers; // Assign the list of users directly
-
-            // Extract the team name from the "teams" list.
-            // Extract the team name from the "teams" list.
-            final List<dynamic> teams = taskData['teams'];
-            final List<String> assignedTeams = teams.isNotEmpty
-                ? teams.map((team) => team['teamName'].toString()).toList()
-                : [];
-
-            return Task(
-              taskId: taskData['id'],
-              taskName: taskData['task_name'] ?? '',
-              assignedTo: assignedTo,
-              status: taskData['status'] ?? '',
-              description: taskData['description'] ?? '',
-              priority: taskData['priority'] ?? '',
-              dueDate: taskData['due_Date'],
-              createdBy: taskData['created_by'] ?? '',
-              assignedTeam: assignedTeams, // New field containing the team name
-            );
-          }).toList(),
-
-          )
-          ..addAll(teamTasksData.where((taskData) => taskData['status'] == 'Completed').map((taskData) {
-            final List<dynamic> users = taskData['users'];
-            final List<String> assignedUsers = users.isNotEmpty
-                ? users.map((user) => user['user_name'].toString()).toList()
-                : [];
-            final List<String> assignedTo = assignedUsers; // Assign the list of users directly
-
-            // Extract the team name from the "teams" list.
-            // Extract the team name from the "teams" list.
-            final List<dynamic> teams = taskData['teams'];
-            final List<String> assignedTeams = teams.isNotEmpty
-                ? teams.map((team) => team['teamName'].toString()).toList()
-                : [];
-
-            return Task(
-              taskId: taskData['id'],
-              taskName: taskData['task_name'] ?? '',
-              assignedTo: assignedTo,
-              status: taskData['status'] ?? '',
-              description: taskData['description'] ?? '',
-              priority: taskData['priority'] ?? '',
-              dueDate: taskData['due_Date'],
-              createdBy: taskData['created_by'] ?? '',
-              assignedTeam: assignedTeams, // New field containing the team name
-            );
-          }).toList(),
-
+          return Task(
+            taskId: taskData['id'],
+            taskName: taskData['task_name'] ?? '',
+            assignedTo: assignedTo,
+            status: taskData['status'] ?? '',
+            description: taskData['description'] ?? '',
+            priority: taskData['priority'] ?? '',
+            dueDate: taskData['due_Date'],
+            createdBy: taskData['created_by'] ?? '',
+            assignedTeam: assignedTeams, // New field containing the team name
           );
+        }).toList();
 
+        // Filter tasks that are in "Open" status (ToDo tasks)
+        List<Task> openTasks = fetchedTasks.where((task) => task.status == 'Completed').toList();
         setState(() {
-          opentasks = fetchedCompletedTasks;
-          filteredOpenTasks = fetchedCompletedTasks;
+          opentasks = openTasks;
+          filteredOpenTasks = openTasks;
         });
-        print("FILTEREDOPENTASKS: $filteredOpenTasks");
+
+        // Store the tasks locally using SharedPreferences
+        final String openTasksKey = 'openTasksKey';
+        final String openTasksJson = jsonEncode(openTasks); // Convert the list of tasks to a JSON string
+        prefs.setString(openTasksKey, openTasksJson);
+
+        print("Open tasks: $openTasks");
       } else {
-        print('Error fetching tasks: MyTasks(${myTasksResponse.statusCode}), TeamTasks(${teamTasksResponse.statusCode})');
+        print('Error fetching tasks: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching tasks: $e');
@@ -280,278 +256,146 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
   }
 }
 
-class TaskDetailsModal extends StatefulWidget {
-  final Task task;
 
-  TaskDetailsModal({required this.task});
-
-  @override
-  State<TaskDetailsModal> createState() => _TaskDetailsModalState();
-}
-
-class _TaskDetailsModalState extends State<TaskDetailsModal> {
-
-  void _deleteTask(String taskId) async {
-    try {
-      // Show a confirmation dialog for deleting the project
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this task?'),
-            actions: [
-              TextButton(
-                child: Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  try {
-                    SharedPreferences prefs =
-                    await SharedPreferences.getInstance();
-                    final storedData = prefs.getString('jwtToken');
-                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-                    if (orgId == null) {
-                      // If the user hasn't switched organizations, use the organization ID obtained during login time
-                      orgId = prefs.getString('org_id') ?? "";
-                    }
-
-                    print("OrgId: $orgId");
-
-                    if (orgId == null) {
-                      throw Exception('orgId not found locally');
-                    }
-
-                    final response = await http.delete(
-                      Uri.parse(
-                          'http://43.205.97.189:8000/api/Task/tasks/$taskId'),
-                      headers: {
-                        'accept': '*/*',
-                        'Authorization': "Bearer $storedData",
-                      },
-                    );
-
-                    print("Delete API response: ${response.body}");
-                    print("Delete StatusCode: ${response.statusCode}");
-
-                    if (response.statusCode == 200) {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text('Thank You'),
-                            content: Text("Task deleted successfully."),
-                            actions: [
-                              InkWell(
-                                onTap: () {
-                                  Navigator.pop(context,true);
-                                  Navigator.pop(context,true);
-                                },
-                                child: Text(
-                                  "OK",
-                                  style: TextStyle(
-                                      color: AppColors.blackColor, fontSize: 20),
-                                ),
-                              )
-                            ],
-                          );
-                        },
-                      );
-                      print('Task deleted successfully.');
-                      setState(() {
-                        Navigator.pop(context);
-                        Navigator.pop(context, true); // Sending a result back to the previous screen
-                      });
-
-                    } else {
-                      print('Failed to delete task.');
-                      // Handle other status codes, if needed
-                    }
-                  } catch (e) {
-                    print('Error deleting task: $e');
-                  }
-                },
-                child: Text('Delete'),
-              ),
-            ],
-          );
-        },
-      ).then((value) {
-
-      });
-    } catch (e) {
-      print('Error showing delete confirmation dialog: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      height: double.infinity,
-      child: SingleChildScrollView(
+void _showTaskDetailsBottomSheet(BuildContext context, Task task) {
+  showModalBottomSheet(
+    context: context,
+    builder: (BuildContext context) {
+      return Container(
+        height: double.infinity,
+        width: double .infinity,
+        padding: EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              "Task Name",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
-            ),
-            SizedBox(height: 10,),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.grey,
-                  width: 1.0,
+            RichText(
+              text: TextSpan(
+                text: "Task Name: ",
+                style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
                 ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      "${widget.task.taskName}",
-                      style: TextStyle(fontSize: 18),
+                  TextSpan(
+                    text: "${task.taskName}",
+                    style: TextStyle(
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              "Description",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
-            ),
-            SizedBox(height: 10,),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.grey,
-                  width: 1.0,
+            RichText(
+              text: TextSpan(
+                text: "Task Description: ",
+                style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
                 ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      "${widget.task.description}",
-                      style: TextStyle(fontSize: 18),
+                  TextSpan(
+                    text: "${task.description}",
+                    style: TextStyle(
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              "Due Date",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
-            ),
-            SizedBox(height: 10,),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.grey,
-                  width: 1.0,
+            RichText(
+              text: TextSpan(
+                text: "DueDate: ",
+                style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
                 ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      "${formatDate(widget.task.dueDate)}",
-                      style: TextStyle(fontSize: 18),
+                  TextSpan(
+                    text: "${task.dueDate}",
+                    style: TextStyle(
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              "Status",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
-            ),
-            SizedBox(height: 10,),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.grey,
-                  width: 1.0,
+            RichText(
+              text: TextSpan(
+                text: "Owner: ",
+                style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
                 ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      "${widget.task.status}",
-                      style: TextStyle(fontSize: 18),
+                  TextSpan(
+                    text: "${task.owner}",
+                    style: TextStyle(
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              "Priority",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
-            ),
-            SizedBox(height: 10,),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.grey,
-                  width: 1.0,
+            RichText(
+              text: TextSpan(
+                text: "Assignee: ",
+                style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold
                 ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      "${widget.task.priority}",
-                      style: TextStyle(fontSize: 18),
+                  TextSpan(
+                    text: "${task.assignedTo}",
+                    style: TextStyle(
+                      // Add any specific styles for the plan name here, if needed
+                      color: AppColors.blackColor,
+                      fontSize: 18,
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(height: 30,width: 70,child: RoundButton(
-                  onPressed: (){
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=>EditMyTask(task: widget.task)));
-                  },
-                  title: "Edit",
-                ),),
-                SizedBox(width: 50,),
-                SizedBox(height: 30,width: 70,child: RoundButton(
-                  onPressed: (){
-                    _deleteTask("${widget.task.taskId}");
-                  },
-                  title: "Delete",
-                ),),
-              ],
+            Visibility(
+              visible: task.assignedTeam?.isNotEmpty == true,
+              child: RichText(
+                text: TextSpan(
+                  text: "Assignee Team: ",
+                  style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: "${task.assignedTeam}",
+                      style: TextStyle(
+                        // Add any specific styles for the plan name here, if needed
+                        color: AppColors.blackColor,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
+      ); // Pass the 'task' object to the modal
+    },
+  );
 }
 
 String formatDate(String? dateString) {

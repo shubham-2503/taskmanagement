@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // import 'dart:convert';
 // import 'package:flutter/material.dart';
 // import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart';
@@ -269,6 +270,8 @@
 //   return formatter.format(date);
 // }
 //
+=======
+>>>>>>> origin/main
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart';
@@ -283,6 +286,11 @@ class FilterOptionsModal extends StatefulWidget {
 
   FilterOptionsModal({required this.onApplyFilters});
 
+=======
+import 'app_colors.dart';
+
+class FilterOptionsModal extends StatefulWidget {
+>>>>>>> origin/main
   @override
   _FilterOptionsModalState createState() => _FilterOptionsModalState();
 }
@@ -302,6 +310,7 @@ class _FilterOptionsModalState extends State<FilterOptionsModal> {
     // Fetch data when the widget initializes
     fetchAllData();
   }
+<<<<<<< HEAD
   void applyFilters({String? startDate, String? endDate, String? selectedPriority, String? selectedStatus}) {
     // Convert empty strings to null
     startDate = (startDate?.isEmpty ?? true) ? null : startDate;
@@ -317,6 +326,14 @@ class _FilterOptionsModalState extends State<FilterOptionsModal> {
     };
 
     Navigator.pop(context, filters);
+=======
+
+  void applyFilters({String? startDate, String? endDate, String? selectedPriority, String? selectedStatus,}) {
+    Navigator.pop(
+      context,
+      {'startDate': startDate, 'endDate': endDate, 'priority': selectedPriority, 'status': selectedStatus,},
+    );
+>>>>>>> origin/main
   }
 
   Future<void> fetchAllData() async {
@@ -375,6 +392,7 @@ class _FilterOptionsModalState extends State<FilterOptionsModal> {
                       height: 30,
                       child: ElevatedButton(
                         onPressed: () {
+<<<<<<< HEAD
                           Map<String, String?> selectedFilters = {
                             'startDate': _startDateController.text,
                             'endDate': _endDateController.text,
@@ -395,6 +413,14 @@ class _FilterOptionsModalState extends State<FilterOptionsModal> {
                               );
                             },
                           ));
+=======
+                          applyFilters(
+                            startDate: _startDateController.text,
+                            endDate: _endDateController.text,
+                            selectedPriority: selectedpriority,
+                            selectedStatus: selectedStatus,
+                          );
+>>>>>>> origin/main
                         },
                         child: Text(
                           "APPLY",
@@ -568,4 +594,7 @@ String formatDate(DateTime date) {
   return formatter.format(date);
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

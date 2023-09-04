@@ -71,6 +71,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       List<User> users = await fetchUsers();
       List<Team> teams = await fetchTeams();
 
+<<<<<<< HEAD
       List<String> selectedMembers = assignedToController.text.split(',');
       List<String> selectedTeams = assignedTeamController.text.split(',');
 
@@ -83,10 +84,21 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         if (memberId != null) {
           selectedMemberIds.add(memberId);
         }
+=======
+      List<String> selectedMembers = task.assignedTo;
+      List<String> selectedTeams = task.assignedTeam;
+
+      List<String> selectedMemberIds = [];
+      for (String memberName in selectedMembers) {
+        // Assuming you have a way to map member names to their IDs
+        String memberId = getUserIdFromName(memberName, users); // Replace with actual logic
+        selectedMemberIds.add(memberId);
+>>>>>>> origin/main
       }
 
       List<String> selectedTeamIds = [];
       for (String teamName in selectedTeams) {
+<<<<<<< HEAD
         String teamId = getTeamIdFromName(teamName, teams); // Make sure this function works correctly
         if (teamId != null) {
           selectedTeamIds.add(teamId);
@@ -95,6 +107,15 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
 
       print("selectedTeamIds: $selectedTeamIds");
       print("selectedMemberIds: $selectedMemberIds");
+=======
+        // Assuming you have a way to map team names to their IDs
+        String teamId = getTeamIdFromName(teamName, teams); // Replace with actual logic
+        selectedTeamIds.add(teamId);
+      }
+
+      print("selectedTeamsIdds: $selectedTeamIds");
+      print("selectedMembersids: $selectedMemberIds");
+>>>>>>> origin/main
 
       final body = jsonEncode({
         "task_id": taskId,
@@ -194,8 +215,11 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
     _priority = task.priority;
     _selectedStatus = task.status;
     titleController.text = task.taskName;
+<<<<<<< HEAD
     assignedToController.text = task.assignedTo?.join(', ') ?? '';
     assignedTeamController.text = task.assignedTeam?.join(', ') ?? '';
+=======
+>>>>>>> origin/main
     descriptionController.text = task.description ?? " ";
     dateController.text = formatDate(dueDate);
     fetchTaskDetails(); // Call fetchTaskDetails to initialize 'task'
@@ -409,6 +433,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
     }
   }
 
+<<<<<<< HEAD
   Future<void> _showTeamsDropdown(BuildContext context) async {
     List<Team> teams = await fetchTeams();
     List<String> selectedTeams = assignedTeamController.text.isNotEmpty ? assignedTeamController.text.split('\n') : List.from(task.assignedTeam);;
@@ -509,6 +534,108 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       },
     );
   }
+=======
+  // Future<void> _showTeamsDropdown(BuildContext context) async {
+  //   List<Team> teams = await fetchTeams();
+  //   List<String> selectedTeams = assignedTeamController.text.isNotEmpty ? assignedTeamController.text.split('\n') : List.from(task.assignedTeam);;
+  //
+  //   await showDialog<void>(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return StatefulBuilder(
+  //         builder: (BuildContext context, StateSetter setState) {
+  //           return AlertDialog(
+  //             title: Text('Select Teams'),
+  //             content: SingleChildScrollView(
+  //               child: Column(
+  //                 children: teams.map((team) {
+  //                   bool isSelected = selectedTeams.contains(team.teamName);
+  //
+  //                   return ListTile(
+  //                     title: Text(team.teamName),
+  //                     trailing: isSelected
+  //                         ? Icon(Icons.cancel, color: Colors.red)
+  //                         : Icon(Icons.add_circle, color: Colors.green),
+  //                     onTap: () {
+  //                       setState(() {
+  //                         if (isSelected) {
+  //                           selectedTeams.remove(team.teamName);
+  //                         } else {
+  //                           selectedTeams.add(team.teamName);
+  //                         }
+  //                       });
+  //                     },
+  //                   );
+  //                 }).toList(),
+  //               ),
+  //             ),
+  //             actions: <Widget>[
+  //               TextButton(
+  //                 child: Text('Done'),
+  //                 onPressed: () {
+  //                   assignedTeamController.text = selectedTeams.join(', ');
+  //                   Navigator.of(context).pop();
+  //                 },
+  //               ),
+  //             ],
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
+  //
+  // Future<void> _showMembersDropdown(BuildContext context) async {
+  //   List<User> allUsers = await fetchUsers();
+  //   List<String> selectedMembers = List.from(task.assignedTo);
+  //
+  //   await showDialog<void>(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return StatefulBuilder(
+  //         builder: (BuildContext context, StateSetter setState) {
+  //           return AlertDialog(
+  //             title: Text('Select Members'),
+  //             content: SingleChildScrollView(
+  //               child: Column(
+  //                 children: allUsers.map((user) {
+  //                   bool isSelected = selectedMembers.contains(user.userName);
+  //
+  //                   return ListTile(
+  //                     title: Text(user.userName),
+  //                     trailing: isSelected
+  //                         ? Icon(Icons.remove_circle, color: Colors.red)
+  //                         : Icon(Icons.add_circle, color: Colors.green),
+  //                     onTap: () {
+  //                       setState(() {
+  //                         if (isSelected) {
+  //                           selectedMembers.remove(user.userName);
+  //                         } else {
+  //                           selectedMembers.add(user.userName);
+  //                         }
+  //                       });
+  //                     },
+  //                   );
+  //                 }).toList(),
+  //               ),
+  //             ),
+  //             actions: <Widget>[
+  //               TextButton(
+  //                 child: Text('Done'),
+  //                 onPressed: () {
+  //                   assignedToController.text = selectedMembers.join(', ');
+  //                   task.assignedTo = assignedToController.text.isNotEmpty ? assignedToController.text.split(', ') : []; // Update the task's assignedTo
+  //                   Navigator.of(context).pop();
+  //                 },
+  //               ),
+  //             ],
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
+>>>>>>> origin/main
 
   String getUserIdFromName(String name, List<User> users) {
     User? user = users.firstWhere(
@@ -579,6 +706,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
             Padding(
               padding: EdgeInsets.only(left: 10),
               child: Text(
+<<<<<<< HEAD
                 "Members",
                 style: TextStyle(
                   color: AppColors.secondaryColor2,
@@ -627,6 +755,8 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
             Padding(
               padding: EdgeInsets.only(left: 10),
               child: Text(
+=======
+>>>>>>> origin/main
                 "Due Date",
                 style: TextStyle(
                   color: AppColors.secondaryColor2,
@@ -781,6 +911,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
                   child: RoundButton(
                       title: "Update Task",
                       onPressed: () async {
+<<<<<<< HEAD
                         // Task updatedTask = Task(
                         //   taskId: widget.task.taskId,
                         //   taskName: titleController.text.toString(),
@@ -797,6 +928,24 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
                         // print("$_selectedStatus");
                         // print("$_priority");
                         // print("${task.taskId}");
+=======
+                        Task updatedTask = Task(
+                          taskId: widget.task.taskId,
+                          taskName: titleController.text.toString(),
+                          description: descriptionController.text.toString(),
+                          dueDate: formatDate(dueDate),
+                          assignedTo: List.from(_selectedMembers),
+                          assignedTeam: List.from(_selectedTeams),
+                          priority: _priority,
+                          status: _selectedStatus,
+                        );
+                        print("${task.taskId}");
+                        print("${task.taskName}");
+                        print("${task.dueDate}");
+                        print("$_selectedStatus");
+                        print("$_priority");
+                        print("${task.taskId}");
+>>>>>>> origin/main
                         updateTasks(task.taskId!);
                       }),
                 ),
