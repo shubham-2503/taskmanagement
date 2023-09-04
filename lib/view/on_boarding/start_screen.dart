@@ -1,10 +1,6 @@
-import 'dart:async';
-
-import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
-import 'package:Taskapp/view/signup/signup_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/tokenManager.dart';
 import '../login/login_screen.dart';
 import '../notification/widgets/notificationServices.dart';
 
@@ -26,9 +22,13 @@ class _StartScreenState extends State<StartScreen> {
     notificationServices.requestNotification();
     notificationServices.firebaseinit(context);
     notificationServices.isTokenRefresh();
-    notificationServices.getDeviceToken().then((value) {
-      print("Device token: ");
-      print(value);
+    notificationServices.getDeviceToken().then((value) async {
+      print("Device token: $value");
+      try {
+        await TokenManager.saveToken(value!);
+      } catch (e) {
+        print("Error saving token: $e");
+      }
     });
   }
 

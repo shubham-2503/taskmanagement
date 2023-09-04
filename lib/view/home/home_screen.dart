@@ -64,7 +64,9 @@ class _HomeScreenState extends State<HomeScreen> {
               (ConnectivityResult result)async {
             isDeviceConnected = await InternetConnectionChecker().hasConnection;
             if (!isDeviceConnected && isAlertSet == false) {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>NoInternetConnection()));
+             showDialog(context: context,  builder: (BuildContext context) {
+               return NoInternetConnection(); // Use your custom widget here
+             },);
               setState(() => isAlertSet = true);
             }
             else if (isDeviceConnected && isAlertSet) {

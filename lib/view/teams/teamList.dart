@@ -504,20 +504,11 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                       color: AppColors.secondaryColor2,
                                     )),
                                 IconButton(
-                                  icon: Icon(
-                                    Icons.delete,
-                                    color: AppColors.secondaryColor2,
-                                  ),
-                                  onPressed: () {
-                                    _deleteTeam(team.teamId!,index);
-                                  },
-                                ),
-                                IconButton(
                                   onPressed: () async {
                                     bool? changesMade = await showModalBottomSheet<bool>(
                                       context: context,
                                       builder: (context) {
-                                        return EditTeamPage(teamId: team.teamId!, name: team.teamName, users: team.users,team: team,);
+                                        return EditTeamPage(team: team,);
                                       },
                                     );
 
@@ -527,6 +518,15 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                     }
                                   },
                                   icon: Icon(Icons.edit, color: AppColors.secondaryColor2),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.delete,
+                                    color: AppColors.secondaryColor2,
+                                  ),
+                                  onPressed: () {
+                                    _deleteTeam(team.teamId!,index);
+                                  },
                                 ),
                               ]),
                             ],
@@ -692,271 +692,12 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                           fontSize: 14,
                           fontWeight: FontWeight.bold),
                     ),
-                    trailing: IconButton(
-                        icon: Icon(
-                          Icons.remove_circle,
-                          color: AppColors.secondaryColor2,
-                        ),
-                        onPressed: () async {
-                          try {
-                            // Show a confirmation dialog for deleting the task
-                            showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: Text('Confirm Delete'),
-                                  content: Text('Are you sure you want to delete this User?'),
-                                  actions: [
-                                    TextButton(
-                                      child: Text('Cancel'),
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                      },
-                                    ),
-                                    TextButton(
-                                      onPressed: () async {
-                                        Navigator.of(context).pop();
-                                        try {
-                                          SharedPreferences prefs = await SharedPreferences.getInstance();
-                                          final storedData = prefs.getString('jwtToken');
-                                          String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-                                          if (orgId == null) {
-                                            // If the user hasn't switched organizations, use the organization ID obtained during login time
-                                            orgId = prefs.getString('org_id') ?? "";
-                                          }
-
-                                          print("OrgId: $orgId");
-
-
-                                          if (orgId == null) {
-                                            throw Exception('orgId not found locally');
-                                          }
-
-                                          final String teamId = team.teamId!;
-                                          final String userName = user; // Replace 'user' with the actual userName of the user you want to delete
-
-                                          final userId = await getUserIdByUsername(user); // Make the userId nullable
-
-                                          print("Userid: $userId");
-
-                                          // Get the teamId and userId of the user to delete
-                                          final String apiUrl = "http://43.205.97.189:8000/api/Team/deleteTeamUser?teamId=${team.teamId}&userId=$userId&org_id=$orgId";
-
-                                          // Prepare the query parameters
-                                          final Map<String, String> queryParams = {
-                                            "teamId": teamId,
-                                            "userId":userId,
-                                          };
-
-                                          print("Body: $queryParams"); // Print the request body to debug
-
-                                          // Make the HTTP DELETE request
-                                          final response = await http.delete(
-                                            Uri.parse(apiUrl),
-                                            headers: {
-                                              'accept': '*/*',
-                                              'Authorization': "Bearer $storedData",
-                                              // Add any necessary authorization or authentication headers here
-                                            },
-                                            body: json.encode(queryParams), // Convert the queryParams to JSON
-                                          );
-
-                                          print("Response Body: ${response.body}");
-                                          print("Statuscode: ${response.statusCode}");
-
-                                          // Check the response status and handle accordingly
-                                          if (response.statusCode == 200) {
-                                            // Deletion successful
-                                            print("User deleted successfully.");
-                                            _showDialog("User deleted Successfully");
-
-                                            await fetchMyTeams();
-                                          } else if (response.statusCode == 401) {
-                                            // Unauthorized
-                                            print("Unauthorized to perform the delete operation.");
-                                          } else if (response.statusCode == 403) {
-                                            // Forbidden
-                                            print("Forbidden to perform the delete operation.");
-                                          } else {
-                                            // Handle other response status codes if needed
-                                            print("An error occurred: ${response.statusCode}");
-                                          }
-                                        } catch (e) {
-                                          print("Error: $e");
-                                        }
-                                      },
-                                      child: Text('Delete'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          } catch (e) {
-                            print('Error showing delete confirmation dialog: $e');
-                          }
-                        }
-                    ),
                 )),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.add_circle, color: AppColors.primaryColor2),
-                      onPressed: () {
-                        _showUserSelectionModal(team);
-                      },
-                    ),
-                    Text("Add Members",
-                      style: TextStyle(
-                          color: AppColors.secondaryColor2,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
         );
       },
     );
-  }
-
-  void _showUserSelectionModal(MyTeam team) async {
-    try {
-      final users = await fetchUsers(); // Fetch users from the API
-
-      List<User> selectedUsers = []; // List to store selected users
-
-      showModalBottomSheet<void>(
-        context: context,
-        builder: (BuildContext context) {
-          return StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ListTile(
-                    title: Text('Add Members', style: TextStyle(fontWeight: FontWeight.bold)),
-                    trailing: IconButton(
-                      icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: users.length,
-                      itemBuilder: (context, index) {
-                        final user = users[index];
-                        final bool isUserInTeam = team.users!.contains(user.userName);
-
-                        return ListTile(
-                          title: Text(user.userName, style: TextStyle(color: AppColors.secondaryColor2)),
-                          trailing: isUserInTeam
-                              ? Icon(Icons.check, color: AppColors.secondaryColor2)
-                              : IconButton(
-                            icon: Icon(Icons.add, color: AppColors.primaryColor2),
-                            onPressed: () {
-                              if (!selectedUsers.contains(user)) {
-                                setState(() {
-                                  selectedUsers.add(user);
-                                });
-                              }
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 20),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Selected Members:',
-                        style: TextStyle(
-                          color: AppColors.primaryColor2,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.start,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Container(
-                      child: Wrap(
-                        spacing: 5, // Add space between users
-                        runSpacing: 5, // Vertical spacing between rows
-                        children: selectedUsers.map((user) => Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryColor1,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min, // Adjust the width of each container
-                            children: [
-                              Text(user.userName, style: TextStyle(color: Colors.white)),
-                              IconButton(
-                                icon: Icon(Icons.clear, color: AppColors.blackColor, size: 10),
-                                onPressed: () {
-                                  setState(() {
-                                    selectedUsers.remove(user);
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        )).toList(),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        SizedBox(
-                          height: 30,
-                          width: 90,
-                          child: RoundButton(
-                            title: "Apply",
-                            onPressed: () async{
-                              List<String> selectedUserIds = selectedUsers.map((user) => user.userId).toList();
-
-                              await updateTeamWithMembers(team.teamId!, selectedUserIds);
-
-                              Navigator.pop(context);
-                              Navigator.pop(context);
-                              Navigator.pop(context,true);
-                            },
-                          ),
-                        ),
-                        SizedBox(width: 10,),
-                        SizedBox(
-                          height: 30,
-                          width: 90,
-                          child: RoundButton(
-                            title: "Cancel",
-                            onPressed: (){
-                              Navigator.pop(context);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                ],
-              );
-            },
-          );
-        },
-      );
-    } catch (e) {
-      print('Error fetching users: $e');
-      // Handle the error as needed
-    }
   }
 }

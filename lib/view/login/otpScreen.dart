@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../Providers/session_provider.dart';
 import '../../common_widgets/round_gradient_button.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/tokenManager.dart';
 import 'forgetpassword/verificationScreens.dart';
 import 'inactivePlan.dart';
 
@@ -58,6 +59,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       }
     });
   }
+
 
   void resendOTP() async {
     if (_resendEnabled) {
@@ -128,11 +130,28 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     }
   }
 
-  Future<void> verifyOTP(BuildContext context, String userId, String otp, String email, String roleId) async {
+  Future<void> verifyOTP(BuildContext context, String userId, String otp, String email, String roleId,) async {
     print("Email: $email");
     print("UserId: $userId");
     print("RoleId: $roleId");
-    final url = Uri.parse('http://43.205.97.189:8000/api/UserAuth/verifyOtp?user_id=$userId&otp=$otp&email=$email&role_id=$roleId');
+    // Declare the token variable
+    String? token;
+
+    try {
+      // Retrieve the device token
+      token = await TokenManager.getToken();
+      if (token != null) {
+        print("Retrieved token: $token");
+      } else {
+        print("Token not found.");
+      }
+    } catch (e) {
+      print("Error retrieving token: $e");
+    }
+
+    print("Token found: $token");
+
+    final url = Uri.parse('http://43.205.97.189:8000/api/UserAuth/verifyOtp?user_id=$userId&otp=$otp&email=$email&role_id=$roleId&device_token=$token');
 
     try {
       final response = await http.post(url, headers: {
@@ -142,7 +161,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         'role_id': roleId, // Replace with the user's role ID
         'user_id': userId,
         'otp': otp,
+        'device_token' : token,
       });
+
       print("Api response: ${response.body}");
       print("code: ${response.statusCode}");
       if (response.statusCode == 200) {

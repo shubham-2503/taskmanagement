@@ -40,12 +40,12 @@ class Team {
 class MyTeam {
   final String? teamId;
   final String teamName;
-  final List<String>? users;
+  List<String> users;
 
   MyTeam({
     this.teamId,
     required this.teamName,
-    this.users,
+    required this.users,
   });
 
   factory MyTeam.fromJson(Map<String, dynamic> json) {
