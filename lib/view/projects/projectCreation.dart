@@ -481,6 +481,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                           _showMembersDropdown(context);
                         },
                         textEditingController: _assigneeMembersController,
+                        isReadOnly: true,
                       ),
                       SizedBox(height: 20.0),
                       Text("Assigned Team"),
@@ -491,6 +492,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                           _showTeamsDropdown(context);
                         },
                         textEditingController: _assigneeTeamsController,
+                        isReadOnly: true,
                       ),
                       SizedBox(height: 20.0),
                       Row(

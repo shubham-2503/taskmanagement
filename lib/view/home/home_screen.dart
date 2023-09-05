@@ -342,6 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onPressed: () {
                           Navigator.pushNamed(
                               context, NotificationScreen.routeName);
+                          // Navigator.push(context, MaterialPageRoute(builder: (context)=>NotificationApp()));
                         },
                         icon: Image.asset(
                           "assets/icons/notification_icon.png",

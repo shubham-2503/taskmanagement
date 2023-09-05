@@ -16,3 +16,30 @@ class AppColors{
   static List<Color> get primaryG => [primaryColor1,primaryColor2];
   static List<Color> get secondaryG => [secondaryColor1,secondaryColor2];
 }
+
+Color getCircleAvatarColor(String entry) {
+  if (entry.contains('Comment:')) {
+    return AppColors.primaryColor1;
+  } else if (entry.contains('History:')) {
+    return AppColors.secondaryColor2;
+  }
+  return Colors.transparent; // Default color
+}
+
+Color getTextColor(String entry) {
+  if (entry.startsWith('Comment:')) {
+    return AppColors.secondaryColor2;
+  } else if (entry.startsWith('History:')) {
+    return AppColors.primaryColor1;
+  }
+  return Colors.transparent; // Default color
+}
+
+IconData getLeadingIcon(String entry) {
+  if (entry.startsWith('Comment:')) {
+    return Icons.comment;
+  } else if (entry.startsWith('History:')) {
+    return Icons.history;
+  }
+  return Icons.error; // Default icon
+}

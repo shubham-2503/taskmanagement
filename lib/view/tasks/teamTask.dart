@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:Taskapp/view/tasks/MistaskCreation.dart';
 import 'package:Taskapp/view/tasks/editMyTaks.dart';
 import 'package:Taskapp/view/tasks/taskDetails.dart';
-import 'package:Taskapp/view/tasks/taskModal.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -26,10 +25,10 @@ class TeamTaskScreen extends StatefulWidget {
 }
 
 class _TeamTaskScreenState extends State<TeamTaskScreen> {
-  List<Task> filteredMyTasks = [];
-  List<Task> mytasks = [];
+  List<Task> filteredteamTasks = [];
+  List<Task> teamtasks = [];
 
-  Future<void> fetchMyTasks() async {
+  Future<void> fetchTeamTasks() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -53,7 +52,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
         ...widget.selectedFilters,
       };
 
-      final url = Uri.http('43.205.97.189:8000', '/api/Task/myTasks', queryParameters);
+      final url = Uri.http('43.205.97.189:8000', '/api/Task/teamsTask', queryParameters);
 
       final headers = {
         'accept': '*/*',
@@ -97,8 +96,8 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
         }).toList();
 
         setState(() {
-          mytasks = fetchedTasks;
-          filteredMyTasks = fetchedTasks;
+          teamtasks = fetchedTasks;
+          filteredteamTasks = fetchedTasks;
         });
       } else {
         print('Error fetching tasks: ${response.statusCode}');
@@ -112,11 +111,11 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
     setState(() {
       if (query.length >= 3) {
         print("Filtering with query: $query");
-        filteredMyTasks = mytasks.where((mytask) =>
+        filteredteamTasks = teamtasks.where((mytask) =>
             mytask.taskName.toLowerCase().contains(query.toLowerCase())).toList();
       } else {
         // Filter with an empty query or a query with less than 3 characters
-        filteredMyTasks = mytasks.toList();
+        filteredteamTasks = teamtasks.toList();
       }
     });
   }
@@ -125,7 +124,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    fetchMyTasks();
+    fetchTeamTasks();
   }
 
   @override
@@ -146,7 +145,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                   );
 
                   if (result == true) {
-                    fetchMyTasks();
+                    fetchTeamTasks();
                   }
                 },
                 icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
@@ -171,9 +170,9 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: filteredMyTasks.length,
+                itemCount: filteredteamTasks.length,
                 itemBuilder: (BuildContext context, int index) {
-                  Task task = filteredMyTasks[index];
+                  Task task = filteredteamTasks[index];
                   // Determine color based on the task's status
                   Color statusColor = Colors.grey; // Default color
                   switch (task.status) {
@@ -229,16 +228,46 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                           children: [
                             Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 20),
-                                child: Text(
-                                  task.taskName,
-                                  style: TextStyle(
-                                    color: AppColors.secondaryColor2,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Task Name: ',
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        task.taskName,
+                                        style: TextStyle(
+                                            color: AppColors.secondaryColor2,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
                                   ),
-                                ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Status: ',
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        task.status,
+                                        style: TextStyle(
+                                            color: AppColors.secondaryColor2,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                             Spacer(),
@@ -258,7 +287,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                                 );
 
                                 if (shouldRefresh ?? false) {
-                                  await fetchMyTasks();
+                                  await fetchTeamTasks();
                                 }
                               },
                               child: Image.asset(

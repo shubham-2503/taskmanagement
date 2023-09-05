@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:Taskapp/view/login/forgetpassword/forgetpassword_mailScreen.dart';
 import 'package:Taskapp/view/login/phoneNumber.dart';
-import 'package:Taskapp/view/login/true_caller_auth_services.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -28,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  TruecallerAuthServices truecallerAuthServices = TruecallerAuthServices();
+  // TruecallerAuthServices truecallerAuthServices = TruecallerAuthServices();
   bool _isPasswordVisible = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
@@ -164,30 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Colors.red,
         textColor: Colors.white,
       );
-    }
-  }
-
-  void loginWithTruecaller(String contact) async {
-    try {
-      Response response = await post(
-        Uri.parse('http://43.205.97.189:8000/api/UserAuth/otpLessLogin'),
-        body: {'contact': contact},
-      );
-
-      print("Contact: $contact");
-      print("StatusCode: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        var data = jsonDecode(response.body.toString());
-        print(data['token']);
-        print('Login successfully');
-
-        // Perform actions after successful login with Truecaller
-      } else {
-        print('Login failed');
-      }
-    } catch (e) {
-      print(e.toString());
     }
   }
 
@@ -394,22 +369,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   SizedBox(width: 30,),
-                  GestureDetector(
-                    onTap: () async {
-                      String contact = await truecallerAuthServices.startVerification(context);
-                      loginWithTruecaller(contact);
-                    },
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.primaryColor1.withOpacity(0.5), width: 1, ),
-                      ),
-                      child: Image.asset("assets/images/true.png",width: 20,height: 20,),
-                    ),
-                  ),
+                  // GestureDetector(
+                  //   onTap: () async {
+                  //     truecallerAuthServices.startVerification(context);
+                  //   },
+                  //   child: Container(
+                  //     width: 50,
+                  //     height: 50,
+                  //     alignment: Alignment.center,
+                  //     decoration: BoxDecoration(
+                  //       borderRadius: BorderRadius.circular(14),
+                  //       border: Border.all(color: AppColors.primaryColor1.withOpacity(0.5), width: 1, ),
+                  //     ),
+                  //     child: Image.asset("assets/images/true.png",width: 20,height: 20,),
+                  //   ),
+                  // ),
                   SizedBox(width: 30,),
                   GestureDetector(
                     onTap: (){
@@ -464,7 +438,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    truecallerAuthServices.dispose();
+    // truecallerAuthServices.dispose();
     super.dispose();
   }
 }

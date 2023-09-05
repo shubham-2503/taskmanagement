@@ -224,16 +224,46 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                           children: [
                             Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 20),
-                                child: Text(
-                                  task.taskName,
-                                  style: TextStyle(
-                                    color: AppColors.secondaryColor2,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Task Name: ',
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        task.taskName,
+                                        style: TextStyle(
+                                            color: AppColors.secondaryColor2,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
                                   ),
-                                ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Status: ',
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        task.status,
+                                        style: TextStyle(
+                                            color: AppColors.secondaryColor2,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                             Spacer(),

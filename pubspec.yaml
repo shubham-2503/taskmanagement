@@ -67,8 +67,7 @@ dependencies:
   open_mail_app: ^0.4.5
   google_fonts: ^5.1.0
   flutter_excel: any
-#  calendar_agenda:
-#    path: dev_lib/calendar_agenda/
+  signalr_flutter: ^0.2.0
   pdf: ^3.10.4
   open_file: ^3.3.2
   path_provider: ^2.0.15

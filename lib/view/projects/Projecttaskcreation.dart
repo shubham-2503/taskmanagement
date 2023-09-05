@@ -437,6 +437,7 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
                           _showMembersDropdown(context);
                         },
                         textEditingController: _assigneeMembersController,
+                        isReadOnly: true,
                       ),
                       SizedBox(height: 16.0),
                       RoundTextField(
@@ -446,6 +447,7 @@ class _ProjectTaskCreationScreenState extends State<ProjectTaskCreationScreen> {
                           _showTeamsDropdown(context);
                         },
                         textEditingController: _assigneeTeamsController,
+                        isReadOnly: true,
                       ),
                       SizedBox(height: 16.0),
                       Row(

@@ -102,7 +102,6 @@ class NotificationServices{
     );
   }
 
-
   Future<String?> getDeviceToken() async{
     String? token =await messaging.getToken() as String?;
     return token;
@@ -129,7 +128,6 @@ class NotificationServices{
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
     });
   }
-
 // void handleMessage(BuildContext context, RemoteMessage message) {
 //   if (message.data['type'] == 'msj') {
 //     // Redirect to the NotificationScreen

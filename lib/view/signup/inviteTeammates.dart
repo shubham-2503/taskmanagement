@@ -210,7 +210,11 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
             content: Text(errorMessage),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>const DashboardScreen(),)),
+                // onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>const DashboardScreen(),)),
+                onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.pop(context, true);
+                },
                 child: const Text("OK"),
               ),
             ],
@@ -243,211 +247,217 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.deepPurple),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Container(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Center(
-                  child: Text(
-                    'Invite a Teammate',
-                    style: TextStyle(
-                      color: AppColors.secondaryColor2,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      fontStyle: FontStyle.italic,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>DashboardScreen()));
+        return true; // Allow the back action to proceed
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          iconTheme: const IconThemeData(color: Colors.deepPurple),
+          backgroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: Container(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(
+                    child: Text(
+                      'Invite a Teammate',
+                      style: TextStyle(
+                        color: AppColors.secondaryColor2,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                const Center(
-                  child: Text(
-                    "Collaborate with your team to work efficiently",
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
+                  const SizedBox(height: 12),
+                  const Center(
+                    child: Text(
+                      "Collaborate with your team to work efficiently",
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                SingleChildScrollView(
-                  child: Column(
-                    children: teammates.map((teammate) {
-                      return Column(
+                  const SizedBox(height: 16),
+                  SingleChildScrollView(
+                    child: Column(
+                      children: teammates.map((teammate) {
+                        return Column(
 
-                        children: [
-                          RoundTextField(
-                            isRequired: true,
-                            hintText: "Name",
-                            icon: "assets/icons/name.png",
-                            textInputType: TextInputType.text,
-                            textEditingController: teammate.nameController,
-                          ),
-                          const SizedBox(height: 20,),
-                          RoundTextField(
-                            isRequired: true,
-                            hintText: "Email",
-                            icon: "assets/icons/message_icon.png",
-                            textInputType: TextInputType.emailAddress,
-                            textEditingController: teammate.emailController,
-                            validator: validateEmail,
-                          ),
-                          const SizedBox(height: 20,),
-                          RoundTextField(
-                            isRequired: true,
-                            hintText: "Phone Number",
-                            textEditingController: teammate.phoneController,
-                            rightIcon: Row(
-                              children: [
-                                DropdownButton<String>(
-                                  value: selectedCountryCode,
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      selectedCountryCode = newValue!;
-                                    });
-                                  },
-                                  items: countryCodes.map<DropdownMenuItem<String>>((Map<String, dynamic> country) {
-                                    return DropdownMenuItem<String>(
-                                      value: country['code'],
-                                      child: Text(
-                                        country['code'],
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  selectedItemBuilder: (BuildContext context) {
-                                    return countryCodes.map<Widget>((Map<String, dynamic> country) {
-                                      return Align(
-                                        alignment: Alignment.centerRight,
+                          children: [
+                            RoundTextField(
+                              isRequired: true,
+                              hintText: "Name",
+                              icon: "assets/icons/name.png",
+                              textInputType: TextInputType.text,
+                              textEditingController: teammate.nameController,
+                            ),
+                            const SizedBox(height: 20,),
+                            RoundTextField(
+                              isRequired: true,
+                              hintText: "Email",
+                              icon: "assets/icons/message_icon.png",
+                              textInputType: TextInputType.emailAddress,
+                              textEditingController: teammate.emailController,
+                              validator: validateEmail,
+                            ),
+                            const SizedBox(height: 20,),
+                            RoundTextField(
+                              isRequired: true,
+                              hintText: "Phone Number",
+                              textEditingController: teammate.phoneController,
+                              rightIcon: Row(
+                                children: [
+                                  DropdownButton<String>(
+                                    value: selectedCountryCode,
+                                    onChanged: (String? newValue) {
+                                      setState(() {
+                                        selectedCountryCode = newValue!;
+                                      });
+                                    },
+                                    items: countryCodes.map<DropdownMenuItem<String>>((Map<String, dynamic> country) {
+                                      return DropdownMenuItem<String>(
+                                        value: country['code'],
                                         child: Text(
                                           country['code'],
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.black, // Customize the selected item color
                                           ),
                                         ),
                                       );
-                                    }).toList();
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                // Add some spacing between the dropdown and phone number input
-                                Expanded(
-                                  child: TextFormField(
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.zero,
-                                    ),
-                                    keyboardType: TextInputType.phone,
-                                    controller: teammate.phoneController,
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return "Please enter your phone number";
-                                      }
-                                      if (value.length != 10) {
-                                        return "Phone number must contain 10 digits";
-                                      }
-                                      return null; // Return null if validation is successful
+                                    }).toList(),
+                                    selectedItemBuilder: (BuildContext context) {
+                                      return countryCodes.map<Widget>((Map<String, dynamic> country) {
+                                        return Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Text(
+                                            country['code'],
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black, // Customize the selected item color
+                                            ),
+                                          ),
+                                        );
+                                      }).toList();
                                     },
-                                    autovalidateMode: AutovalidateMode.onUserInteraction, // Trigger validation on user interaction
-                                    inputFormatters: [
-                                      LengthLimitingTextInputFormatter(10), // Limit input length to 10 characters
-                                      FilteringTextInputFormatter.digitsOnly,
-                                    ],
                                   ),
+                                  const SizedBox(width: 8),
+                                  // Add some spacing between the dropdown and phone number input
+                                  Expanded(
+                                    child: TextFormField(
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                      keyboardType: TextInputType.phone,
+                                      controller: teammate.phoneController,
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return "Please enter your phone number";
+                                        }
+                                        if (value.length != 10) {
+                                          return "Phone number must contain 10 digits";
+                                        }
+                                        return null; // Return null if validation is successful
+                                      },
+                                      autovalidateMode: AutovalidateMode.onUserInteraction, // Trigger validation on user interaction
+                                      inputFormatters: [
+                                        LengthLimitingTextInputFormatter(10), // Limit input length to 10 characters
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10), // Add spacing between the fields
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.lightGrayColor,
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: DropdownButtonFormField<String>(
+                                value: teammate.selectedRole,
+                                decoration: const InputDecoration(
+                                  labelText: 'Role',
+                                  // ...
                                 ),
+                                items: _roles.map<DropdownMenuItem<String>>((Map<String, String> role) {
+                                  return DropdownMenuItem<String>(
+                                    value: role['id']!,
+                                    child: Text(role['name']!),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    teammate.selectedRole = newValue;
+                                  });
+                                },
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () {
+                                    _removeTeammate(teammates.indexOf(teammate));
+                                  },
+                                  icon: const Icon(Icons.remove),
+                                ), const Text("REMOVE TEAMMATE"),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 10), // Add spacing between the fields
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.lightGrayColor,
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: DropdownButtonFormField<String>(
-                              value: teammate.selectedRole,
-                              decoration: const InputDecoration(
-                                labelText: 'Role',
-                                // ...
-                              ),
-                              items: _roles.map<DropdownMenuItem<String>>((Map<String, String> role) {
-                                return DropdownMenuItem<String>(
-                                  value: role['id']!,
-                                  child: Text(role['name']!),
-                                );
-                              }).toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  teammate.selectedRole = newValue;
-                                });
-                              },
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              IconButton(
-                                onPressed: () {
-                                  _removeTeammate(teammates.indexOf(teammate));
-                                },
-                                icon: const Icon(Icons.remove),
-                              ), const Text("REMOVE TEAMMATE"),
-                            ],
-                          ),
-                        ],
-                      );
-                    }).toList(),
+                          ],
+                        );
+                      }).toList(),
+                    ),
                   ),
-                ),
 
 
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: _addTeammateRow,
-                      icon: const Icon(Icons.add),
-                    ),
-                    const Text("ADD MORE TEAMMATES"),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    SizedBox(
-                      height: 40,
-                      width: 150,
-                      child: RoundButton(title: "Invite Teammates", onPressed: _inviteTeammate),
-                    ),
-                    const SizedBox(height: 10,),
-                    SizedBox(
-                      height: 40,
-                      width: 90,
-                      child: RoundButton(
-                        title: "Skip For\nNow",
-                        onPressed: () {
-                          if (ModalRoute.of(context)?.settings.name != '/DashboardScreen') {
-                            // Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
-                          }
-                        },
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: _addTeammateRow,
+                        icon: const Icon(Icons.add),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const Text("ADD MORE TEAMMATES"),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      SizedBox(
+                        height: 40,
+                        width: 150,
+                        child: RoundButton(title: "Invite Teammates", onPressed: _inviteTeammate),
+                      ),
+                      const SizedBox(height: 10,),
+                      SizedBox(
+                        height: 40,
+                        width: 90,
+                        child: RoundButton(
+                          title: "Skip For\nNow",
+                          onPressed: () {
+                            if (ModalRoute.of(context)?.settings.name != '/DashboardScreen') {
+                              // Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

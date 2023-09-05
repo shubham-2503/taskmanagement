@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:Taskapp/view/tasks/MistaskCreation.dart';
 import 'package:Taskapp/view/tasks/editCreatetasks.dart';
 import 'package:Taskapp/view/tasks/taskDetails.dart';
-import 'package:Taskapp/view/tasks/taskModal.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -230,16 +229,46 @@ class _CreatedByMeState extends State<CreatedByMe> {
                           children: [
                             Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 20),
-                                child: Text(
-                                  task.taskName,
-                                  style: TextStyle(
-                                    color: AppColors.secondaryColor2,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Task Name: ',
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        task.taskName,
+                                        style: TextStyle(
+                                            color: AppColors.secondaryColor2,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
                                   ),
-                                ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Status: ',
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        task.status,
+                                        style: TextStyle(
+                                            color: AppColors.secondaryColor2,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                             Spacer(),
@@ -248,7 +277,7 @@ class _CreatedByMeState extends State<CreatedByMe> {
                               onPressed: () {
                                 _showViewTaskDialog(task);
                               },
-                            ),// Add a Spacer to push the menu image to the end
+                            ), // Add a Spacer to push the menu image to the end
                             GestureDetector(
                               onTap: () async {
                                 bool? shouldRefresh = await showModalBottomSheet<bool>(

@@ -16,12 +16,13 @@ import '../../../models/user.dart';
 import '../../../utils/app_colors.dart';
 import 'package:intl/intl.dart';
 
+import 'editMyProjects.dart';
+
 class AssignedToMe extends StatefulWidget {
   final VoidCallback refreshCallback;
   final List<Project> projects;
-  final Map<String, String?> selectedFilters;
 
-  const AssignedToMe({super.key, required this.refreshCallback, required this.projects, required this.selectedFilters});
+  const AssignedToMe({super.key, required this.refreshCallback, required this.projects,});
   @override
   _AssignedToMeState createState() => _AssignedToMeState();
 }
@@ -51,7 +52,6 @@ class _AssignedToMeState extends State<AssignedToMe> {
       // Use the selected filters to build the query parameters
       Map<String, String?> queryParameters = {
         'org_id': orgId,
-        ...widget.selectedFilters,
       };
 
       final url = Uri.http('43.205.97.189:8000', '/api/Project/myProjects', queryParameters);
@@ -174,13 +174,6 @@ class _AssignedToMeState extends State<AssignedToMe> {
             color: AppColors.whiteColor
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: SizedBox(height: 50,width: 150,child:  RoundTextField(
-              onChanged: (query) => filterProjects(query), hintText: 'Search',
-              icon: "assets/images/search_icon.png",
-            ),),
-          ),
           IconButton(
             onPressed: () async {
               final result = await Navigator.push(
@@ -194,237 +187,311 @@ class _AssignedToMeState extends State<AssignedToMe> {
               }
             },
             icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
-          )
+          ),
+          Text("Add Projects",style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.secondaryColor2
+          ),),
         ],
       ),
-      body: Container(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: Column(
-            children: [
-              Text(
-                'Projects Assigned',
-                style: TextStyle(
-                    color: AppColors.secondaryColor2,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20
-                ),
-              ),
-              Text(
-                'To Me',
-                style: TextStyle(
-                    color: AppColors.secondaryColor2,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: filteredprojects.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    Project project = filteredprojects[index];
-                    Color statusColor = Colors.black;
-                    return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-                        padding: EdgeInsets.symmetric(vertical: 8,horizontal: 9),
-                        decoration: BoxDecoration(
-                          color: AppColors.whiteColor,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              AppColors.primaryColor2.withOpacity(0.3),
-                              AppColors.primaryColor1.withOpacity(0.3)
-                            ]),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      project.name,
-                                      style: TextStyle(
-                                          color: AppColors.secondaryColor2,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    SizedBox(height: 5,),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Owner: ',
-                                          style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Text(
-                                          project.owner,
-                                          style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5,),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Status: ',
-                                          style: TextStyle(
-                                              color: AppColors.secondaryColor2,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Text(
-                                          project.status,
-                                          style: TextStyle(
-                                              color: statusColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5,),
-                                    Wrap(
-                                      crossAxisAlignment: WrapCrossAlignment.center, // Align children at the center
-                                      spacing: 5, // Add some spacing between the elements
-                                      children: [
-                                        Text(
-                                          'Assigned To: ',
-                                          style: TextStyle(
-                                            color: AppColors.secondaryColor2,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        Text(
-                                          project.users!.map((user) => user.userName).join(', '),
-                                          style: TextStyle(
-                                            color: AppColors.blackColor,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5,),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Due Date: ',
-                                          style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Text(
-                                          formatDate(project.dueDate) ?? '',
-                                          style: TextStyle(
-                                              color: AppColors.secondaryColor2,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 10,),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        SizedBox(
-                                            width: 100,
-                                            height: 30,
-                                            child: RoundButton(
-                                              title: "View More",
-                                              onPressed: () async {
-                                                final SharedPreferences prefs =
-                                                await SharedPreferences
-                                                    .getInstance();
-                                                final List<String>? projectIds =
-                                                prefs.getStringList(
-                                                    'projectIds');
-                                                if (projectIds != null) {
-                                                  // Find the index of the selected project in the list of stored projectIds
-                                                  int projectIndex = projectIds
-                                                      .indexOf(project.id);
-                                                  if (projectIndex != -1) {
-                                                    bool edited = await Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            ProjectDetailsScreen(
-                                                              active: project.active!,
-                                                              projectId: projectIds[
-                                                              projectIndex], // Use the selected projectId from the list
-                                                              projectName: project.name,
-                                                              assigneeTo: project.users
-                                                                  ?.map((user) =>
-                                                              user.userName)
-                                                                  .join(', ') ??
-                                                                  '',
-                                                              status: project.status,
-                                                              dueDate: formatDate(
-                                                                  project
-                                                                      .dueDate) ??
-                                                                  '',
-                                                              createdBy: project.owner,
-                                                              assigneeTeam: project
-                                                                  .teams
-                                                                  ?.map((user) =>
-                                                              user.teamName)
-                                                                  .join(', ') ??
-                                                                  '',
-                                                              attachments: [], project: project,
-                                                            ),
-                                                      ),
-                                                    );
-                                                    if(edited == true){
-                                                      await fetchMyProjects();
-                                                    }
-                                                  }
-                                                }
-                                              },
-                                            )
-                                        ),
-                                        SizedBox(width: 20,),
-                                        SizedBox(
-                                          width: 100,
-                                          height: 30,
-                                          child: RoundButton(
-                                              title: "Delete",
-                                              onPressed: () async {
-                                                _deleteProject("${project.id}");
-                                              }),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(
-                                width: 15,
-                              ),
-                            ],
-                          ),
-                        ));
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+         body: Container(
+           child: Padding(
+             padding: const EdgeInsets.only(top: 30),
+             child: Column(
+               children: [
+                 Text(
+                   'My Projects',
+                   style: TextStyle(
+                       color: AppColors.secondaryColor2,
+                       fontWeight: FontWeight.bold,
+                       fontSize: 20),
+                 ),
+                 Expanded(
+                   child: ListView.builder(
+                     itemCount: filteredprojects.length,
+                     itemBuilder: (BuildContext context, int index) {
+                       Project project = filteredprojects[index];
+                       Color statusColor = Colors.black;
+                       if (project.status == 'Active') {
+                         statusColor = Colors.orange;
+                       } else if (project.status == 'In-Active') {
+                         statusColor = Colors.green;
+                       }
+                       return Container(
+                           margin: const EdgeInsets.symmetric(
+                               vertical: 8, horizontal: 2),
+                           padding:
+                           EdgeInsets.symmetric(vertical: 8, horizontal: 9),
+                           decoration: BoxDecoration(
+                             color: AppColors.whiteColor,
+                             borderRadius: BorderRadius.circular(15),
+                           ),
+                           child: Container(
+                             padding: const EdgeInsets.symmetric(
+                                 vertical: 15, horizontal: 20),
+                             decoration: BoxDecoration(
+                               gradient: LinearGradient(colors: [
+                                 AppColors.primaryColor2.withOpacity(0.3),
+                                 AppColors.primaryColor1.withOpacity(0.3)
+                               ]),
+                               borderRadius: BorderRadius.circular(15),
+                             ),
+                             child: Row(
+                               mainAxisAlignment: MainAxisAlignment.start,
+                               children: [
+                                 Padding(
+                                   padding: const EdgeInsets.all(8.0),
+                                   child: Column(
+                                     crossAxisAlignment: CrossAxisAlignment.start,
+                                     children: [
+                                       Row(
+                                         children: [
+                                           Text(
+                                             'Project Name: ',
+                                             style: TextStyle(
+                                                 color: AppColors.blackColor,
+                                                 fontSize: 14,
+                                                 fontWeight: FontWeight.bold),
+                                           ),
+                                           Text(
+                                             project.name,
+                                             style: TextStyle(
+                                                 color: AppColors.secondaryColor2,
+                                                 fontSize: 14,
+                                                 fontWeight: FontWeight.bold),
+                                           ),
+                                         ],
+                                       ),
+                                       Row(
+                                         children: [
+                                           Text(
+                                             'Status: ',
+                                             style: TextStyle(
+                                                 color: AppColors.blackColor,
+                                                 fontSize: 14,
+                                                 fontWeight: FontWeight.bold),
+                                           ),
+                                           Text(
+                                             project.status,
+                                             style: TextStyle(
+                                                 color: AppColors.secondaryColor2,
+                                                 fontSize: 14,
+                                                 fontWeight: FontWeight.w500),
+                                           ),
+                                         ],
+                                       ),
+                                     ],
+                                   ),
+                                 ),
+                                 Spacer(),
+                                 IconButton(
+                                   icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2),
+                                   onPressed: () {
+                                     _showViewProjectDialog(project);
+                                   },
+                                 ), // Add a Spacer to push the menu image to the end
+                                 GestureDetector(
+                                   onTap: () async {
+                                     bool? shouldRefresh = await showModalBottomSheet<bool>(
+                                       context: context,
+                                       builder: (context) {
+                                         return ProjectDetailsModal(project: project);
+                                       },
+                                     );
+
+                                     if (shouldRefresh ?? false) {
+                                       await fetchMyProjects();
+                                     }
+                                   },
+                                   child: Image.asset(
+                                     "assets/images/menu.png",
+                                     width: 40,
+                                     height: 20,
+                                   ),
+                                 ),
+                               ],
+                             ),
+                           ));
+                     },
+                   ),
+                 ),
+               ],
+             ),
+           ),
+         ),
     );
   },);}
+
+  void _showViewProjectDialog(Project project) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Center(
+                      child: Text(
+                        '${project.name}',
+                        style: TextStyle(
+                          color: AppColors.secondaryColor2,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                // Display assigned users
+                Text(
+                  'Assigned Users:',
+                  style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                ...project.users!.map((user) => ListTile(
+                  title: Text(
+                    user.userName,
+                    style: TextStyle(
+                      color: AppColors.primaryColor2,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )),
+                SizedBox(height: 16),
+                // Display assigned teams if applicable
+                if (project.teams != null && project.teams!.isNotEmpty)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Assigned Team:',
+                        style: TextStyle(
+                          color: AppColors.secondaryColor2,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      ...project.teams!.map((team) => ListTile(
+                        title: Text(
+                          team.teamName,
+                          style: TextStyle(
+                            color: AppColors.primaryColor2,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )),
+                    ],
+                  ),
+                SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class ProjectDetailsModal extends StatefulWidget {
+  final Project project;
+
+  ProjectDetailsModal({required this.project});
+
+  @override
+  State<ProjectDetailsModal> createState() => _ProjectDetailsModalState();
+}
+
+class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
+  List<Project> projects = [];
+
+  Future<void> fetchMyProjects() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+      // Use the selected filters to build the query parameters
+      Map<String, String?> queryParameters = {
+        'org_id': orgId,
+      };
+
+      final url = Uri.http('43.205.97.189:8000', '/api/Project/myProjects', queryParameters);
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+      };
+
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> responseData = jsonDecode(response.body);
+        final List<Future<Project>> fetchedProjects = responseData.map((projectData) async {
+          String projectId = projectData['project_id'] ?? '';
+
+          // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
+          List<Team> teams = (projectData['teams'] as List<dynamic>).map((teamData) {
+            return Team(
+              id: teamData['teamId'] ?? '',
+              teamName: teamData['teamName'] ?? '',
+            );
+          }).toList();
+
+          List<User> users = (projectData['users'] as List<dynamic>).map((userData) {
+            return User.fromJson(userData); // Create User object from JSON data
+          }).toList();
+
+          return Project(
+            description: projectData['description'] ?? '',
+            id: projectId,
+            name: projectData['projectName'] ?? '',
+            owner: projectData['created_by'] ?? '',
+            dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
+            // tasks: tasks,
+            teams: teams,
+            users: users, status: projectData['status'] ?? " ",
+            active: projectData['active'] ?? " ",
+          );
+        }).toList();
+
+        final List<Project> projectsWithTasks = await Future.wait(fetchedProjects);
+
+        setState(() {
+          projects = projectsWithTasks;
+        });
+
+        // Store the projectId locally using SharedPreferences
+        final List<String> projectIds = projectsWithTasks.map((project) => project.id).toList();
+        await prefs.setStringList('projectIds', projectIds);
+        print("ProjectID: $projectIds");
+
+      } else {
+        print('Error fetching projects: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching projects: $e');
+    }
+  }
 
   void _deleteProject(String projectId) async {
     try {
@@ -485,23 +552,24 @@ class _AssignedToMeState extends State<AssignedToMe> {
                               InkWell(
                                 onTap: () {
                                   Navigator.pop(context,true);
+                                  Navigator.pop(context,true);
                                 },
                                 child: Text(
                                   "OK",
-                                  style: TextStyle(color: AppColors.blackColor, fontSize: 20),
+                                  style: TextStyle(
+                                      color: AppColors.blackColor, fontSize: 20),
                                 ),
                               )
                             ],
                           );
                         },
                       );
-                      await projectCountManager.decrementProjectCount();
-                      await projectCountManager.fetchTotalProjectCount();
-                      await projectCountManager.updateProjectCount();
+                      print('Project deleted successfully.');
                       setState(() {
-                        projects.removeWhere((project) => project.id == projectId);
-                        filteredprojects.removeWhere((project) => project.id == projectId);
+                        Navigator.pop(context);
+                        Navigator.pop(context, true); // Sending a result back to the previous screen
                       });
+
                     } else {
                       print('Failed to delete Project.');
                       // Handle other status codes, if needed
@@ -519,6 +587,149 @@ class _AssignedToMeState extends State<AssignedToMe> {
     } catch (e) {
       print('Error showing delete confirmation dialog: $e');
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      height: double.infinity,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Project Name",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+            ),
+            SizedBox(height: 10,),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.grey,
+                  width: 1.0,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "${widget.project.name}",
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              "Due Date",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+            ),
+            SizedBox(height: 10,),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.grey,
+                  width: 1.0,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "${formatDate(widget.project.dueDate)}",
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              "Status",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+            ),
+            SizedBox(height: 10,),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.grey,
+                  width: 1.0,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "${widget.project.status}",
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              "Active",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+            ),
+            SizedBox(height: 10,),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.grey,
+                  width: 1.0,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "${widget.project.active}",
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(height: 30,width: 70,child: RoundButton(
+                  onPressed: () async {
+                    bool edited = await Navigator.push(context,MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project)));
+
+                    if (edited == true) {
+                      // Fetch tasks using your API call here
+                      await fetchMyProjects();
+                    }
+                  },
+                  title: "Edit",
+                ),),
+                SizedBox(width: 50,),
+                SizedBox(height: 30,width: 70,child: RoundButton(
+                  onPressed: (){
+                    _deleteProject("${widget.project.id}");
+                  },
+                  title: "Delete",
+                ),),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
