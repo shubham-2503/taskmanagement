@@ -151,7 +151,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
     print("Token found: $token");
 
-    final url = Uri.parse('http://43.205.97.189:8000/api/UserAuth/verifyOtp?user_id=$userId&otp=$otp&email=$email&role_id=$roleId&device_token=$token');
+    final url = Uri.parse('http://43.205.97.189:8000/api/UserAuth/verifyOtp?user_id=$userId&otp=$otp&email=$email&role_id=$roleId');
+
+    print("URL with Query Parameters: ${url.toString()}");
 
     try {
       final response = await http.post(url, headers: {
@@ -161,7 +163,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         'role_id': roleId, // Replace with the user's role ID
         'user_id': userId,
         'otp': otp,
-        'device_token' : token,
+        // 'device_token' : token,
       });
 
       print("Api response: ${response.body}");
