@@ -93,12 +93,6 @@ class _SubscriptionsPlanState extends State<SubscriptionsPlan> {
         ],
       ),
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/bagroud.png"), // Replace with your background image
-            fit: BoxFit.cover,
-          ),
-        ),
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.only(top: 16.0),

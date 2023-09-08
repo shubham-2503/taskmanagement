@@ -4,12 +4,13 @@ import '../utils/app_colors.dart';
 
 enum RoundButtonType { primaryBG, secondaryBG }
 
-class RoundButton extends StatelessWidget {
+class RoundButton extends StatefulWidget {
   final String title;
   final RoundButtonType type;
   final IconData? icon;
   final Function() onPressed;
   final List<DropdownMenuItem<String>>? items;
+  final bool isClickable;
 
   const RoundButton({
     Key? key,
@@ -17,15 +18,22 @@ class RoundButton extends StatelessWidget {
     required this.onPressed,
     this.type = RoundButtonType.secondaryBG,
     this.icon,
-    this.items,
+    this.items, this.isClickable = true,
   }) : super(key: key);
+
+  @override
+  State<RoundButton> createState() => _RoundButtonState();
+}
+
+class _RoundButtonState extends State<RoundButton> {
+  bool isClicked = false;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: type == RoundButtonType.secondaryBG
+          colors: widget.type == RoundButtonType.secondaryBG
               ? AppColors.secondaryG
               : AppColors.primaryG,
           begin: Alignment.centerLeft,
@@ -42,11 +50,11 @@ class RoundButton extends StatelessWidget {
       ),
       child: PopupMenuButton<String>(
         itemBuilder: (BuildContext context) {
-          if (items == null || items!.isEmpty) {
+          if (widget.items == null || widget.items!.isEmpty) {
             return [];
           }
 
-          return items!.map((DropdownMenuItem<String> item) {
+          return widget.items!.map((DropdownMenuItem<String> item) {
             return PopupMenuItem<String>(
               value: item.value,
               child: ListTile(
@@ -61,7 +69,14 @@ class RoundButton extends StatelessWidget {
         child: MaterialButton(
           minWidth: double.maxFinite,
           height: 50,
-          onPressed: onPressed,
+          onPressed: (widget.isClickable && !isClicked)
+              ? () {
+            setState(() {
+              isClicked = true;
+            });
+            widget.onPressed();
+          }
+              : null,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),
           ),
@@ -69,16 +84,16 @@ class RoundButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
+              if (widget.icon != null) ...[
                 Icon(
-                  icon,
+                  widget.icon,
                   color: AppColors.whiteColor,
                   size: 16,
                 ),
                 SizedBox(width: 8),
               ],
               Text(
-                title,
+                widget.title,
                 style: TextStyle(
                   fontSize: 11,
                   color: AppColors.whiteColor,

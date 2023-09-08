@@ -107,9 +107,12 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
 
       final body = jsonEncode({
         "name": _titleController.text.toString(),
-        "start_date": _startDate?.toUtc().toIso8601String(),
-        "end_date": _endDate?.toUtc().toIso8601String(),
-        "status" : _selectedStatus,
+        "start_date": _startDate!.toUtc().toIso8601String(),
+        "end_date": _endDate!.toUtc().toIso8601String(),
+       /* "start_date": _startDate?.toUtc().toIso8601String(),
+        "end_date": _endDate?.toUtc().toIso8601String(),*/
+
+        "status" : _selectedStatus!, //changes
         "team_id": _selectedTeams, // Remove the square brackets here
         "user_id": _selectedMembers, // Remove the square brackets here
       });

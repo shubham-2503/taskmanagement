@@ -154,12 +154,6 @@ class _SignupScreenState extends State<SignupScreen> {
       backgroundColor: AppColors.whiteColor,
       body: SingleChildScrollView(
         child: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage("assets/images/bagroud.png"), // Replace with your background image
-              fit: BoxFit.cover,
-            ),
-          ),
           margin: const EdgeInsets.only(top: 10,),
           child: Padding(
             padding: EdgeInsets.only(top: 200,left: 20,right: 20),

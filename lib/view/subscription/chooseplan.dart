@@ -22,6 +22,7 @@ class ChoosePlan extends StatefulWidget {
 class _ChoosePlanState extends State<ChoosePlan> {
   List<SubscriptionPlan> plans = [];
 
+
   Future<void> fetchSubscriptionPlans() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -63,38 +64,121 @@ class _ChoosePlanState extends State<ChoosePlan> {
 
   void addSubscriptionToAccount(String orgId, String planId) async {
     try {
-      final requestBody = {
-        'org_id': widget.orgId,
-        'plan_id': planId,
-      };
-      final response = await http.post(
-        Uri.parse('http://43.205.97.189:8000/api/Subscription/addSubscription?org_id=$orgId&plan_id=$planId'),
-        headers: {
-          'accept': '*/*',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(requestBody),
-      );
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final orgID = prefs.getString('org_id');
 
-      print("Plan Id: $planId");
-      print("Org Id: $orgId");
+      if (orgID != null) {
+        final requestBody = {
+          'org_id': orgId,
+          'plan_id': planId,
+        };
+        final response = await http.post(
+          Uri.parse('http://43.205.97.189:8000/api/Subscription/addSubscription?org_id=$orgId&plan_id=$planId'),
+          headers: {
+            'accept': '*/*',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(requestBody),
+        );
 
-      print('API Response: ${response.body}');
-      print('StatusCode: ${response.statusCode}');
+        print("Plan Id: $planId");
+        print("Org Id: $orgId");
 
-      if (response.statusCode == 200) {
-        print("Successfully added");
-      } else {
         print('API Response: ${response.body}');
-        print("StatusCode: ${response.statusCode}");
-        // Subscription failed to be added
-        // Handle the error scenario
+        print('StatusCode: ${response.statusCode}');
+
+        if (response.statusCode == 200) {
+          print("Successfully added");
+        } else {
+          print('API Response: ${response.body}');
+          print("StatusCode: ${response.statusCode}");
+          // Subscription failed to be added
+          // Handle the error scenario
+        }
+      } else {
+        print("Company Id can't be null");
       }
     } catch (e) {
       print('Exception: $e');
       // Handle the exception and display an error message to the user
     }
   }
+
+
+
+  // Future<void> fetchSubscriptionPlans() async {
+  //   try {
+  //     final SharedPreferences prefs = await SharedPreferences.getInstance();
+  //     final storedData = prefs.getString('jwtToken');
+  //
+  //     if (storedData != null) {
+  //       final response = await http.get(
+  //         Uri.parse('http://43.205.97.189:8000/api/Platform/getSubscriptionPlans'),
+  //         headers: {'accept': '*/*'},
+  //       );
+  //
+  //       print('API Response: ${response.body}');
+  //       print("StatusCode: ${response.statusCode}");
+  //
+  //       if (response.statusCode == 200) {
+  //         final List<dynamic> responseData = jsonDecode(response.body);
+  //         print('API Response: $responseData');
+  //
+  //         final List<SubscriptionPlan> subscriptionPlans = responseData.map(
+  //               (jsonPlan) => SubscriptionPlan.fromJson(jsonPlan),
+  //         ).toList();
+  //
+  //         setState(() {
+  //           plans = subscriptionPlans;
+  //         });
+  //       } else {
+  //         print('API Error: ${response.statusCode}');
+  //         // Handle the error and display an error message to the user
+  //       }
+  //     } else {
+  //       print("'jwtToken' is null");
+  //       // Handle the case when 'jwtToken' is null
+  //     }
+  //   } catch (e) {
+  //     print('Exception: $e');
+  //     // Handle the error and display an error message to the user
+  //   }
+  // }
+  //
+  // void addSubscriptionToAccount(String orgId, String planId) async {
+  //   try {
+  //     final requestBody = {
+  //       'org_id': widget.orgId,
+  //       'plan_id': planId,
+  //     };
+  //     final response = await http.post(
+  //       Uri.parse('http://43.205.97.189:8000/api/Subscription/addSubscription?org_id=$orgId&plan_id=$planId'),
+  //       headers: {
+  //         'accept': '*/*',
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: jsonEncode(requestBody),
+  //     );
+  //
+  //     print("Plan Id: $planId");
+  //     print("Org Id: $orgId");
+  //
+  //     print('API Response: ${response.body}');
+  //     print('StatusCode: ${response.statusCode}');
+  //
+  //     if (response.statusCode == 200) {
+  //       print("Successfully added");
+  //     } else {
+  //       print('API Response: ${response.body}');
+  //       print("StatusCode: ${response.statusCode}");
+  //       // Subscription failed to be added
+  //       // Handle the error scenario
+  //     }
+  //   } catch (e) {
+  //     print('Exception: $e');
+  //     // Handle the exception and display an error message to the user
+  //   }
+  // }
 
   @override
   void initState() {
@@ -111,12 +195,6 @@ class _ChoosePlanState extends State<ChoosePlan> {
         iconTheme: IconThemeData(color: Colors.black),
       ),
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/bagroud.png"), // Replace with your background image
-            fit: BoxFit.cover,
-          ),
-        ),
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.only(top: 16.0),

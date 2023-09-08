@@ -608,7 +608,6 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
                         Navigator.pop(context);
                         Navigator.pop(context, true); // Sending a result back to the previous screen
                       });
-
                     } else {
                       print('Failed to delete Project.');
                       // Handle other status codes, if needed
@@ -747,7 +746,10 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
               children: [
                 SizedBox(height: 30,width: 70,child: RoundButton(
                   onPressed: () async {
-                    bool edited = await Navigator.push(context,MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project)));
+                    bool edited = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => EditMyProject(project: widget.project)),
+                    ) ?? false; // Provide a default value of false if edited is null
 
                     if (edited == true) {
                       // Fetch tasks using your API call here

@@ -20,12 +20,6 @@ class _UpgradePlanScreenState extends State<UpgradePlanScreen> {
     return Scaffold(
       appBar: AppBar(),
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/background.png"), // Replace with your background image
-            fit: BoxFit.cover,
-          ),
-        ),
         padding: EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

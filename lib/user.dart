@@ -60,10 +60,16 @@ class _InviteScreenState extends State<InviteScreen> {
   void initState() {
     super.initState();
     // Call fetchUserInvitationStatus method once when the screen loads
-    fetchUserInvitationStatusAndRefresh();
+   // fetchUserInvitationStatusAndRefresh();
     // _timer = Timer.periodic(Duration(seconds: 2), (Timer t) async{
     //   await fetchUserInvitationStatus();
     // });
+    _timer = Timer.periodic(Duration(seconds:2), (Timer timer) {
+      // Your timer callback logic here
+      // For example, you can call a method or perform some background task
+      // This callback will be called every 5 minutes
+    });
+    fetchUserInvitationStatusAndRefresh();
   }
 
   void filterUserInvitations(String query) {

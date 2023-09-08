@@ -1,6 +1,4 @@
 import 'dart:io';
-
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/tokenManager.dart';
@@ -40,14 +38,6 @@ class _StartScreenState extends State<StartScreen> {
     var media = MediaQuery.of(context).size;
     return Scaffold(
       body: Container(
-        // width: media.width,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(
-                "assets/images/background.png"), // Replace with your background image
-            fit: BoxFit.cover,
-          ),
-        ),
         child: Padding(
           padding: const EdgeInsets.only(top: 80),
           child: Column(
@@ -62,7 +52,7 @@ class _StartScreenState extends State<StartScreen> {
                   minWidth: double.maxFinite,
                   height: 50,
                   onPressed: () async {
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=>LoginScreen()));
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>const LoginScreen()));
                   },
                   color: AppColors.primaryColor2,
                   shape: RoundedRectangleBorder(

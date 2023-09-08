@@ -218,12 +218,6 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     var media = MediaQuery.of(context).size;
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/background.png"), // Replace with your background image
-            fit: BoxFit.fill,
-          ),
-        ),
         child: Padding(
           padding: EdgeInsets.only(top: 100,left: 20,right: 20),
           child: SingleChildScrollView(

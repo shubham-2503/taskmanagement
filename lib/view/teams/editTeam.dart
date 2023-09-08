@@ -76,18 +76,18 @@ class _EditTeamPageState extends State<EditTeamPage> {
       print("Decode Data: $requestBody");
 
       if (response.statusCode == 200) {
-        print('Team updated successfully with name.');
         String message = "Team updated successfully name.";
-        _showDialog(message);
+        _showDialog(context,message);
+        print('Team updated successfully with name.');
       } else {
-        print('Failed to update team name.');
         String message = "Failed to update team name.";
-        _showDialog(message);
+        _showDialog(context,message);
+        print('Failed to update team name.');
       }
     } catch (e) {
-      print('Error updating team name: $e');
       String message = "Error updating team name: $e";
-      _showDialog(message);
+      _showDialog(context,message);
+      print('Error updating team name: $e');
     }
   }
 
@@ -207,21 +207,23 @@ class _EditTeamPageState extends State<EditTeamPage> {
     }
   }
 
-  void _showDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context,true);
-            },
-            child: Text("Ok"),
-          ),
-        ],
-      ),
-    );
+  void _showDialog(BuildContext? context, String message) {
+    if (context != null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              child: Text("Ok"),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Future<void> _showMembersDropdown(BuildContext context) async {
@@ -470,4 +472,5 @@ class _EditTeamPageState extends State<EditTeamPage> {
       ),
     );
   }
+
 }

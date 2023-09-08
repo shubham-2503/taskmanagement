@@ -173,12 +173,6 @@ class _AddOrganizationState extends State<AddOrganization> {
     var media = MediaQuery.of(context).size;
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/background.png"),
-            fit: BoxFit.fill,
-          ),
-        ),
         child: Padding(
           padding: EdgeInsets.only(top: 100, left: 20, right: 20),
           child: Column(

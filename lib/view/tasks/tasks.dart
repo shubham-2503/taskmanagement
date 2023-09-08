@@ -29,6 +29,8 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
 
   @override
   void initState() {
+
+
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
@@ -46,6 +48,7 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
         }
       });
     });
+    selectedFilters = {};
     fetchAndRefreshTasks();
   }
 

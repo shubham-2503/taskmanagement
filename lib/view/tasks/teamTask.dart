@@ -5,6 +5,7 @@ import 'package:Taskapp/view/tasks/taskDetails.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../../Providers/taskProvider.dart';
 import '../../common_widgets/round_button.dart';
 import '../../common_widgets/round_textfield.dart';
 import '../../models/fetch_user_model.dart';
@@ -435,9 +436,9 @@ class TaskDetailsModal extends StatefulWidget {
 
 class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
-  List<Task> mytasks = [];
+  List<Task> teamtasks = [];
 
-  Future<void> fetchMyTasks() async {
+  Future<void> fetchTeamTasks() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -455,7 +456,12 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
         throw Exception('orgId not found locally');
       }
 
-      final url = Uri.http('43.205.97.189:8000', '/api/Task/myTasks', );
+      // Use the selected filters to build the query parameters
+      Map<String, String?> queryParameters = {
+        'org_id': orgId,
+      };
+
+      final url = Uri.http('43.205.97.189:8000', '/api/Task/teamsTask', queryParameters);
 
       final headers = {
         'accept': '*/*',
@@ -499,7 +505,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
         }).toList();
 
         setState(() {
-          mytasks = fetchedTasks;
+          teamtasks = fetchedTasks;
         });
       } else {
         print('Error fetching tasks: ${response.statusCode}');
@@ -511,13 +517,14 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
   void _deleteTask(String taskId) async {
     try {
-      // Show a confirmation dialog for deleting the project
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      TaskCountManager taskCountManager = TaskCountManager(prefs);
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
             title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this task?'),
+            content: Text('Are you sure you want to delete this Task?'),
             actions: [
               TextButton(
                 child: Text('Cancel'),
@@ -527,10 +534,10 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
               ),
               TextButton(
                 onPressed: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Close the confirmation dialog
+
                   try {
-                    SharedPreferences prefs =
-                    await SharedPreferences.getInstance();
+                    SharedPreferences prefs = await SharedPreferences.getInstance();
                     final storedData = prefs.getString('jwtToken');
                     String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
@@ -546,8 +553,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                     }
 
                     final response = await http.delete(
-                      Uri.parse(
-                          'http://43.205.97.189:8000/api/Task/tasks/$taskId'),
+                      Uri.parse('http://43.205.97.189:8000/api/Task/tasks/$taskId'),
                       headers: {
                         'accept': '*/*',
                         'Authorization': "Bearer $storedData",
@@ -567,7 +573,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                             actions: [
                               InkWell(
                                 onTap: () {
-                                  Navigator.pop(context,true);
+                                  Navigator.pop(context);
                                   Navigator.pop(context,true);
                                 },
                                 child: Text(
@@ -585,9 +591,9 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                         Navigator.pop(context);
                         Navigator.pop(context, true); // Sending a result back to the previous screen
                       });
-
+                      await fetchTeamTasks();
                     } else {
-                      print('Failed to delete task.');
+                      print('Failed to delete Task.');
                       // Handle other status codes, if needed
                     }
                   } catch (e) {
@@ -599,9 +605,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
             ],
           );
         },
-      ).then((value) {
-
-      });
+      );
     } catch (e) {
       print('Error showing delete confirmation dialog: $e');
     }
@@ -772,7 +776,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
                     if (edited == true) {
                       // Fetch tasks using your API call here
-                      await fetchMyTasks();
+                      await fetchTeamTasks();
                     }
                   },
                   title: "Edit",

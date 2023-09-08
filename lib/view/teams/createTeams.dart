@@ -249,12 +249,6 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
 
       ),
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/background.png"), // Replace with your background image
-            fit: BoxFit.fill,
-          ),
-        ),
         child: Padding(
           padding: EdgeInsets.only(top: 80),
           child: Form(

@@ -15,12 +15,6 @@ class BackToLogin extends StatelessWidget {
     var media = MediaQuery.of(context).size;
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/background.png"), // Replace with your background image
-            fit: BoxFit.fill,
-          ),
-        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 25),
           child: Column(

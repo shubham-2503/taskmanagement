@@ -55,7 +55,7 @@ class _UserProfileState extends State<UserProfile> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
     String? orgId =
-        prefs.getString("selectedOrgId"); // Get the selected organization ID
+    prefs.getString("selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -85,7 +85,7 @@ class _UserProfileState extends State<UserProfile> {
       if (responseData.isNotEmpty) {
         // Get the first organization as the default organization
         final Map<String, dynamic> userProfileData =
-            responseData[0] as Map<String, dynamic>;
+        responseData[0] as Map<String, dynamic>;
         final String userIds = userProfileData['user_id'];
         setState(() {
           userId = userIds;
@@ -100,7 +100,10 @@ class _UserProfileState extends State<UserProfile> {
   }
 
   void _logOut(BuildContext context) async {
-    // Show a confirmation dialog to the user
+    if (!mounted) {
+      return; // Return early if the widget is not mounted
+    }
+
     bool confirmLogout = await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -110,15 +113,35 @@ class _UserProfileState extends State<UserProfile> {
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                // Close the dialog and set confirmLogout to false
                 Navigator.of(context).pop(false);
               },
               child: Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                // Close the dialog and set confirmLogout to true
+              onPressed: () async {
                 Navigator.of(context).pop(true);
+
+                SharedPreferences? prefs;
+                try {
+                  prefs = await SharedPreferences.getInstance();
+                } catch (e) {
+                  print('Error initializing SharedPreferences: $e');
+                  return;
+                }
+
+                if (prefs != null) {
+                  prefs.clear();
+
+                  // Delay navigation to the LoginScreen by a short duration (e.g., 100 milliseconds)
+                  await Future.delayed(Duration(milliseconds: 300));
+
+                  // Rebuild the app and start a new route stack with LoginScreen
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => LoginScreen()),
+                        (route) => false,
+                  );
+                }
               },
               child: Text('Logout'),
             ),
@@ -129,18 +152,26 @@ class _UserProfileState extends State<UserProfile> {
 
     // If the user confirmed, proceed with logout
     if (confirmLogout == true) {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      prefs.clear(); // Remove all stored data
+      SharedPreferences? prefs;
+      try {
+        prefs = await SharedPreferences.getInstance();
+      } catch (e) {
+        print('Error initializing SharedPreferences: $e');
+      }
 
-      // Delay navigation to the LoginScreen by a short duration (e.g., 100 milliseconds)
-      await Future.delayed(Duration(milliseconds: 300));
+      if (prefs != null) {
+        prefs.clear();
 
-      // Rebuild the app and start a new route stack with LoginScreen
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
-            (route) => false,
-      );
+        // Delay navigation to the LoginScreen by a short duration (e.g., 100 milliseconds)
+        await Future.delayed(Duration(milliseconds: 300));
+
+        // Rebuild the app and start a new route stack with LoginScreen
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => LoginScreen()),
+              (route) => false,
+        );
+      }
     }
   }
 
@@ -156,8 +187,8 @@ class _UserProfileState extends State<UserProfile> {
     }
   }
 
-  Future<void> deleteOrganizationWithConfirmation(
-      BuildContext context, String orgId) async {
+  Future<void> deleteOrganizationWithConfirmation(BuildContext context,
+      String orgId) async {
     print("orgId: $orgId");
     bool confirmDelete = await showDialog(
       context: context,
@@ -196,31 +227,33 @@ class _UserProfileState extends State<UserProfile> {
         String errorMessage = "Organization delete successfully";
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: Text("Success"),
-            content: Text(errorMessage),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("OK"),
+          builder: (context) =>
+              AlertDialog(
+                title: Text("Success"),
+                content: Text(errorMessage),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("OK"),
+                  ),
+                ],
               ),
-            ],
-          ),
         );
       } else {
         String errorMessage = "Failed to delete the organization!!!";
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: Text("OOPs"),
-            content: Text(errorMessage),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("OK"),
+          builder: (context) =>
+              AlertDialog(
+                title: Text("OOPs"),
+                content: Text(errorMessage),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("OK"),
+                  ),
+                ],
               ),
-            ],
-          ),
         );
       }
     }
@@ -231,14 +264,16 @@ class _UserProfileState extends State<UserProfile> {
     super.initState();
     _getAppVersion();
     _loadUserProfile();
-    // Call fetchOrganizationList() when the screen is built
-    Provider.of<OrganizationProvider>(context, listen: false)
-        .fetchOrganizationList();
-    Provider.of<OrganizationProvider>(context, listen: false)
-        .fetchOrganizationList();
-    fetchUserProfile().then((data) {
+    _fetchOrganizationList();
+  }
+
+
+  Future<void> _fetchOrganizationList() async {
+    try {
+      await Provider.of<OrganizationProvider>(context, listen: false)
+          .fetchOrganizationList();
+
       setState(() {
-        userProfileData = data;
         if (userProfileData.containsKey('subscription') &&
             userProfileData['subscription'].isNotEmpty) {
           latestSubscription = userProfileData['subscription'].last;
@@ -252,17 +287,28 @@ class _UserProfileState extends State<UserProfile> {
         print("subscription: $latestSubscription");
         print("Organization Data: $organization");
       });
-    }).catchError((error) {
+    } catch (error) {
       print('Error fetching user profile: $error');
-    });
+    }
   }
 
+
+
   Future<void> _getAppVersion() async {
-    PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    setState(() {
-      _appVersion = packageInfo.version;
-    });
+    PackageInfo? packageInfo;
+    try {
+      packageInfo = await PackageInfo.fromPlatform();
+    } catch (e) {
+      print('Error getting package info: $e');
+    }
+
+    if (packageInfo != null) {
+      setState(() {
+        _appVersion = packageInfo!.version;
+      });
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -1082,35 +1128,37 @@ class _UserProfileState extends State<UserProfile> {
 }
 
 void _showMoreOptionsModal(BuildContext context, Map<String, dynamic> org) {
-  showModalBottomSheet(
-    context: context,
-    builder: (context) {
-      return Container(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                // Handle edit organization logic here
-                Navigator.pop(context); // Close the modal
-              },
-              child: Text('Edit Organization'),
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                // Handle delete organization logic here
-                Navigator.pop(context); // Close the modal
-              },
-              child: Text('Delete Organization'),
-            ),
-          ],
-        ),
-      );
-    },
-  );
+  if (org != null) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  // Handle edit organization logic here
+                  Navigator.pop(context); // Close the modal
+                },
+                child: Text('Edit Organization'),
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  // Handle delete organization logic here
+                  Navigator.pop(context); // Close the modal
+                },
+                child: Text('Delete Organization'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 String _formatDate(String dateString) {

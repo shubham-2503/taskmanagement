@@ -45,8 +45,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     FirebaseMessaging.instance.getInitialMessage().then((message) {});
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // Handle foreground messages
-      handleNotificationReceived();
+      // // Handle foreground messages
+      // handleNotificationReceived();
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {

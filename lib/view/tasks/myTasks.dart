@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:Taskapp/Providers/taskProvider.dart';
 import 'package:Taskapp/view/tasks/MistaskCreation.dart';
 import 'package:Taskapp/view/tasks/editMyTaks.dart';
 import 'package:Taskapp/view/tasks/taskDetails.dart';
@@ -507,13 +508,14 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
   void _deleteTask(String taskId) async {
     try {
-      // Show a confirmation dialog for deleting the project
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      TaskCountManager taskCountManager = TaskCountManager(prefs);
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
             title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this task?'),
+            content: Text('Are you sure you want to delete this Task?'),
             actions: [
               TextButton(
                 child: Text('Cancel'),
@@ -523,10 +525,10 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
               ),
               TextButton(
                 onPressed: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Close the confirmation dialog
+
                   try {
-                    SharedPreferences prefs =
-                    await SharedPreferences.getInstance();
+                    SharedPreferences prefs = await SharedPreferences.getInstance();
                     final storedData = prefs.getString('jwtToken');
                     String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
@@ -542,8 +544,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                     }
 
                     final response = await http.delete(
-                      Uri.parse(
-                          'http://43.205.97.189:8000/api/Task/tasks/$taskId'),
+                      Uri.parse('http://43.205.97.189:8000/api/Task/tasks/$taskId'),
                       headers: {
                         'accept': '*/*',
                         'Authorization': "Bearer $storedData",
@@ -563,7 +564,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                             actions: [
                               InkWell(
                                 onTap: () {
-                                  Navigator.pop(context,true);
+                                  Navigator.pop(context);
                                   Navigator.pop(context,true);
                                 },
                                 child: Text(
@@ -583,7 +584,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                       });
 
                     } else {
-                      print('Failed to delete task.');
+                      print('Failed to delete Task.');
                       // Handle other status codes, if needed
                     }
                   } catch (e) {
@@ -595,9 +596,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
             ],
           );
         },
-      ).then((value) {
-
-      });
+      );
     } catch (e) {
       print('Error showing delete confirmation dialog: $e');
     }

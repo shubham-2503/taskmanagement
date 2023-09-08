@@ -218,12 +218,6 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Padding(
         padding: const EdgeInsets.only(top: 70),
         child: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage("assets/images/bagroud.png"), // Replace with your background image
-              fit: BoxFit.cover,
-            ),
-          ),
           padding: const EdgeInsets.all(30),
           child: Column(
             children: [
