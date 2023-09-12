@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pin_code_fields/pin_code_fields.dart';
@@ -166,7 +165,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     print("Token found: $token");
 
     final url = Uri.parse(
-        'http://43.205.97.189:8000/api/UserAuth/verifyOtp?user_id=${userId ?? ''}&otp=$otp&email=${email ?? ''}&role_id=${roleId ?? ''}&device_token=$token');
+        'http://43.205.97.189:8000/api/UserAuth/verifyOtp?user_id=${userId ?? ''}&otp=$otp&email=${email ?? ''}&role_id=${roleId ?? ''}&device_token= $token');
 
     try {
       final response = await http.post(url, headers: {
@@ -179,6 +178,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         'device_token': token ?? '',
       });
 
+      // Print the URL to the console
+      print("Request URL: $url");
       print("Api response: ${response.body}");
       print("code: ${response.statusCode}");
       if (response.statusCode == 200) {

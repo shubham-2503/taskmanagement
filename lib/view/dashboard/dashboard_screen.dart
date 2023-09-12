@@ -24,7 +24,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   late List<Widget> _widgetOptions;
 
-
   @override
   bool get wantKeepAlive => true;
 
@@ -35,22 +34,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    print("Initializing Firebase Messaging...");
     _widgetOptions = [
       HomeScreen(),
       InviteScreen(refreshCallback: refreshTabScreen),
       ReportScreen(refreshCallback: refreshTabScreen),
       UserProfile(refreshCallback: refreshTabScreen),
     ];
+
     // Initialize Firebase messaging and handle incoming messages
-    FirebaseMessaging.instance.getInitialMessage().then((message) {});
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      print("Got initial message: $message");
+    });
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // // Handle foreground messages
-      // handleNotificationReceived();
+      print("Received a message: $message");
+      handleNotificationReceived();
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      // Handle when the app is opened from a notification
+      print("Opened the app from a notification: $message");
     });
   }
 
@@ -59,7 +62,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       notificationCount++; // Increase the notification count
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +91,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               TabButton(
-                title: "Home",
+                  title: "Home",
                   icon: "assets/images/home.png",
                   selectIcon: "assets/images/home_select.png",
                   isActive: selectTab == 0,
@@ -154,10 +156,10 @@ class TabButton extends StatelessWidget {
   const TabButton(
       {Key? key,
         required this.title,
-      required this.icon,
-      required this.selectIcon,
-      required this.isActive,
-      required this.onTap})
+        required this.icon,
+        required this.selectIcon,
+        required this.isActive,
+        required this.onTap})
       : super(key: key);
 
   @override
@@ -189,5 +191,3 @@ class TabButton extends StatelessWidget {
     );
   }
 }
-
-

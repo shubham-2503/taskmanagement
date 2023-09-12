@@ -315,37 +315,16 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Center(
-                      child: Text(
-                        '${task.taskName}',
-                        style: TextStyle(
-                          color: AppColors.secondaryColor2,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                // Display the task name
+                Center(
+                  child: Text(
+                    '${task.taskName}',
+                    style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
-                          },
-                        ),
-                        Text(
-                          'TaskDetails',
-                          style: TextStyle(
-                            color: AppColors.secondaryColor2,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: 16),
                 // Display assigned users
@@ -365,15 +344,6 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  trailing: IconButton(
-                    icon: Icon(
-                      Icons.remove_circle,
-                      color: AppColors.secondaryColor2,
-                    ),
-                    onPressed: () async {
-                      // Handle delete action
-                    },
                   ),
                 )),
                 SizedBox(height: 16),
@@ -399,19 +369,28 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        trailing: IconButton(
-                          icon: Icon(
-                            Icons.remove_circle,
-                            color: AppColors.secondaryColor2,
-                          ),
-                          onPressed: () async {
-                            // Handle delete action
-                          },
-                        ),
                       )),
                     ],
                   ),
                 SizedBox(height: 16),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
+                      },
+                    ),
+                    Text(
+                      'TaskDetails',
+                      style: TextStyle(
+                        color: AppColors.secondaryColor2,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -565,24 +544,23 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                               InkWell(
                                 onTap: () {
                                   Navigator.pop(context);
-                                  Navigator.pop(context,true);
+                                  Navigator.pop(context, true); // Sending a result back to the previous screen
                                 },
                                 child: Text(
                                   "OK",
                                   style: TextStyle(
-                                      color: AppColors.blackColor, fontSize: 20),
+                                    color: AppColors.blackColor,
+                                    fontSize: 20,
+                                  ),
                                 ),
                               )
                             ],
                           );
                         },
                       );
-                      print('Task deleted successfully.');
-                      setState(() {
-                        Navigator.pop(context);
-                        Navigator.pop(context, true); // Sending a result back to the previous screen
-                      });
 
+                      print('Task deleted successfully.');
+                      Navigator.pop(context, true);
                     } else {
                       print('Failed to delete Task.');
                       // Handle other status codes, if needed

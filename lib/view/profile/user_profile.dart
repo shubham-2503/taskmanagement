@@ -1,7 +1,5 @@
 import 'dart:convert';
-import 'package:Taskapp/view/on_boarding/start_screen.dart';
 import 'package:Taskapp/view/profile/addOrganization.dart';
-import 'package:Taskapp/view/profile/widgets/confirmationModal.dart';
 import 'package:Taskapp/view/subscription/subscriptions.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
@@ -100,11 +98,7 @@ class _UserProfileState extends State<UserProfile> {
   }
 
   void _logOut(BuildContext context) async {
-    if (!mounted) {
-      return; // Return early if the widget is not mounted
-    }
-
-    bool confirmLogout = await showDialog(
+    bool? confirmLogout = await showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -113,13 +107,15 @@ class _UserProfileState extends State<UserProfile> {
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(false);
+                // Close the dialog and set confirmLogout to false
+                Navigator.of(context)?.pop(false); // Use null-aware operator
               },
               child: Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.of(context).pop(true);
+                // Close the dialog and set confirmLogout to true
+                Navigator.of(context)?.pop(true); // Use null-aware operator
 
                 SharedPreferences? prefs;
                 try {
@@ -129,19 +125,17 @@ class _UserProfileState extends State<UserProfile> {
                   return;
                 }
 
-                if (prefs != null) {
-                  prefs.clear();
+                prefs?.clear(); // Use null-aware operator to check prefs
 
-                  // Delay navigation to the LoginScreen by a short duration (e.g., 100 milliseconds)
-                  await Future.delayed(Duration(milliseconds: 300));
+                // Delay navigation to the LoginScreen by a short duration (e.g., 100 milliseconds)
+                await Future.delayed(Duration(milliseconds: 300));
 
-                  // Rebuild the app and start a new route stack with LoginScreen
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => LoginScreen()),
-                        (route) => false,
-                  );
-                }
+                // Rebuild the app and start a new route stack with LoginScreen
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                      (route) => false,
+                );
               },
               child: Text('Logout'),
             ),
@@ -150,28 +144,14 @@ class _UserProfileState extends State<UserProfile> {
       },
     );
 
-    // If the user confirmed, proceed with logout
     if (confirmLogout == true) {
-      SharedPreferences? prefs;
-      try {
-        prefs = await SharedPreferences.getInstance();
-      } catch (e) {
-        print('Error initializing SharedPreferences: $e');
-      }
-
-      if (prefs != null) {
-        prefs.clear();
-
-        // Delay navigation to the LoginScreen by a short duration (e.g., 100 milliseconds)
-        await Future.delayed(Duration(milliseconds: 300));
-
-        // Rebuild the app and start a new route stack with LoginScreen
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => LoginScreen()),
-              (route) => false,
-        );
-      }
+      // Rebuild the app and start a new route stack with LoginScreen
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+            (route) => false,
+      );
+      setState(() {});
     }
   }
 
@@ -746,7 +726,7 @@ class _UserProfileState extends State<UserProfile> {
               ),
               Visibility(
                 visible:
-                    latestSubscription != null && latestSubscription.isNotEmpty,
+                    latestSubscription.isNotEmpty,
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
@@ -1128,37 +1108,35 @@ class _UserProfileState extends State<UserProfile> {
 }
 
 void _showMoreOptionsModal(BuildContext context, Map<String, dynamic> org) {
-  if (org != null) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ElevatedButton(
-                onPressed: () {
-                  // Handle edit organization logic here
-                  Navigator.pop(context); // Close the modal
-                },
-                child: Text('Edit Organization'),
-              ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  // Handle delete organization logic here
-                  Navigator.pop(context); // Close the modal
-                },
-                child: Text('Delete Organization'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  showModalBottomSheet(
+    context: context,
+    builder: (context) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                // Handle edit organization logic here
+                Navigator.pop(context); // Close the modal
+              },
+              child: Text('Edit Organization'),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Handle delete organization logic here
+                Navigator.pop(context); // Close the modal
+              },
+              child: Text('Delete Organization'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 String _formatDate(String dateString) {

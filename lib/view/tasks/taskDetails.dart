@@ -405,6 +405,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>  with SingleTicke
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         actions: [
           IconButton(
@@ -597,7 +598,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>  with SingleTicke
       },
     );
   }
-
 }
 
 String formatDate(String? dateString) {

@@ -612,28 +612,123 @@ class _CommentScreenState extends State<CommentScreen> {
           }),
         ],
       ),
-      subtitle: Row(
+      subtitle: Column(
         children: [
-          Text(
-            '${DateFormat('dd MMMM, yyyy').format(DateTime.parse(comment.commentTime))}',
-            style: TextStyle(
-              fontStyle: FontStyle.italic,
-              fontSize: 12,
-            ),
-          ),
-          SizedBox(width: 10),
-          InkWell(
-            onTap: () {
-              setState(() {
-                showReplies = !showReplies;
-              });
-            },
-            child: Text(
-              "View ${comment.replies.length} comments",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.secondaryColor2,
+          Row(
+            children: [
+              Text(
+                '${DateFormat('dd MMMM, yyyy').format(DateTime.parse(comment.commentTime))}',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  fontSize: 12,
+                ),
               ),
+              SizedBox(width: 10),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    showReplies = !showReplies;
+                  });
+                },
+                child: Text(
+                  "View ${comment.replies.length} comments",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.secondaryColor2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Visibility(
+            visible: showReplies,
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: comment.replies.length,
+              itemBuilder: (BuildContext context, int index) {
+                final reply = comment.replies[index];
+
+                final replyTaggedUserNames = reply.taggedUsers.map((user) => "@${user['name']}").join(', ');
+                final replyTextParts = reply.replyText.split(" ");
+                final replyTextSpans = <InlineSpan>[];
+
+                if (replyTaggedUserNames.isNotEmpty) {
+                  replyTextSpans.add(
+                    TextSpan(
+                      text: replyTaggedUserNames,
+                      style: TextStyle(
+                        color: AppColors.primaryColor2,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                  replyTextSpans.add(const TextSpan(text: " "));
+                }
+
+                replyTextSpans.addAll(replyTextParts.map((textPart) {
+                  if (!textPart.startsWith("@")) {
+                    return TextSpan(
+                      text: textPart,
+                      style: TextStyle(color: AppColors.blackColor),
+                    );
+                  }
+                  return TextSpan(
+                    text: textPart + " ",
+                    style: TextStyle(color: AppColors.primaryColor2, fontWeight: FontWeight.bold),
+                  );
+                }));
+
+                return Container(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            child: Text(
+                              reply.replierName[0],
+                              style: TextStyle(
+                                color: Colors.white,
+                              ),
+                            ),
+                            backgroundColor: AppColors.primaryColor1,
+                          ),
+                          SizedBox(width: 10),
+                          Container(
+                            width: 100,
+                            child: RichText(
+                              text: TextSpan(
+                                text: "${reply.replierName}: ",
+                                style: TextStyle(
+                                  color: AppColors.secondaryColor2,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                children: replyTextSpans,
+                              ),
+                            ),
+                          ),
+                          _buildIconButton(Icons.more_vert, () async {
+                            // bool edited = await showModalBottomSheet(
+                            //   context: context,
+                            //   builder: (BuildContext context) {
+                            //     return EditDeleteComments(comment: , task: widget.task);
+                            //   },
+                            // );
+                            // if (edited == true) {
+                            //   await fetchComments(widget.task.taskId!);
+                            // }
+                          }),
+                          _buildIconButton(Icons.reply, () {
+                            // _replyBottomSheet(context, reply);
+                          }),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],

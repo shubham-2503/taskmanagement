@@ -67,6 +67,7 @@ dependencies:
   open_mail_app: ^0.4.5
   google_fonts: ^5.1.0
   flutter_excel: any
+#  signalr_core: ^1.1.1
   signalr_flutter: ^0.2.0
   pdf: ^3.10.4
   open_file: ^3.3.2

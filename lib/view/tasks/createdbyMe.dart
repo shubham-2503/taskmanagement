@@ -350,15 +350,6 @@ class _CreatedByMeState extends State<CreatedByMe> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  trailing: IconButton(
-                    icon: Icon(
-                      Icons.remove_circle,
-                      color: AppColors.secondaryColor2,
-                    ),
-                    onPressed: () async {
-                      // Handle delete action
-                    },
-                  ),
                 )),
                 SizedBox(height: 16),
                 // Display assigned teams if applicable
@@ -382,15 +373,6 @@ class _CreatedByMeState extends State<CreatedByMe> {
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
-                        ),
-                        trailing: IconButton(
-                          icon: Icon(
-                            Icons.remove_circle,
-                            color: AppColors.secondaryColor2,
-                          ),
-                          onPressed: () async {
-                            // Handle delete action
-                          },
                         ),
                       )),
                     ],

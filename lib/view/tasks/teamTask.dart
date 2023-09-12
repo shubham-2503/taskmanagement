@@ -5,11 +5,7 @@ import 'package:Taskapp/view/tasks/taskDetails.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import '../../Providers/taskProvider.dart';
 import '../../common_widgets/round_button.dart';
-import '../../common_widgets/round_textfield.dart';
-import '../../models/fetch_user_model.dart';
-import '../../models/project_team_model.dart';
 import '../../models/task_model.dart';
 import '../../utils/app_colors.dart';
 import 'package:intl/intl.dart';
@@ -319,37 +315,16 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Center(
-                      child: Text(
-                        '${task.taskName}',
-                        style: TextStyle(
-                          color: AppColors.secondaryColor2,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                // Display the task name
+                Center(
+                  child: Text(
+                    '${task.taskName}',
+                    style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
-                          },
-                        ),
-                        Text(
-                          'TaskDetails',
-                          style: TextStyle(
-                            color: AppColors.secondaryColor2,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: 16),
                 // Display assigned users
@@ -369,15 +344,6 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  trailing: IconButton(
-                    icon: Icon(
-                      Icons.remove_circle,
-                      color: AppColors.secondaryColor2,
-                    ),
-                    onPressed: () async {
-                      // Handle delete action
-                    },
                   ),
                 )),
                 SizedBox(height: 16),
@@ -403,19 +369,28 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        trailing: IconButton(
-                          icon: Icon(
-                            Icons.remove_circle,
-                            color: AppColors.secondaryColor2,
-                          ),
-                          onPressed: () async {
-                            // Handle delete action
-                          },
-                        ),
                       )),
                     ],
                   ),
                 SizedBox(height: 16),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
+                      },
+                    ),
+                    Text(
+                      'TaskDetails',
+                      style: TextStyle(
+                        color: AppColors.secondaryColor2,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -436,9 +411,9 @@ class TaskDetailsModal extends StatefulWidget {
 
 class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
-  List<Task> teamtasks = [];
+  List<Task> mytasks = [];
 
-  Future<void> fetchTeamTasks() async {
+  Future<void> fetchMyTasks() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -456,12 +431,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
         throw Exception('orgId not found locally');
       }
 
-      // Use the selected filters to build the query parameters
-      Map<String, String?> queryParameters = {
-        'org_id': orgId,
-      };
-
-      final url = Uri.http('43.205.97.189:8000', '/api/Task/teamsTask', queryParameters);
+      final url = Uri.http('43.205.97.189:8000', '/api/Task/myTasks', );
 
       final headers = {
         'accept': '*/*',
@@ -505,7 +475,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
         }).toList();
 
         setState(() {
-          teamtasks = fetchedTasks;
+          mytasks = fetchedTasks;
         });
       } else {
         print('Error fetching tasks: ${response.statusCode}');
@@ -517,29 +487,29 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
   void _deleteTask(String taskId) async {
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      TaskCountManager taskCountManager = TaskCountManager(prefs);
-      showDialog(
+      // Show a confirmation dialog for deleting the project
+      bool? edited = await showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
             title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this Task?'),
+            content: Text('Are you sure you want to delete this task?'),
             actions: [
               TextButton(
                 child: Text('Cancel'),
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(false); // Return false when canceled
                 },
               ),
               TextButton(
                 onPressed: () async {
-                  Navigator.of(context).pop(); // Close the confirmation dialog
-
+                  Navigator.of(context).pop(true); // Return true when confirmed
                   try {
-                    SharedPreferences prefs = await SharedPreferences.getInstance();
+                    SharedPreferences prefs =
+                    await SharedPreferences.getInstance();
                     final storedData = prefs.getString('jwtToken');
-                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+                    String? orgId =
+                    prefs.getString("selectedOrgId"); // Get the selected organization ID
 
                     if (orgId == null) {
                       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -553,7 +523,8 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                     }
 
                     final response = await http.delete(
-                      Uri.parse('http://43.205.97.189:8000/api/Task/tasks/$taskId'),
+                      Uri.parse(
+                          'http://43.205.97.189:8000/api/Task/tasks/$taskId'),
                       headers: {
                         'accept': '*/*',
                         'Authorization': "Bearer $storedData",
@@ -573,8 +544,8 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                             actions: [
                               InkWell(
                                 onTap: () {
-                                  Navigator.pop(context);
-                                  Navigator.pop(context,true);
+                                  Navigator.pop(context, true);
+                                  Navigator.pop(context, true);
                                 },
                                 child: Text(
                                   "OK",
@@ -591,9 +562,8 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                         Navigator.pop(context);
                         Navigator.pop(context, true); // Sending a result back to the previous screen
                       });
-                      await fetchTeamTasks();
                     } else {
-                      print('Failed to delete Task.');
+                      print('Failed to delete task.');
                       // Handle other status codes, if needed
                     }
                   } catch (e) {
@@ -606,6 +576,11 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
           );
         },
       );
+      if ( edited == true) {
+        // Fetch tasks using your API call here
+        await fetchMyTasks();
+      }
+
     } catch (e) {
       print('Error showing delete confirmation dialog: $e');
     }
@@ -756,7 +731,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
               children: [
                 SizedBox(height: 30,width: 70,child: RoundButton(
                   onPressed: () async {
-                    bool edited = await showDialog(
+                    bool? edited = await showDialog(
                       context: context,
                       builder: (BuildContext context) {
                         return AlertDialog(
@@ -774,10 +749,11 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                       },
                     );
 
-                    if (edited == true) {
+                    if (edited != null && edited == true) {
                       // Fetch tasks using your API call here
-                      await fetchTeamTasks();
+                      await fetchMyTasks();
                     }
+
                   },
                   title: "Edit",
                 ),),
@@ -811,10 +787,3 @@ String formatDate(String? dateString) {
     return 'Invalid Date'; // Return a placeholder for invalid date formats
   }
 }
-
-
-
-
-
-
-

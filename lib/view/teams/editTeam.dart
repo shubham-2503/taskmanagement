@@ -77,16 +77,16 @@ class _EditTeamPageState extends State<EditTeamPage> {
 
       if (response.statusCode == 200) {
         String message = "Team updated successfully name.";
-        _showDialog(context,message);
+        _showDialog(message);
         print('Team updated successfully with name.');
       } else {
         String message = "Failed to update team name.";
-        _showDialog(context,message);
+        _showDialog(message);
         print('Failed to update team name.');
       }
     } catch (e) {
       String message = "Error updating team name: $e";
-      _showDialog(context,message);
+      _showDialog(message);
       print('Error updating team name: $e');
     }
   }
@@ -207,23 +207,21 @@ class _EditTeamPageState extends State<EditTeamPage> {
     }
   }
 
-  void _showDialog(BuildContext? context, String message) {
-    if (context != null) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, true);
-              },
-              child: Text("Ok"),
-            ),
-          ],
-        ),
-      );
-    }
+  void _showDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+            child: Text("Ok"),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showMembersDropdown(BuildContext context) async {

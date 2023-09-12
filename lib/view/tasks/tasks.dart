@@ -270,7 +270,7 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
         body: Consumer2<TaskProvider,TasksFilterNotifier>(
           builder: (context, taskProvider,filterProvider, child) {
             final tasks = taskProvider.tasks; // Get the list of tasks from TaskProvider
-            final selectedFilters = filterProvider.selectedFilters;
+            final selectedFilters = filterProvider.selectedFilters ?? {};
             return Padding(
               padding: const EdgeInsets.only(top: 10.0),
               child: Column(
@@ -296,14 +296,14 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
                             children: [
                               IconButton(
                                 onPressed: () async {
-                                  Map<String, String?> selectedOption = await showModalBottomSheet(
+                                  Map<String, String?>? selectedOption = await showModalBottomSheet(
                                     context: context,
                                     builder: (BuildContext context) {
                                       return FilterOptionsModal(
                                         onApplyFilters: (Map<String, String?> selectedFilters) {
                                           print("Selected Filters: $selectedFilters");
                                           filterProvider.updateFilters(selectedFilters); // Update filters using Provider
-                                          // fetchAndRefreshTasks(); // Fetch and refresh tasks after applying filters\
+                                          // fetchAndRefreshTasks(); // Fetch and refresh tasks after applying filters
                                           refreshScreen();
                                           setState(() {
                                             fetchAndRefreshTasks();
