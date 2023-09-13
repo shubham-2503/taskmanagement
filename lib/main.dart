@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:Taskapp/Providers/filterProvider.dart';
 import 'package:Taskapp/Providers/project_provider.dart';
 import 'package:Taskapp/routes.dart';
@@ -11,10 +13,14 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'Providers/session_provider.dart';
 import 'Providers/taskProvider.dart';
 import 'organization_proivider.dart';
+import 'package:http/http.dart' as http;
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,7 +42,9 @@ void main() async {
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
   }
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  runApp(const MyApp());
+  runApp(MaterialApp(
+      home: const MyApp()
+  ));
 }
 
 @pragma("vm:entry-point")
@@ -81,8 +89,61 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+  Future<Map<String, dynamic>> checkForceUpgrade() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final storedData = prefs.getString('jwtToken');
+    final url = 'http://43.205.97.189:8000/api/AppSetting/getAppSetting';
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $storedData', // Include your authentication token here
+      },
+    );
+    print("Api response: ${response.body}");
+    print("StatusCode: ${response.statusCode}");
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load data from the API');
+    }
+  }
+
+  Future<void> checkForForceUpgrade(BuildContext context) async {
+    final apiResponse = await checkForceUpgrade();
+
+    final isForceUpdate = apiResponse['is_force_update'];
+    final appVersion = apiResponse['app_version'];
+    final message = apiResponse['message'];
+    final packageInfo = await PackageInfo.fromPlatform(); // Get the current app version
+    final currentAppVersion = packageInfo.version;
+    print("version: $currentAppVersion");
+
+    if (isForceUpdate && appVersion != currentAppVersion) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("New Update Available"),
+            content: Text(message),
+            actions: [
+              TextButton(
+                child: Text("Update"),
+                onPressed: () {
+                  // Open the app store for the user to update the app.
+                  // You can use packages like 'url_launcher' to achieve this.
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    checkForForceUpgrade(context);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<OrganizationProvider>(
