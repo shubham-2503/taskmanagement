@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:Taskapp/view/profile/addOrganization.dart';
+import 'package:Taskapp/view/profile/widgets/confirmationModal.dart';
+import 'package:Taskapp/view/profile/widgets/edit_organization.dart';
 import 'package:Taskapp/view/subscription/subscriptions.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
@@ -16,11 +18,9 @@ import '../../common_widgets/round_button.dart';
 import '../../organization_proivider.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../login/login_screen.dart';
+import 'delete_organization.dart';
 
 class UserProfile extends StatefulWidget {
-  final VoidCallback refreshCallback;
-  const UserProfile({Key? key, required this.refreshCallback})
-      : super(key: key);
 
   @override
   State<UserProfile> createState() => _UserProfileState();
@@ -48,12 +48,10 @@ class _UserProfileState extends State<UserProfile> {
     },
     {"image": "assets/icons/p_setting.png", "name": "Setting", "tag": "7"},
   ];
-
   Future<Map<String, dynamic>> fetchUserProfile() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId =
-    prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -82,12 +80,18 @@ class _UserProfileState extends State<UserProfile> {
       final List<dynamic> responseData = jsonDecode(response.body);
       if (responseData.isNotEmpty) {
         // Get the first organization as the default organization
-        final Map<String, dynamic> userProfileData =
-        responseData[0] as Map<String, dynamic>;
+        final Map<String, dynamic> userProfileData = responseData[0] as Map<String, dynamic>;
         final String userIds = userProfileData['user_id'];
         setState(() {
           userId = userIds;
         });
+
+        // Fetch and set the organization data here
+        final orgData = userProfileData['org']; // Assuming 'org' contains the organization data
+        if (orgData != null && orgData.isNotEmpty) {
+          organization = orgData.last; // Assuming you want to use the last organization
+        }
+
         print("User_id: $userId");
         return userProfileData;
       }
@@ -97,8 +101,13 @@ class _UserProfileState extends State<UserProfile> {
     return {};
   }
 
-  void _logOut(BuildContext context) async {
-    bool? confirmLogout = await showDialog(
+  void _logOut(BuildContext? context) async {
+    if (context == null) {
+      // Handle the case where context is null, such as logging an error or returning early.
+      print('Error: Context is null in _logOut.');
+      return;
+    }
+    bool? confirmLogout = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -108,34 +117,31 @@ class _UserProfileState extends State<UserProfile> {
             TextButton(
               onPressed: () {
                 // Close the dialog and set confirmLogout to false
-                Navigator.of(context)?.pop(false); // Use null-aware operator
+                Navigator.of(context)?.pop(false);
               },
               child: Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
                 // Close the dialog and set confirmLogout to true
-                Navigator.of(context)?.pop(true); // Use null-aware operator
+                Navigator.of(context)?.pop(true);
 
-                SharedPreferences? prefs;
                 try {
-                  prefs = await SharedPreferences.getInstance();
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.clear();
+
+                  // Delay navigation to the LoginScreen by a short duration (e.g., 100 milliseconds)
+                  await Future.delayed(Duration(milliseconds: 300));
+
+                  // Rebuild the app and start a new route stack with LoginScreen
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => LoginScreen()),
+                        (route) => false,
+                  );
                 } catch (e) {
-                  print('Error initializing SharedPreferences: $e');
-                  return;
+                  print('Error during logout: $e');
                 }
-
-                prefs?.clear(); // Use null-aware operator to check prefs
-
-                // Delay navigation to the LoginScreen by a short duration (e.g., 100 milliseconds)
-                await Future.delayed(Duration(milliseconds: 300));
-
-                // Rebuild the app and start a new route stack with LoginScreen
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginScreen()),
-                      (route) => false,
-                );
               },
               child: Text('Logout'),
             ),
@@ -145,13 +151,7 @@ class _UserProfileState extends State<UserProfile> {
     );
 
     if (confirmLogout == true) {
-      // Rebuild the app and start a new route stack with LoginScreen
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
-            (route) => false,
-      );
-      setState(() {});
+      // Perform logout logic here
     }
   }
 
@@ -164,78 +164,6 @@ class _UserProfileState extends State<UserProfile> {
     } catch (error) {
       print("Error fetching user profile data: $error");
       // Handle the error
-    }
-  }
-
-  Future<void> deleteOrganizationWithConfirmation(BuildContext context,
-      String orgId) async {
-    print("orgId: $orgId");
-    bool confirmDelete = await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Confirm Deletion'),
-          content: Text('Are you sure you want to delete this organization?'),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-            ),
-            TextButton(
-              child: Text('Delete'),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmDelete == true) {
-      String apiUrl =
-          "http://43.205.97.189:8000/api/Organization/removeOrganization?org_id=$orgId";
-
-      final response = await http.delete(Uri.parse(apiUrl));
-
-      print("Code: ${response.statusCode}");
-      print("Body: ${response.body}");
-
-      if (response.statusCode == 200) {
-        String errorMessage = "Organization delete successfully";
-        showDialog(
-          context: context,
-          builder: (context) =>
-              AlertDialog(
-                title: Text("Success"),
-                content: Text(errorMessage),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("OK"),
-                  ),
-                ],
-              ),
-        );
-      } else {
-        String errorMessage = "Failed to delete the organization!!!";
-        showDialog(
-          context: context,
-          builder: (context) =>
-              AlertDialog(
-                title: Text("OOPs"),
-                content: Text(errorMessage),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("OK"),
-                  ),
-                ],
-              ),
-        );
-      }
     }
   }
 
@@ -271,8 +199,6 @@ class _UserProfileState extends State<UserProfile> {
       print('Error fetching user profile: $error');
     }
   }
-
-
 
   Future<void> _getAppVersion() async {
     PackageInfo? packageInfo;
@@ -441,27 +367,211 @@ class _UserProfileState extends State<UserProfile> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddOrganization(
-                            userId: userProfileData['user_id'],
-                          ),
-                        ),
-                      );
-                    },
+                    // onTap: () {
+                    //   Navigator.push(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //       builder: (context) => AddOrganization(
+                    //         userId: userProfileData['user_id'],
+                    //       ),
+                    //     ),
+                    //   );
+                    // },
                     child: IconButton(
                       icon: Icon(Icons.add_circle),
-                      onPressed: (){
+                      onPressed: () async {
                         print("UserId: $userId");
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=>AddOrganization(userId: userId)));
+                        final result = Navigator.push(context, MaterialPageRoute(builder: (context)=>AddOrganization(userId: userId)));
+                        if (result == true) {
+                          await _fetchOrganizationList(); // Replace with your actual fetch function.
+                        }
                       },
                     )
                   ),
                 ],
               ),
               SizedBox(height: 20,),
+              // Container(
+              //   width: double.infinity,
+              //   height: 220,
+              //   padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
+              //   decoration: BoxDecoration(
+              //     color: AppColors.primaryColor1,
+              //     borderRadius: BorderRadius.circular(15),
+              //     boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+              //   ),
+              //   child: SingleChildScrollView(
+              //     child: Column(
+              //       crossAxisAlignment: CrossAxisAlignment.start,
+              //       children: [
+              //         const SizedBox(height: 8),
+              //         Scrollbar(
+              //           controller: ScrollController(),
+              //           thickness: 8,
+              //           child: SizedBox(
+              //             width: 300,
+              //             child: ListView.builder(
+              //               shrinkWrap: true,
+              //               physics: NeverScrollableScrollPhysics(),
+              //               itemCount: _organizationList.length,
+              //               itemBuilder: (context, index) {
+              //                 final org = _organizationList[index];
+              //                 final orgId = org['org_id'];
+              //                 final isSelected = orgId == selectedOrganization['org_id'];
+              //                 final visibleOrgName = organization != null && organization!.containsKey('org_name')
+              //                     ? organization!['org_name']
+              //                     : 'No Organization';
+              //
+              //
+              //                 return GestureDetector(
+              //                   onTap: () async {
+              //                     final prefs = await SharedPreferences.getInstance();
+              //                     if (userProfileData.isNotEmpty) {
+              //                       prefs.setString('selectedOrgId', orgId);
+              //
+              //                       organizationProvider.switchOrganization(
+              //                         index,
+              //                         context,
+              //                       );
+              //
+              //                       setState(() {
+              //                         selectedOrganizationName = org['name'];
+              //                         selectOrganizationAdd = org['address'];
+              //                         selectedOrganization = org;
+              //                       });
+              //                       _showNotification('Organization switched to ${org['name']}');
+              //                     }
+              //                   },
+              //                   child: Container(
+              //                     margin: EdgeInsets.all(8.0),
+              //                     padding: EdgeInsets.all(16.0),
+              //                     decoration: BoxDecoration(
+              //                       color: visibleOrgName == org['name'] ? AppColors.secondaryColor2 : (org['subs_status'] == true ? Colors.white : Colors.grey),
+              //                       borderRadius: BorderRadius.circular(15),
+              //                       border: isSelected
+              //                           ? Border.all(
+              //                         color: AppColors.primaryColor2,
+              //                         width: 3,
+              //                       )
+              //                           : Border.all(
+              //                         color: AppColors.blackColor,
+              //                         width: 2,
+              //                       ),
+              //                       boxShadow: const [
+              //                         BoxShadow(color: Colors.black12, blurRadius: 2),
+              //                       ],
+              //                     ),
+              //                    child: Row(
+              //                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //                       children: [
+              //                         Expanded(
+              //                           child: Column(
+              //                             mainAxisAlignment: MainAxisAlignment.start,
+              //                             crossAxisAlignment: CrossAxisAlignment.start,
+              //                             children: [
+              //                               SingleChildScrollView(
+              //                                 scrollDirection: Axis.horizontal,
+              //                                 child: SizedBox(
+              //                                   height: 40,
+              //                                   child: Text(
+              //                                     org["name"],
+              //                                     style: TextStyle(
+              //                                       color: isSelected ? Colors.white : AppColors.blackColor,
+              //                                       fontSize: 16,
+              //                                       fontWeight: FontWeight.bold,
+              //                                     ),
+              //                                   ),
+              //                                 ),
+              //                               ),
+              //                               SingleChildScrollView(
+              //                                 scrollDirection: Axis.horizontal,
+              //                                 child: RichText(
+              //                                   text: TextSpan(
+              //                                     text: "Employee: ",
+              //                                     style: TextStyle(
+              //                                       color: AppColors.blackColor,
+              //                                       fontSize: 12,
+              //                                       fontWeight: FontWeight.bold,
+              //                                     ),
+              //                                     children: [
+              //                                       TextSpan(
+              //                                         text: "${org['employees']}",
+              //                                         style: TextStyle(
+              //                                           color: AppColors.blackColor,
+              //                                         ),
+              //                                       ),
+              //                                     ],
+              //                                   ),
+              //                                 ),
+              //                               ),
+              //                             ],
+              //                           ),
+              //                         ),
+              //                         SizedBox(
+              //                           width:100, // Set a fixed width for the edit and delete buttons
+              //                           child: Row(
+              //                             mainAxisAlignment: MainAxisAlignment.end,
+              //                             children: [
+              //                               IconButton(
+              //                                 icon: Icon(Icons.edit, color: Colors.black),
+              //                                 onPressed: () async {
+              //                                   final result = await Navigator.push(
+              //                                     context,
+              //                                     MaterialPageRoute(
+              //                                       builder: (context) => EditOrganization(userId: userId, orgId: orgId),
+              //                                     ),
+              //                                   );
+              //
+              //                                   if (result == true) {
+              //                                     await _fetchOrganizationList(); // Replace with your actual fetch function.
+              //                                   }
+              //                                 },
+              //                               ),
+              //                               IconButton(
+              //                                 icon: Icon(Icons.delete, color: Colors.black),
+              //                                 onPressed: () async{
+              //                                   print("OrgId: $orgId"); // Ensure you have the correct orgId here
+              //                                   final result = await showDialog(
+              //                                     context: context,
+              //                                     builder: (BuildContext context) {
+              //                                       return AlertDialog(
+              //                                         content: Container(
+              //                                           height: 300, // Adjust this value as needed
+              //                                           child: Builder(
+              //                                             builder: (BuildContext context) {
+              //                                               return DeleteOrganization(orgId: orgId, onDelete: () {
+              //                                                 setState(() {
+              //                                                   _fetchOrganizationList();
+              //                                                 });
+              //                                               });
+              //                                             },
+              //                                           ),
+              //                                         ),
+              //                                       );
+              //                                     },
+              //                                   );
+              //                                   if (result == true) {
+              //                                     await _fetchOrganizationList(); // Replace with your actual fetch function.
+              //                                   }
+              //                                 },
+              //                               )
+              //                             ],
+              //                           ),
+              //                         ),
+              //                       ],
+              //                     ),
+              //
+              //                   ),
+              //                 );
+              //               },
+              //             ),
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //
+              //   ),
+              // ),
               Container(
                 width: double.infinity,
                 height: 220,
@@ -480,7 +590,7 @@ class _UserProfileState extends State<UserProfile> {
                         controller: ScrollController(),
                         thickness: 8,
                         child: SizedBox(
-                          width: double.infinity,
+                          width: 300,
                           child: ListView.builder(
                             shrinkWrap: true,
                             physics: NeverScrollableScrollPhysics(),
@@ -489,36 +599,63 @@ class _UserProfileState extends State<UserProfile> {
                               final org = _organizationList[index];
                               final orgId = org['org_id'];
                               final isSelected = orgId == selectedOrganization['org_id'];
-                              final visibleOrgName = organization != null && organization!.containsKey('org_name')
+                              final visibleOrgName =
+                              organization != null && organization!.containsKey('org_name')
                                   ? organization!['org_name']
                                   : 'No Organization';
 
+                              // Check if organization is deactivated (subs_status = false)
+                              final isDeactivated = org['subs_status'] == false;
 
                               return GestureDetector(
                                 onTap: () async {
                                   final prefs = await SharedPreferences.getInstance();
                                   if (userProfileData.isNotEmpty) {
-                                    prefs.setString('selectedOrgId', orgId);
+                                    final orgId = org['org_id'];
 
-                                    organizationProvider.switchOrganization(
-                                      index,
-                                      context,
-                                    );
+                                    if (!isDeactivated) {
+                                      prefs.setString('selectedOrgId', orgId);
 
-                                    setState(() {
-                                      selectedOrganizationName = org['name'];
-                                      selectOrganizationAdd = org['address'];
-                                      selectedOrganization = org;
-                                    });
+                                      organizationProvider.switchOrganization(
+                                        index,
+                                        context,
+                                      );
 
-                                    _showNotification('Organization switched to ${org['name']}');
+                                      setState(() {
+                                        selectedOrganizationName = org['name'];
+                                        selectOrganizationAdd = org['address'];
+                                        selectedOrganization = org;
+                                      });
+                                      _showNotification('Organization switched to ${org['name']}');
+                                    } else {
+                                      // Display a message when subs_status is false
+                                      showDialog(
+                                        context: context,
+                                        builder: (BuildContext context) {
+                                          return AlertDialog(
+                                            title: Text('Deactivated Organization'),
+                                            content: Text('This organization is deactivated and cannot be selected.'),
+                                            actions: <Widget>[
+                                              TextButton(
+                                                child: Text('OK'),
+                                                onPressed: () {
+                                                  Navigator.of(context).pop();
+                                                },
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    }
                                   }
                                 },
                                 child: Container(
                                   margin: EdgeInsets.all(8.0),
                                   padding: EdgeInsets.all(16.0),
                                   decoration: BoxDecoration(
-                                    color: visibleOrgName == org['name'] ? AppColors.secondaryColor2 : AppColors.whiteColor,
+                                    color: visibleOrgName == org['name']
+                                        ? AppColors.secondaryColor2
+                                        : (isDeactivated ? Colors.black12 : Colors.white),
                                     borderRadius: BorderRadius.circular(15),
                                     border: isSelected
                                         ? Border.all(
@@ -533,31 +670,100 @@ class _UserProfileState extends State<UserProfile> {
                                       BoxShadow(color: Colors.black12, blurRadius: 2),
                                     ],
                                   ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        org["name"],
-                                        style: TextStyle(
-                                          color: isSelected ? Colors.white : AppColors.blackColor,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
+                                      Expanded(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.start,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            SingleChildScrollView(
+                                              scrollDirection: Axis.horizontal,
+                                              child: SizedBox(
+                                                height: 40,
+                                                child: Text(
+                                                  org["name"],
+                                                  style: TextStyle(
+                                                    color: (visibleOrgName == org['name'] ? Colors.white : AppColors.blackColor),
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            SingleChildScrollView(
+                                              scrollDirection: Axis.horizontal,
+                                              child: RichText(
+                                                text: TextSpan(
+                                                  text: "Employee: ",
+                                                  style: TextStyle(
+                                                    color: (visibleOrgName == org['name'] ? Colors.white : AppColors.blackColor),
+                                                    fontSize: 12,
+                                                  ),
+                                                  children: [
+                                                    TextSpan(
+                                                      text: "${org['employees']}",
+                                                      style: TextStyle(
+                                                        color: (visibleOrgName == org['name'] ? Colors.white : AppColors.blackColor),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      RichText(
-                                        text: TextSpan(
-                                          text: "Employee: ",
-                                          style: TextStyle(
-                                            color: AppColors.blackColor,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                      SizedBox(
+                                        width: 100, // Set a fixed width for the edit and delete buttons
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.end,
                                           children: [
-                                            TextSpan(
-                                              text: "${org['employees']}",
-                                              style: TextStyle(
-                                                color: AppColors.blackColor,
-                                              ),
+                                            IconButton(
+                                              icon: Icon(Icons.edit, color: (visibleOrgName == org['name'] ? Colors.white : AppColors.blackColor)),
+                                              onPressed: () async {
+                                                final result = await Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => EditOrganization(userId: userId, orgId: orgId),
+                                                  ),
+                                                );
+
+                                                if (result == true) {
+                                                  await _fetchOrganizationList(); // Replace with your actual fetch function.
+                                                }
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: Icon(Icons.delete, color: (visibleOrgName == org['name'] ? Colors.white : AppColors.blackColor)),
+                                              onPressed: () async {
+                                                print("OrgId: $orgId"); // Ensure you have the correct orgId here
+                                                if (!isDeactivated) {
+                                                  final result = await showDialog(
+                                                    context: context,
+                                                    builder: (BuildContext context) {
+                                                      return AlertDialog(
+                                                        content: Container(
+                                                          height: 300, // Adjust this value as needed
+                                                          child: Builder(
+                                                            builder: (BuildContext context) {
+                                                              return DeleteOrganization(orgId: orgId, onDelete: () {
+                                                                setState(() {
+                                                                  _fetchOrganizationList();
+                                                                });
+                                                              });
+                                                            },
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  );
+                                                  if (result == true) {
+                                                    await _fetchOrganizationList(); // Replace with your actual fetch function.
+                                                  }
+                                                }
+                                              },
                                             ),
                                           ],
                                         ),
@@ -609,7 +815,9 @@ class _UserProfileState extends State<UserProfile> {
                             ],
                           ),
                           Text(
-                            "Hi,I am ${userProfileData.containsKey('name') ? userProfileData['name'] : 'John'},I am ${userProfileData.containsKey('role') ? userProfileData['role'] : 'Admin'} at ${organization != null && organization!.containsKey('org_name') ? organization!['org_name'] : 'No Organization'}",
+                            "Hi,I am ${userProfileData.containsKey('name') ? userProfileData['name'] : 'John'},I am ${userProfileData.containsKey('role') ? userProfileData['role'] : 'Admin'} at ${organization != null && organization!.containsKey('org_name')
+                                ? organization!['org_name']
+                                : 'No Organization'}",
                             style: TextStyle(
                               color: AppColors.secondaryColor1,
                               fontSize: 10,

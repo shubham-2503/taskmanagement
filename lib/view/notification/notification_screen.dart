@@ -122,7 +122,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         itemCount: notificationArr.length,
         itemBuilder: (context, index) {
           var nObj = notificationArr[index];
-          DateTime createdDateTime = DateTime.parse(nObj['createdDate']);
+          DateTime createdDateTime = DateTime.parse(nObj['createdDate']).toLocal();
 
           String avatarText = nObj['title'].split(' ')[0].toUpperCase();
           // nObj['title'].substring(1, 2).toLowerCase();

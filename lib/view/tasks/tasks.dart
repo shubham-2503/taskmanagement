@@ -29,8 +29,6 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
 
   @override
   void initState() {
-
-
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
@@ -57,7 +55,6 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
     _tabController.dispose();
     super.dispose();
   }
-
 
   Map<String, String?> selectedFilters = {};
 
@@ -296,14 +293,14 @@ class _TaskScreenState extends State<TaskScreen> with SingleTickerProviderStateM
                             children: [
                               IconButton(
                                 onPressed: () async {
-                                  Map<String, String?>? selectedOption = await showModalBottomSheet(
+                                  Map<String, String?> selectedOption = await showModalBottomSheet(
                                     context: context,
                                     builder: (BuildContext context) {
                                       return FilterOptionsModal(
                                         onApplyFilters: (Map<String, String?> selectedFilters) {
                                           print("Selected Filters: $selectedFilters");
                                           filterProvider.updateFilters(selectedFilters); // Update filters using Provider
-                                          // fetchAndRefreshTasks(); // Fetch and refresh tasks after applying filters
+                                          // fetchAndRefreshTasks(); // Fetch and refresh tasks after applying filters\
                                           refreshScreen();
                                           setState(() {
                                             fetchAndRefreshTasks();

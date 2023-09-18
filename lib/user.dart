@@ -291,7 +291,7 @@ class _InviteScreenState extends State<InviteScreen> {
                           SizedBox(
                             height: 50,
                             width: 80,
-                            child: RoundButton(title: "Cancel", onPressed: (){
+                            child: RoundButton(title: "Okay", onPressed: (){
                               Navigator.pop(context);
                               Navigator.pop(context);
                             }),
@@ -312,7 +312,20 @@ class _InviteScreenState extends State<InviteScreen> {
                         _showConfirmationDialog(context, user); // Close the modal after option selection
                       },
                     ),
-                    ListTile(
+                   /* ListTile(
+                      title: Text("Revoke Invitation"),
+                      onTap: () {
+                        _showRevokeConfirmationDialog(context, user); // Close the modal after option selection
+                      },
+                    ),*/
+                  ],
+                ),
+              ),
+              Visibility(
+                visible:  user.status == null, // Show the options when status is "false" or "null"
+                child: Column(
+                  children: [
+                     ListTile(
                       title: Text("Revoke Invitation"),
                       onTap: () {
                         _showRevokeConfirmationDialog(context, user); // Close the modal after option selection

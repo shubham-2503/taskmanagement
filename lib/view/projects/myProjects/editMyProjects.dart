@@ -41,7 +41,7 @@ class _EditMyProjectState extends State<EditMyProject> {
     }
   }
 
-  Future<void> updateProject(BuildContext context) async {
+  Future<void> updateProject() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
     final String projectId = widget.project.id; // Replace with actual project ID
@@ -567,7 +567,7 @@ class _EditMyProjectState extends State<EditMyProject> {
                     height: 40,
                     width: 120,
                     child: RoundButton(title: "Update Project", onPressed: (){
-                      updateProject(context);
+                      updateProject();
                     }),
                   ),
                 ),

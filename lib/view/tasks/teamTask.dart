@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../../common_widgets/round_button.dart';
+import '../../common_widgets/round_textfield.dart';
+import '../../models/fetch_user_model.dart';
+import '../../models/project_team_model.dart';
 import '../../models/task_model.dart';
 import '../../utils/app_colors.dart';
 import 'package:intl/intl.dart';
@@ -147,7 +150,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                 },
                 icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
               ),
-              Text("Add tasks",style: TextStyle(
+              Text("Add tasks    ",style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.secondaryColor2
               ),),
@@ -237,12 +240,18 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold),
                                       ),
-                                      Text(
-                                        task.taskName,
-                                        style: TextStyle(
-                                            color: AppColors.secondaryColor2,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold),
+                                      Container(
+                                        width: 110,
+                                        child: Text(
+                                          task.taskName.length >10
+                                              ? task.taskName.substring(0,10) + '...'
+                                              : task.taskName,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              color: AppColors.secondaryColor2,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -345,6 +354,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                 )),
                 SizedBox(height: 16),
                 // Display assigned teams if applicable
@@ -399,7 +409,6 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
     );
   }
 }
-
 class TaskDetailsModal extends StatefulWidget {
   final Task task;
 
@@ -413,7 +422,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
   List<Task> mytasks = [];
 
-  Future<void> fetchMyTasks() async {
+  Future<void> fetchTeamTasks() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -578,7 +587,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
       );
       if ( edited == true) {
         // Fetch tasks using your API call here
-        await fetchMyTasks();
+        await fetchTeamTasks();
       }
 
     } catch (e) {
@@ -751,7 +760,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
                     if (edited != null && edited == true) {
                       // Fetch tasks using your API call here
-                      await fetchMyTasks();
+                      await fetchTeamTasks();
                     }
 
                   },
@@ -787,3 +796,10 @@ String formatDate(String? dateString) {
     return 'Invalid Date'; // Return a placeholder for invalid date formats
   }
 }
+
+
+
+
+
+
+

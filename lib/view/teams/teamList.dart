@@ -22,6 +22,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
   List<User> _selectedUsers = [];
   late List<MyTeam> filteredTeams = [];
 
+
   void initState() {
     super.initState();
     fetchMyTeams();
@@ -202,7 +203,6 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(context);
             },
             child: Text("Ok"),
           ),
@@ -339,7 +339,6 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                       _teams.removeWhere((team) => team.teamId == teamId);
                       setState(() {});
 
-
                       showDialog(
                         context: context,
                         builder: (BuildContext context) {
@@ -444,13 +443,18 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                                     crossAxisAlignment:
                                     CrossAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        team.teamName,
-                                        style: TextStyle(
-                                            color: AppColors
-                                                .secondaryColor2,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold),
+                                      Container(
+                                        width: 150,
+                                        child: Text(
+                                          team.teamName.length >30
+                                              ? team.teamName.substring(0,30) + '...'
+                                              : team.teamName,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              color: AppColors.secondaryColor2,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold),
+                                        ),
                                       ),
                                       SizedBox(
                                         height: 10,
@@ -685,13 +689,13 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
                       fontWeight: FontWeight.bold),
                 ),
                 ...team.users!.map((user) => ListTile(
-                    title: Text(
-                      user,
-                      style: TextStyle(
-                          color: AppColors.primaryColor2,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold),
-                    ),
+                  title: Text(
+                    user,
+                    style: TextStyle(
+                        color: AppColors.primaryColor2,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold),
+                  ),
                 )),
               ],
             ),

@@ -35,12 +35,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     print("Initializing Firebase Messaging...");
-    _widgetOptions = [
-      HomeScreen(),
-      InviteScreen(refreshCallback: refreshTabScreen),
-      ReportScreen(refreshCallback: refreshTabScreen),
-      UserProfile(refreshCallback: refreshTabScreen),
-    ];
 
     // Initialize Firebase messaging and handle incoming messages
     FirebaseMessaging.instance.getInitialMessage().then((message) {
@@ -49,19 +43,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print("Received a message: $message");
+      // Handle foreground messages
       handleNotificationReceived();
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       print("Opened the app from a notification: $message");
+      // Handle when the app is opened from a notification
     });
+    _widgetOptions = [
+      HomeScreen(),
+      InviteScreen(refreshCallback: refreshTabScreen),
+      ReportScreen(refreshCallback: refreshTabScreen),
+      UserProfile(),
+    ];
   }
 
   void handleNotificationReceived() {
-    setState(() {
-      notificationCount++; // Increase the notification count
-    });
+    if (mounted) {
+      setState(() {
+        notificationCount++; // Increase the notification count
+      });
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               TabButton(
-                  title: "Home",
+                title: "Home",
                   icon: "assets/images/home.png",
                   selectIcon: "assets/images/home_select.png",
                   isActive: selectTab == 0,
@@ -156,10 +161,10 @@ class TabButton extends StatelessWidget {
   const TabButton(
       {Key? key,
         required this.title,
-        required this.icon,
-        required this.selectIcon,
-        required this.isActive,
-        required this.onTap})
+      required this.icon,
+      required this.selectIcon,
+      required this.isActive,
+      required this.onTap})
       : super(key: key);
 
   @override
@@ -191,3 +196,5 @@ class TabButton extends StatelessWidget {
     );
   }
 }
+
+

@@ -116,30 +116,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (googleUser != null) {
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
         print("successfully account created");
-        // Navigator.push(context, MaterialPageRoute(builder: (context)=>CompleteProfileScreen(),));
 
-        // final String accessToken = googleAuth.accessToken;
-        // final String idToken = googleAuth.idToken;
-        //
-        // // Make the API request to your backend
-        // // Include the accessToken and idToken in the request headers or body
-        // // Example using the http package:
-        // final response = await http.post(
-        //   Uri.parse('https://your-api-endpoint.com/register'),
-        //   headers: {'Content-Type': 'application/json'},
-        //   body: json.encode({
-        //     'accessToken': accessToken,
-        //     'idToken': idToken,
-        //   }),
-        // );
-        //
-        // if (response.statusCode == 200) {
-        //   // User successfully registered
-        //   // Perform any additional actions after sign-up
-        //
-        // } else {
-        //   // Handle sign-up failure
-        // }
       } else {
         // Handle sign-in failure
       }
@@ -154,6 +131,12 @@ class _SignupScreenState extends State<SignupScreen> {
       backgroundColor: AppColors.whiteColor,
       body: SingleChildScrollView(
         child: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/images/bagroud.png"), // Replace with your background image
+              fit: BoxFit.cover,
+            ),
+          ),
           margin: const EdgeInsets.only(top: 10,),
           child: Padding(
             padding: EdgeInsets.only(top: 200,left: 20,right: 20),

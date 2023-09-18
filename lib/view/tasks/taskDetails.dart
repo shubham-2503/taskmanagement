@@ -405,7 +405,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>  with SingleTicke
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         actions: [
           IconButton(
@@ -415,7 +414,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>  with SingleTicke
             icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
           ),
           Text(
-            "Add comments",
+            "Add comments    ",
             style: TextStyle(
                 color: AppColors.secondaryColor2, fontWeight: FontWeight.bold),
           ),

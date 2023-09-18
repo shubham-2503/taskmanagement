@@ -93,7 +93,6 @@ class _TeamCreationPageState extends State<TeamCreationPage> {
 
   void _showMembersDropdown(BuildContext context) async {
     List<User> allUsers = await fetchUsers();
-
     List<String> selectedIds = _selectedMembers.toList(); // Store the initial selected ids
 
     final selectedUserIds = await showDialog<List<String>>(

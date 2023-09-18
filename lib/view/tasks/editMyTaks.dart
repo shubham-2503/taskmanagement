@@ -30,15 +30,6 @@ class _EditMyTaskState extends State<EditMyTask> {
   List<String> _selectedMembers = [];
   List<String> _selectedTeams = [];
 
-  @override
-  void initState() {
-    super.initState();
-    task = widget.task;
-    _selectedStatus = task.status;
-    fetchTaskDetails(); // Call fetchTaskDetails to initialize 'task'
-    fetchStatusData(); // Initialize statuses and _selectedStatus
-  }
-
   Future<void> updateTasks(String taskId) async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -74,16 +65,14 @@ class _EditMyTaskState extends State<EditMyTask> {
       List<String> selectedMemberIds = [];
       for (String memberName in selectedMembers) {
         // Assuming you have a way to map member names to their IDs
-        String memberId =
-        getUserIdFromName(memberName, users); // Replace with actual logic
+        String memberId = getUserIdFromName(memberName, users); // Replace with actual logic
         selectedMemberIds.add(memberId);
       }
 
       List<String> selectedTeamIds = [];
       for (String teamName in selectedTeams) {
         // Assuming you have a way to map team names to their IDs
-        String teamId =
-        getTeamIdFromName(teamName, teams); // Replace with actual logic
+        String teamId = getTeamIdFromName(teamName, teams); // Replace with actual logic
         selectedTeamIds.add(teamId);
       }
 
@@ -104,71 +93,42 @@ class _EditMyTaskState extends State<EditMyTask> {
       print("Body: ${response.body}");
       print("Response: ${jsonDecode(body)}");
 
-      if (mounted) {
-        // Check if the widget is still mounted
-        if (response.statusCode == 200) {
-          // Update successful
-          final responseData = json.decode(response.body);
-          print('Tasks updated successfully: ${responseData['message']}');
-          // Handle the response data as needed
-          setState(() {});
-          // Optionally, you can show a success dialog
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: Text('Changes Saved'),
-                content: Text('Your changes have been updated successfully.'),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Close the dialog
-                      Navigator.pop(context);
-                      Navigator.of(context).pop(true);
-                    },
-                    child: Text('OK'),
-                  ),
-                ],
-              );
-            },
-          );
-        } else {
-          // Update failed
-          print('Error updating tasks: ${response.statusCode}');
-          // Show an error dialog
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: Text('Error'),
-                content:
-                Text('Failed to update tasks. Please try again later.'),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Close the dialog
-                    },
-                    child: Text('OK'),
-                  ),
-                ],
-              );
-            },
-          );
-        }
-      }
-    } catch (e) {
-      // Handle exceptions
-      if (mounted) {
-        // Check if the widget is still mounted
-        print('Error updating tasks: $e');
+      if (response.statusCode == 200) {
+        // Update successful
+        final responseData = json.decode(response.body);
+        print('Tasks updated successfully: ${responseData['message']}');
+        // Handle the response data as needed
+        setState(() {});
+        // Optionally, you can show a success dialog
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Changes Saved'),
+              content: Text('Your changes have been updated successfully.'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog
+                    Navigator.pop(context);
+                    Navigator.of(context).pop(true);
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        // Update failed
+        print('Error updating tasks: ${response.statusCode}');
         // Show an error dialog
         showDialog(
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: Text('Error'),
-              content:
-              Text('An unexpected error occurred. Please try again later.'),
+              content: Text('Failed to update tasks. Please try again later.'),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -181,7 +141,38 @@ class _EditMyTaskState extends State<EditMyTask> {
           },
         );
       }
+    } catch (e) {
+      // Handle exceptions
+      print('Error updating tasks: $e');
+      // Show an error dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Error'),
+            content:
+            Text('An unexpected error occurred. Please try again later.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    task = widget.task;
+    _selectedStatus = task.status;
+    fetchTaskDetails(); // Call fetchTaskDetails to initialize 'task'
+    fetchStatusData(); // Initialize statuses and _selectedStatus
   }
 
   Future<void> fetchTaskDetails() async {

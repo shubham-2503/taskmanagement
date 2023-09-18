@@ -6,7 +6,6 @@ import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../View_model/fetchApiSrvices.dart';
-import '../../common_widgets/date_widget.dart';
 import '../../models/fetch_user_model.dart';
 import '../../models/project_team_model.dart';
 import '../../models/task_model.dart';
@@ -37,8 +36,8 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
   String _selectedStatus = "";
   List<User> users = [];
   List<Team> teams = [];
-  List<String> _selectedMembers = [];
-  List<String> _selectedTeams = [];
+  List<String> selectedMembers = [];
+  List<String> selectedTeams = [];
 
   Future<void> updateTasks(String taskId) async {
     try {

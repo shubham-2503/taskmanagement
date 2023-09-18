@@ -32,6 +32,9 @@ class _ProjectDashScreenState extends State<ProjectDashScreen> with SingleTicker
   Map<String, String?> selectedFilters = {};
   late TabController _tabController;
 
+
+
+
   void refreshScreen() {
     setState(() {});
   }
@@ -149,59 +152,6 @@ class _ProjectDashScreenState extends State<ProjectDashScreen> with SingleTicker
               padding: const EdgeInsets.only(top: 5.0),
               child: Column(
                 children: [
-                  // SingleChildScrollView(
-                  //   scrollDirection: Axis.horizontal,
-                  //   child: Row(
-                  //     mainAxisAlignment: MainAxisAlignment.center,
-                  //     children: [
-                  //       SizedBox(width: 10),
-                  //       SizedBox(
-                  //         height: 40,
-                  //         width: 100,
-                  //         child: RoundButton(
-                  //           title: "Team\nProjects",
-                  //           onPressed: () {
-                  //             setState(() {
-                  //               selectedOption = 'TeamProjects';
-                  //             });
-                  //             refreshScreen();
-                  //           },
-                  //         ),
-                  //       ),
-                  //       SizedBox(width: 30),
-                  //       SizedBox(
-                  //         height: 40,
-                  //         width: 100,
-                  //         child: RoundButton(
-                  //           title: "My Projects",
-                  //           onPressed: () {
-                  //             setState(() {
-                  //               selectedOption = 'MyProjects';
-                  //             });
-                  //             refreshScreen();
-                  //           },
-                  //         ),
-                  //       ),
-                  //       SizedBox(width: 10),
-                  //       SizedBox(
-                  //         height: 40,
-                  //         width: 110,
-                  //         child: RoundButton(
-                  //           title: "Created By\n Me",
-                  //           onPressed: () {
-                  //             setState(() {
-                  //               selectedOption = 'createdbyMe';
-                  //             });
-                  //             refreshScreen();
-                  //           },
-                  //         ),
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
-                  // Expanded(
-                  //   child: getCategoryWidget(projectProvider.projects, refreshScreen),
-                  // ),
                   Expanded(
                     child: TabBarView(
                       controller: _tabController,
@@ -212,73 +162,7 @@ class _ProjectDashScreenState extends State<ProjectDashScreen> with SingleTicker
                       ],
                     ),
                   ),
-                  // Padding(
-                  //   padding: const EdgeInsets.all(8.0),
-                  //   child: SingleChildScrollView(
-                  //     scrollDirection: Axis.horizontal,
-                  //     child: Row(
-                  //       mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  //       children: [
-                  //         Row(
-                  //           children: [
-                  //             IconButton(
-                  //               onPressed: () async {
-                  //                 Map<String, String?> selectedOption = await showModalBottomSheet(
-                  //                   context: context,
-                  //                   builder: (BuildContext context) {
-                  //                     return ProjectsOptionsModal(
-                  //                       onApplyFilters: (Map<String, String?> selectedFilters) {
-                  //                         print("Selected Filters: $selectedFilters");
-                  //                         filterProvider.updateFilters(selectedFilters); // Update filters using Provider
-                  //                         // fetchAndRefreshTasks(); // Fetch and refresh tasks after applying filters\
-                  //                         refreshScreen();
-                  //                         setState(() {
-                  //                           fetchAndRefreshProjects();
-                  //                         });
-                  //                       },
-                  //                     );
-                  //                   },
-                  //                 );
-                  //                 if (selectedOption != null) {
-                  //                   print("SelectedOption: $selectedOption");
-                  //                 }
-                  //               },
-                  //               icon: Icon(Icons.filter_alt_sharp, color: AppColors.secondaryColor2),
-                  //             ),
-                  //             Text(
-                  //               "Filters",
-                  //               style: TextStyle(
-                  //                 fontWeight: FontWeight.bold,
-                  //                 color: AppColors.secondaryColor2,
-                  //               ),
-                  //             ),
-                  //             SizedBox(width: 10,),
-                  //             if (selectedFilters.isNotEmpty) // Show only if filters are selected
-                  //               SelectedFiltersDisplay(
-                  //                 selectedFilters: selectedFilters,
-                  //                 onRemoveFilter: (filterKey) {
-                  //                   setState(() {
-                  //                     selectedFilters.remove(filterKey); // Remove the filter
-                  //                     Navigator.pushReplacement(context, PageRouteBuilder(
-                  //                       pageBuilder: (_, __, ___) => ProjectDashScreen(), // Replace with your screen widget
-                  //                       transitionsBuilder: (_, anim, __, child) {
-                  //                         return FadeTransition(
-                  //                           opacity: anim,
-                  //                           child: child,
-                  //                         );
-                  //                       },
-                  //                     ));
-                  //                   });
-                  //                   // Call your function to update tasks based on filters
-                  //                   fetchAndRefreshProjects();
-                  //                 },
-                  //               ),
-                  //           ],
-                  //         )
-                  //       ],
-                  //     ),
-                  //   ),
-                  // ),
+
                 ],
               ),
             );

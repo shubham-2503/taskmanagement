@@ -22,8 +22,7 @@ class _AddOrganizationState extends State<AddOrganization> {
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _gstNumberController = TextEditingController();
   final TextEditingController _employeeCountController = TextEditingController();
-  final TextEditingController _companyAddressController =
-  TextEditingController();
+  final TextEditingController _companyAddressController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
   Future<void> addOrganization() async {
@@ -58,22 +57,6 @@ class _AddOrganizationState extends State<AddOrganization> {
       print("bODY: ${response.body}");
 
       if (response.statusCode == 200) {
-        // Success
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            content: Text("Organization added Successfully"),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                child: Text("OK"),
-              ),
-            ],
-          ),
-        );
         final responseData = jsonDecode(response.body);
         final orgId = responseData['data']['org_id']; // Assuming 'org_id' is the key in the response
         print('Organization added successfully');

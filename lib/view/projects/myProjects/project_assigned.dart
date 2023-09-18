@@ -188,7 +188,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
             },
             icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
           ),
-          Text("Add Projects",style: TextStyle(
+          Text("Add Projects    ",style: TextStyle(
               fontWeight: FontWeight.bold,
               color: AppColors.secondaryColor2
           ),),
@@ -247,18 +247,48 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                        Row(
                                          children: [
                                            Text(
+                                             'Project ID: ',
+                                             style: TextStyle(
+                                               color: AppColors.blackColor,
+                                               fontSize: 14,
+                                               fontWeight: FontWeight.bold,
+                                             ),
+                                           ),
+                                           Container(
+                                             width: 110,
+                                             child: Text(
+                                               project.uniqueId ?? "", // Use the null-aware operator to handle null values
+                                               overflow: TextOverflow.ellipsis,
+                                               style: TextStyle(
+                                                 color: AppColors.secondaryColor2,
+                                                 fontSize: 14,
+                                                 fontWeight: FontWeight.bold,
+                                               ),
+                                             ),
+                                           ),
+                                         ],
+                                       ),
+                                       Row(
+                                         children: [
+                                           Text(
                                              'Project Name: ',
                                              style: TextStyle(
                                                  color: AppColors.blackColor,
                                                  fontSize: 14,
                                                  fontWeight: FontWeight.bold),
                                            ),
-                                           Text(
-                                             project.name,
-                                             style: TextStyle(
-                                                 color: AppColors.secondaryColor2,
-                                                 fontSize: 14,
-                                                 fontWeight: FontWeight.bold),
+                                           Container(
+                                             width: 110,
+                                             child: Text(
+                                               project.name.length >10
+                                                   ? project.name.substring(0,10) + '...'
+                                                   : project.name,
+                                               overflow: TextOverflow.ellipsis,
+                                               style: TextStyle(
+                                                   color: AppColors.secondaryColor2,
+                                                   fontSize: 14,
+                                                   fontWeight: FontWeight.bold),
+                                             ),
                                            ),
                                          ],
                                        ),
@@ -332,19 +362,15 @@ class _AssignedToMeState extends State<AssignedToMe> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Center(
-                      child: Text(
-                        '${project.name}',
-                        style: TextStyle(
-                          color: AppColors.secondaryColor2,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                Center(
+                  child: Text(
+                    '${project.name}',
+                    style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: 16),
                 // Display assigned users
@@ -708,10 +734,7 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
               children: [
                 SizedBox(height: 30,width: 70,child: RoundButton(
                   onPressed: () async {
-                    bool edited = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => EditMyProject(project: widget.project)),
-                    ) ?? false; // Provide a default value of false if edited is null
+                    bool edited = await Navigator.push(context,MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project)));
 
                     if (edited == true) {
                       // Fetch tasks using your API call here

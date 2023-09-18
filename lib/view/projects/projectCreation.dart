@@ -498,84 +498,80 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                         isReadOnly: true,
                       ),
                       SizedBox(height: 20.0),
-                      Row(
-                        children: [
-                          Container(
-                            height: 60,
-                            width: 150,
-                            decoration: BoxDecoration(
-                              color: AppColors.lightGrayColor,
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: TextFormField(
-                              onTap: () {
-                                _selectStartDate(context);
-                              },
-                              readOnly: true,
-                              decoration: InputDecoration(
-                                hintText: 'Start Date',
-                                hintStyle: TextStyle(fontSize: 12, color: AppColors.grayColor),
-                                prefixIcon: Container(
-                                  alignment: Alignment.center,
-                                  width: 20,
-                                  height: 20,
-                                  child: Image.asset(
-                                    "assets/icons/calendar_icon.png",
-                                    width: 20,
-                                    height: 20,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                              ),
-                              controller: TextEditingController(
-                                text: _startDate != null
-                                    ? DateFormat('yyyy-MM-dd').format(_startDate!)
-                                    : '',
+                      Container(
+                        height: 60,
+                        width: 170,
+                        decoration: BoxDecoration(
+                          color: AppColors.lightGrayColor,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: TextFormField(
+                          onTap: () {
+                            _selectStartDate(context);
+                          },
+                          readOnly: true,
+                          decoration: InputDecoration(
+                            hintText: 'Start Date',
+                            hintStyle: TextStyle(fontSize: 12, color: AppColors.grayColor),
+                            prefixIcon: Container(
+                              alignment: Alignment.center,
+                              width: 20,
+                              height: 20,
+                              child: Image.asset(
+                                "assets/icons/calendar_icon.png",
+                                width: 20,
+                                height: 20,
+                                fit: BoxFit.contain,
                               ),
                             ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
                           ),
-                          SizedBox(width: 16.0),
-                          Container(
-                            height: 60,
-                            width: 150,
-                            decoration: BoxDecoration(
-                              color: AppColors.lightGrayColor,
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: TextFormField(
-                              onTap: () {
-                                _selectEndDate(context);
-                              },
-                              readOnly: true,
-                              decoration: InputDecoration(
-                                hintText: 'End Date',
-                                hintStyle: TextStyle(fontSize: 12, color: AppColors.grayColor),
-                                prefixIcon: Container(
-                                  alignment: Alignment.center,
-                                  width: 20,
-                                  height: 20,
-                                  child: Image.asset(
-                                    "assets/icons/calendar_icon.png",
-                                    width: 20,
-                                    height: 20,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                              ),
-                              controller: TextEditingController(
-                                text: _endDate != null
-                                    ? DateFormat('yyyy-MM-dd').format(_endDate!)
-                                    : '',
-                              ),
-                            ),
+                          controller: TextEditingController(
+                            text: _startDate != null
+                                ? DateFormat('yyyy-MM-dd').format(_startDate!)
+                                : '',
                           ),
-                        ],
+                        ),
+                      ),
+                      SizedBox(height: 16.0),
+                      Container(
+                        height: 60,
+                        width: 170,
+                        decoration: BoxDecoration(
+                          color: AppColors.lightGrayColor,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: TextFormField(
+                          onTap: () {
+                            _selectEndDate(context);
+                          },
+                          readOnly: true,
+                          decoration: InputDecoration(
+                            hintText: 'End Date',
+                            hintStyle: TextStyle(fontSize: 12, color: AppColors.grayColor),
+                            prefixIcon: Container(
+                              alignment: Alignment.center,
+                              width: 20,
+                              height: 20,
+                              child: Image.asset(
+                                "assets/icons/calendar_icon.png",
+                                width: 20,
+                                height: 20,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                          ),
+                          controller: TextEditingController(
+                            text: _endDate != null
+                                ? DateFormat('yyyy-MM-dd').format(_endDate!)
+                                : '',
+                          ),
+                        ),
                       ),
                       SizedBox(height: 20.0),
                       Padding(

@@ -6,6 +6,7 @@ import '../view/projects/projectDetailsScreen.dart';
 
 class Project {
   String id;
+  String? uniqueId;
   String name;
   String description;
   String owner;
@@ -18,6 +19,7 @@ class Project {
 
   Project({
     required this.id,
+    this.uniqueId,
     required this.name,
     required this.owner,
     required this.status,
@@ -32,6 +34,7 @@ class Project {
   factory Project.fromJson(Map<String, dynamic> json) {
     return Project(
       id: json['id'],
+      uniqueId: json['unique_id'],
       name: json['name'],
       description: json['description'],
       owner: json['owner'],

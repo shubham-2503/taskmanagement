@@ -53,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   ValueNotifier<int> totalMyTasksNotifier = ValueNotifier<int>(0);
   ValueNotifier<String> userNameNotifier = ValueNotifier<String>("");
   ValueNotifier<String> orgNameNotifier = ValueNotifier<String>("");
+  bool hasNewNotifications = true;
 
   void refreshScreen() {
     print("RefreshScreen");
@@ -339,17 +340,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     IconButton(
-                        onPressed: () {
-                          Navigator.pushNamed(
-                              context, NotificationScreen.routeName);
-                          // Navigator.push(context, MaterialPageRoute(builder: (context)=>NotificationApp()));
-                        },
-                        icon: Image.asset(
-                          "assets/icons/notification_icon.png",
-                          width: 25,
-                          height: 25,
-                          fit: BoxFit.fitHeight,
-                        )),
+                      onPressed: () {
+                        Navigator.pushNamed(context, NotificationScreen.routeName);
+                      },
+                      icon: Image.asset(
+                        hasNewNotifications
+                            ? "assets/images/notification.png" // Use this image if there are new notifications
+                            : "assets/images/notification_clear.png", // Use this image if there are no new notifications
+                        width: 25,
+                        height: 25,
+                        fit: BoxFit.fitHeight,
+                      ),
+                    ),
                     SizedBox(
                       width: 1,
                     ),

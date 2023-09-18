@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import '../../Providers/project_provider.dart';
 import '../../Providers/taskProvider.dart';
 import '../../View_model/fetchApiSrvices.dart';
 import '../../common_widgets/date_widget.dart';
 import '../../common_widgets/round_textfield.dart';
+import '../../common_widgets/snackbar.dart';
 import '../../models/fetch_user_model.dart';
 import '../../models/project_model.dart';
 import '../../models/project_team_model.dart';
@@ -469,7 +471,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                               ),
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
-                              labelText: "Select Project",
                               hintText: "Select Project", // Set the initial hint text here
                               hintStyle: TextStyle(
                                 fontSize: 12,
@@ -557,57 +558,58 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                         textEditingController: _assigneeTeamsController,
                       ),
                       SizedBox(height: 16.0),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: EdgeInsets.only(left: 20,right: 20),
-                              child: RoundTextField(
-                                hintText: "Start Date",
-                                icon: "assets/icons/calendar_icon.png",
-                                isReadOnly: true,
-                                onTap: () {
-                                  _selectStartDate(context);
-                                },
-                                textEditingController: TextEditingController(
-                                  text: _startDate != null
-                                      ? DateFormat('yyyy-MM-dd')
-                                      .format(_startDate!)
-                                      : '',
-                                ),
-                                onChanged: (value) {
-                                  setState(() {
+                      SingleChildScrollView(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: EdgeInsets.only(left: 5,right:5),                           child: RoundTextField(
+                                  hintText: "Start Date",
+                                  icon: "assets/icons/calendar_icon.png",
+                                  isReadOnly: true,
+                                  onTap: () {
                                     _selectStartDate(context);
-                                  });
-                                },
+                                  },
+                                  textEditingController: TextEditingController(
+                                    text: _startDate != null
+                                        ? DateFormat('yyyy-MM-dd')
+                                        .format(_startDate!)
+                                        : '',
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectStartDate(context);
+                                    });
+                                  },
+                                ),
                               ),
                             ),
-                          ),
-                          Expanded(
-                            child: Container(
-                              padding: EdgeInsets.only(left: 20,right: 20),
-                              child: RoundTextField(
-                                hintText: "End Date",
-                                icon: "assets/icons/calendar_icon.png",
-                                isReadOnly: true,
-                                onTap: () {
-                                  _selectEndDate(context);
-                                },
-                                textEditingController: TextEditingController(
-                                  text: _endDate != null
-                                      ? DateFormat('yyyy-MM-dd')
-                                      .format(_endDate!)
-                                      : '',
+                            Expanded(
+                              child: Container(
+                                padding: EdgeInsets.only(left: 5,right: 5),
+                                child: RoundTextField(
+                                  hintText: "End Date",
+                                  icon: "assets/icons/calendar_icon.png",
+                                  isReadOnly: true,
+                                  onTap: () {
+                                    _selectEndDate(context);
+                                  },
+                                  textEditingController: TextEditingController(
+                                    text: _endDate != null
+                                        ? DateFormat('yyyy-MM-dd')
+                                        .format(_endDate!)
+                                        : '',
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectStartDate(context);
+                                    });
+                                  },
                                 ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectStartDate(context);
-                                  });
-                                },
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       SizedBox(height: 16.0),
                       Padding(

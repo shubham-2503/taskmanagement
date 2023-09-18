@@ -434,7 +434,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                   ),
                   const SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       SizedBox(
                         height: 40,
@@ -442,18 +442,7 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
                         child: RoundButton(title: "Invite Teammates", onPressed: _inviteTeammate),
                       ),
                       const SizedBox(height: 10,),
-                      SizedBox(
-                        height: 40,
-                        width: 90,
-                        child: RoundButton(
-                          title: "Skip For\nNow",
-                          onPressed: () {
-                            if (ModalRoute.of(context)?.settings.name != '/DashboardScreen') {
-                              // Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
-                            }
-                          },
-                        ),
-                      ),
+
                     ],
                   ),
                 ],

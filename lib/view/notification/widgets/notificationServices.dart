@@ -48,21 +48,21 @@ class NotificationServices{
     );
   }
 
-  void firebaseinit(BuildContext context) {
+  void firebaseinit(BuildContext context){
     FirebaseMessaging.onMessage.listen((message) {
       if (kDebugMode) {
-        print(message.notification?.title);
-        print(message.notification?.body);
-        print(message.data?.toString());
-        print(message.data?["type"]);
-        print(message.data?["id"]);
+        print(message.notification!.title.toString());
+        print(message.notification!.body.toString());
+        print(message.data.toString());
+        print(message.data["type"]);
+        print(message.data["id"]);
       }
 
-      if (message.notification != null) {
-        initLocalnotification(context, message);
-      } else {
-        print("Received a message with no notification data.");
-      }
+      // if(Platform.isAndroid){
+      initLocalnotification(context, message);
+      // }else {
+      showNotification(message );
+      // }
     });
   }
 

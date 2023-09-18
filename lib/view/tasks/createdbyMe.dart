@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'package:Taskapp/view/tasks/MistaskCreation.dart';
 import 'package:Taskapp/view/tasks/editCreatetasks.dart';
@@ -6,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import '../../Providers/taskProvider.dart';
 import '../../common_widgets/round_button.dart';
 import '../../common_widgets/round_textfield.dart';
 import '../../models/task_model.dart';
@@ -107,6 +107,43 @@ class _CreatedByMeState extends State<CreatedByMe> {
       print('Error fetching tasks: $e');
     }
   }
+  Future<void> _deleteTask(BuildContext context, Task task) async {
+    // Make an API call to delete the task
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      final url = Uri.http('43.205.97.189:8000', '/api/Task/delete/${task.taskId}');
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+      };
+
+      final response = await http.delete(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        // Task deleted successfully
+        // Update the UI to remove the deleted task
+        setState(() {
+          ByMytasks.remove(task);
+          filteredTasks.remove(task);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Task deleted successfully'),
+        ));
+      } else {
+        print('Error deleting task: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error deleting task'),
+        ));
+      }
+    } catch (e) {
+      print('Error deleting task: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error deleting task'),
+      ));
+    }
+  }
 
   void filterMyTasks(String query) {
     setState(() {
@@ -152,7 +189,7 @@ class _CreatedByMeState extends State<CreatedByMe> {
                 },
                 icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
               ),
-              Text("Add tasks",style: TextStyle(
+              Text("Add tasks    ",style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.secondaryColor2
               ),),
@@ -242,12 +279,18 @@ class _CreatedByMeState extends State<CreatedByMe> {
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold),
                                       ),
-                                      Text(
-                                        task.taskName,
-                                        style: TextStyle(
-                                            color: AppColors.secondaryColor2,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold),
+                                      Container(
+                                        width: 110,
+                                        child: Text(
+                                          task.taskName.length >10
+                                              ? task.taskName.substring(0,10) + '...'
+                                              : task.taskName,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              color: AppColors.secondaryColor2,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -298,6 +341,8 @@ class _CreatedByMeState extends State<CreatedByMe> {
                                 height: 20,
                               ),
                             ),
+
+
                           ],
                         ),
                       ));
@@ -374,6 +419,7 @@ class _CreatedByMeState extends State<CreatedByMe> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+
                       )),
                     ],
                   ),
@@ -404,6 +450,38 @@ class _CreatedByMeState extends State<CreatedByMe> {
     );
   }
 }
+/*void _showDeleteTaskDialog(BuildContext context, Task task) async {
+  final confirm = await showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Delete Task'),
+        content: Text('Are you sure you want to delete this task?'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(false); // Cancel the deletion
+            },
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(true); // Confirm the deletion
+            },
+            child: Text('Delete'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirm == true) {
+    // Delete the task here
+    await _deleteTask(context, task);
+  }
+}*/
+
+
 
 class TaskDetailsModal extends StatefulWidget {
   final Task task;
@@ -416,9 +494,9 @@ class TaskDetailsModal extends StatefulWidget {
 
 class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
-  List<Task> ByMytasks = [];
+  List<Task> mytasks = [];
 
-  Future<void> fetchCreatedByMeTasks() async {
+  Future<void> fetchMyTasks() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -436,12 +514,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
         throw Exception('orgId not found locally');
       }
 
-      // Use the selected filters to build the query parameters
-      Map<String, String?> queryParameters = {
-        'org_id': orgId,
-      };
-
-      final url = Uri.http('43.205.97.189:8000', '/api/Task/createdByMe', queryParameters);
+      final url = Uri.http('43.205.97.189:8000', '/api/Task/myTasks', );
 
       final headers = {
         'accept': '*/*',
@@ -469,7 +542,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
               ? teams.map((team) => team['teamName'].toString()).toList()
               : [];
           // Assuming the 'assignedTo' and 'assignedTeam' properties of 'task' are either List<String> or comma-separated strings.
-
+          print("AssignedTeam: $assignedTeams");
 
           return Task(
             taskId: taskData['id'],
@@ -485,110 +558,13 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
         }).toList();
 
         setState(() {
-          ByMytasks = fetchedTasks;
+          mytasks = fetchedTasks;
         });
       } else {
         print('Error fetching tasks: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching tasks: $e');
-    }
-  }
-
-  void _deleteTask(String taskId) async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      TaskCountManager taskCountManager = TaskCountManager(prefs);
-
-      showDialog(
-        context: context, // Use the context from the outer widget
-        builder: (BuildContext outerContext) {
-          return AlertDialog(
-            title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this Task?'),
-            actions: [
-              TextButton(
-                child: Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(outerContext).pop(); // Close the confirmation dialog
-                },
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(outerContext).pop(); // Close the confirmation dialog
-
-                  try {
-                    SharedPreferences prefs = await SharedPreferences.getInstance();
-                    final storedData = prefs.getString('jwtToken');
-                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-                    if (orgId == null) {
-                      // If the user hasn't switched organizations, use the organization ID obtained during login time
-                      orgId = prefs.getString('org_id') ?? "";
-                    }
-
-                    print("OrgId: $orgId");
-
-                    if (orgId == null) {
-                      throw Exception('orgId not found locally');
-                    }
-
-                    final response = await http.delete(
-                      Uri.parse('http://43.205.97.189:8000/api/Task/tasks/$taskId'),
-                      headers: {
-                        'accept': '*/*',
-                        'Authorization': "Bearer $storedData",
-                      },
-                    );
-
-                    print("Delete API response: ${response.body}");
-                    print("Delete StatusCode: ${response.statusCode}");
-
-                    if (response.statusCode == 200) {
-                      showDialog(
-                        context: outerContext,
-                        builder: (BuildContext innerContext) {
-                          return AlertDialog(
-                            title: Text('Thank You'),
-                            content: Text("Task deleted successfully."),
-                            actions: [
-                              InkWell(
-                                onTap: () {
-                                  Navigator.pop(innerContext, true);
-                                  Navigator.pop(outerContext, true);
-                                  fetchCreatedByMeTasks();
-                                },
-                                child: Text(
-                                  "OK",
-                                  style: TextStyle(
-                                      color: AppColors.blackColor, fontSize: 20),
-                                ),
-                              )
-                            ],
-                          );
-                        },
-                      );
-                      print('Task deleted successfully.');
-                      // setState(() {
-                      //   Navigator.pop(context);
-                      //   Navigator.pop(context, true); // Sending a result back to the previous screen
-                      // });
-                    } else {
-                      print('Failed to delete Task.');
-                      // Handle other status codes, if needed
-                    }
-                  } catch (e) {
-                    print('Error deleting task: $e');
-                  }
-                },
-                child: Text('Delete'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      print('Error showing delete confirmation dialog: $e');
     }
   }
 
@@ -741,17 +717,10 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
                     if (edited == true) {
                       // Fetch tasks using your API call here
-                      await fetchCreatedByMeTasks();
+                      await fetchMyTasks();
                     }
                   },
                   title: "Edit",
-                ),),
-                SizedBox(width: 50,),
-                SizedBox(height: 30,width: 70,child: RoundButton(
-                  onPressed: (){
-                    _deleteTask("${widget.task.taskId}");
-                  },
-                  title: "Delete",
                 ),),
               ],
             ),

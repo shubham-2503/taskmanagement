@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:Taskapp/common_widgets/round_button.dart';
 import 'package:Taskapp/view/dashboard/dashboard_screen.dart';
 import 'package:Taskapp/view/login/login_screen.dart';
+import 'package:Taskapp/view/login/teamcontactScreens.dart';
 import 'package:Taskapp/view/welcome/backToLogin/backToLogin.dart';
 import 'package:Taskapp/view/welcome/welcome_screen.dart';
 import 'package:flutter/material.dart';
@@ -194,6 +195,12 @@ class _ChoosePlanState extends State<ChoosePlan> {
         iconTheme: IconThemeData(color: Colors.black),
       ),
       body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/images/bagroud.png"), // Replace with your background image
+            fit: BoxFit.cover,
+          ),
+        ),
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.only(top: 16.0),

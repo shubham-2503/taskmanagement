@@ -23,7 +23,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   static const int UserTypeIndividual = 0;
   static const int UserTypeBusiness = 1;
   int _selectedUserType = UserTypeIndividual;
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _firstnameController = TextEditingController();
+  final TextEditingController _lastnameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   TextEditingController _phoneController = TextEditingController();
   List<Map<String, dynamic>> countryCodes = [
@@ -42,7 +43,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   Future<void> _registerUser() async {
     // Prepare the request body
     final Map<String, dynamic> requestBody = {
-      'name': _nameController.text,
+      'name': _firstnameController.text + " " + _lastnameController.text,
       'mobile': selectedCountryCode + _phoneController.text,
       'email': widget.email,
       'password': widget.password,
@@ -52,7 +53,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     };
 
     // Validate the fields
-    if (_nameController.text.isEmpty ||
+    if (_firstnameController.text.isEmpty || _lastnameController.text.isEmpty||
         selectedCountryCode.isEmpty ||
         _emailController.text.isEmpty ||
         _phoneController.text.isEmpty) {
@@ -95,18 +96,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       requestBody['role_id'] = responseData['role_id'];
 
       if (_selectedUserType == UserTypeIndividual) {
-        // Register the default organization for individual users
-        // final orgId = await _registerDefaultOrganization(requestBody);
-        // if (orgId != null) {
-        //   // Registration successful, navigate to the next screen with orgId
-        //   Navigator.push(
-        //     context,
-        //     MaterialPageRoute(builder: (context) => BackToLogin()),
-        //   );
-        // } else {
-        //   // Failed to create the default organization
-        //   _showValidationErrorPopup("Failed to create default organization.");
-        // }
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -284,12 +274,18 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                   Column(
                     children: [
                       RoundTextField(
-                        hintText: "Name",
+                        hintText: "Fisrt Name",
                         icon: "assets/icons/name.png",
                         textInputType: TextInputType.text,
-                        textEditingController: _nameController,
+                        textEditingController: _firstnameController,
                       ),
                       SizedBox(height: 15),
+                      RoundTextField(
+                        hintText: "Last Name",
+                        icon: "assets/icons/name.png",
+                        textInputType: TextInputType.text,
+                        textEditingController: _lastnameController,
+                      ),
                       RoundTextField(
                         hintText: "Email",
                         icon: "assets/icons/message_icon.png",

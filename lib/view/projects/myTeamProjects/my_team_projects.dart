@@ -168,7 +168,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
             },
             icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
           ),
-          Text("Add Projects",style: TextStyle(
+          Text("Add Projects    ",style: TextStyle(
               fontWeight: FontWeight.bold,
               color: AppColors.secondaryColor2
           ),),
@@ -233,12 +233,17 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold),
                                         ),
-                                        Text(
-                                          project.name,
-                                          style: TextStyle(
-                                              color: AppColors.secondaryColor2,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
+                                        Container(
+                                          width:110,
+                                          child: Text(
+                                            project.name.length >10
+                                                ? project.name.substring(0,10) + '...'
+                                                : project.name,
+                                            style: TextStyle(
+                                                color: AppColors.secondaryColor2,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -260,75 +265,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                         ),
                                       ],
                                     ),
-                                    // Row(
-                                    //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    //   children: [
-                                    //     SizedBox(
-                                    //         width: 100,
-                                    //         height: 30,
-                                    //         child: RoundButton(
-                                    //           title: "View More",
-                                    //           onPressed: () async {
-                                    //             final SharedPreferences prefs =
-                                    //                 await SharedPreferences
-                                    //                     .getInstance();
-                                    //             final List<String>? projectIds =
-                                    //                 prefs.getStringList(
-                                    //                     'projectIds');
-                                    //             if (projectIds != null) {
-                                    //               // Find the index of the selected project in the list of stored projectIds
-                                    //               int projectIndex = projectIds
-                                    //                   .indexOf(project.id);
-                                    //               if (projectIndex != -1) {
-                                    //                 bool edited = await Navigator.push(
-                                    //                   context,
-                                    //                   MaterialPageRoute(
-                                    //                     builder: (context) =>
-                                    //                         ProjectDetailsScreen(
-                                    //                           active: project.active!,
-                                    //                       projectId: projectIds[
-                                    //                           projectIndex], // Use the selected projectId from the list
-                                    //                       projectName: project.name,
-                                    //                       assigneeTo: project.users
-                                    //                               ?.map((user) =>
-                                    //                                   user.userName)
-                                    //                               .join(', ') ??
-                                    //                           '',
-                                    //                       status: project.status,
-                                    //                       dueDate: formatDate(
-                                    //                               project
-                                    //                                   .dueDate) ??
-                                    //                           '',
-                                    //                       createdBy: project.owner,
-                                    //                       assigneeTeam: project
-                                    //                               .teams
-                                    //                               ?.map((user) =>
-                                    //                                   user.teamName)
-                                    //                               .join(', ') ??
-                                    //                           '',
-                                    //                       attachments: [], project: project,
-                                    //                     ),
-                                    //                   ),
-                                    //                 );
-                                    //                 if(edited == true){
-                                    //                   await fetchTeamProjects();
-                                    //                 }
-                                    //               }
-                                    //             }
-                                    //           },
-                                    //         )),
-                                    //     SizedBox(width: 20,),
-                                    //     SizedBox(
-                                    //       width: 100,
-                                    //       height: 30,
-                                    //       child: RoundButton(
-                                    //           title: "Delete",
-                                    //           onPressed: () async {
-                                    //             _deleteProject("${project.id}");
-                                    //           }),
-                                    //     ),
-                                    //   ],
-                                    // ),
+
                                   ],
                                 ),
                               ),
@@ -382,19 +319,15 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Center(
-                      child: Text(
-                        '${project.name}',
-                        style: TextStyle(
-                          color: AppColors.secondaryColor2,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                Center(
+                  child: Text(
+                    '${project.name}',
+                    style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: 16),
                 // Display assigned users
@@ -608,6 +541,7 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
                         Navigator.pop(context);
                         Navigator.pop(context, true); // Sending a result back to the previous screen
                       });
+
                     } else {
                       print('Failed to delete Project.');
                       // Handle other status codes, if needed
@@ -746,10 +680,7 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
               children: [
                 SizedBox(height: 30,width: 70,child: RoundButton(
                   onPressed: () async {
-                    bool edited = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => EditMyProject(project: widget.project)),
-                    ) ?? false; // Provide a default value of false if edited is null
+                    bool edited = await Navigator.push(context,MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project)));
 
                     if (edited == true) {
                       // Fetch tasks using your API call here

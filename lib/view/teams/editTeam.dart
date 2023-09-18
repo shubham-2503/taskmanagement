@@ -20,7 +20,8 @@ class _EditTeamPageState extends State<EditTeamPage> {
   late TextEditingController _nameController = TextEditingController();
   late TextEditingController _usercontroller = TextEditingController();
   late List<MyTeam> _teams = [];
-
+  bool _isLoading = false;
+  Map<String, List<String>> selectedMembers = {};
   @override
   void initState() {
     super.initState();
@@ -224,9 +225,15 @@ class _EditTeamPageState extends State<EditTeamPage> {
     );
   }
 
+
   Future<void> _showMembersDropdown(BuildContext context) async {
     List<User> allUsers = await fetchUsers();
-    List<String> selectedMembers = List.from(widget.team.users!);
+    List<String> selectedIds = [];
+
+    // Initialize selectedIds with existing selected members
+    for (String username in _usercontroller.text.split(', ')) {
+      selectedIds.addAll(selectedMembers[username] ?? []);
+    }
 
     await showDialog<void>(
       context: context,
@@ -238,19 +245,27 @@ class _EditTeamPageState extends State<EditTeamPage> {
               content: SingleChildScrollView(
                 child: Column(
                   children: allUsers.map((user) {
-                    bool isSelected = selectedMembers.contains(user.userName);
+                    bool isSelected = selectedIds.contains(user.userId);
 
                     return ListTile(
                       title: Text(user.userName),
                       trailing: isSelected
                           ? Icon(Icons.remove_circle, color: Colors.red)
                           : Icon(Icons.add_circle, color: Colors.green),
+
                       onTap: () {
                         setState(() {
                           if (isSelected) {
-                            selectedMembers.remove(user.userName);
+                            selectedIds.remove(user.userId);
                           } else {
-                            selectedMembers.add(user.userName);
+                            selectedIds.add(user.userId);
+                          }
+
+                          // Update selected members based on user name
+                          for (String username in _usercontroller.text.split(', ')) {
+                            selectedMembers[username] = selectedIds
+                                .where((userId) => allUsers.any((user) => user.userId == userId))
+                                .toList();
                           }
                         });
                       },
@@ -262,8 +277,15 @@ class _EditTeamPageState extends State<EditTeamPage> {
                 TextButton(
                   child: Text('Done'),
                   onPressed: () {
-                    _usercontroller.text = selectedMembers.join(', ');
-                    widget.team.users = _usercontroller.text.isNotEmpty ? _usercontroller.text.split(', ') : [];
+                    // Update _usercontroller text with selected user names
+                    List<String> selectedUserNames = [];
+                    for (String username in _usercontroller.text.split(', ')) {
+                      selectedUserNames.addAll(selectedMembers[username]?.map(
+                            (userId) => allUsers.firstWhere((user) => user.userId == userId).userName,
+                      ) ?? []);
+                    }
+                    _usercontroller.text = selectedUserNames.join(', ');
+
                     Navigator.of(context).pop();
                   },
                 ),
@@ -274,6 +296,44 @@ class _EditTeamPageState extends State<EditTeamPage> {
       },
     );
   }
+
+  // ... (existing code)
+
+  Future<void> _handleSaveChanges() async {
+    // Check if members are not selected
+    if (_usercontroller.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select at least one member'),
+        ),
+      );
+      return; // Do not proceed if members are not selected
+    }
+
+    setState(() {
+      _isLoading = true; // Set loading state to true
+    });
+
+    List<String> usernames = _usercontroller.text.split(', ');
+    List<String> userIds = [];
+
+    for (String username in usernames) {
+      userIds.addAll(selectedMembers[username] ?? []);
+    }
+
+    print("User IDs: $userIds");
+    String newTeamName = _nameController.text;
+    await updateTeamNameAndMembers(widget.team.teamId!, newTeamName, userIds);
+
+    setState(() {
+      _isLoading = false; // Set loading state to false
+    });
+
+    Navigator.pop(context, true);
+    Navigator.pop(context, true);
+  }
+  // ... (existing code)
+
 
   @override
   Widget build(BuildContext context) {
@@ -302,167 +362,37 @@ class _EditTeamPageState extends State<EditTeamPage> {
                   fontWeight: FontWeight.bold),),
               SizedBox(height: 8),
               RoundTextField(hintText: "Members",textEditingController: _usercontroller,isReadOnly: true,
-              onTap: (){
-                _showMembersDropdown(context);
-              },),
-              // SingleChildScrollView(
-              //   child: Column(
-              //     crossAxisAlignment: CrossAxisAlignment.start,
-              //     mainAxisSize: MainAxisSize.min,
-              //     children: [
-              //       ...widget.team.users!.map((user) => ListTile(
-              //         title: Text(
-              //           user,
-              //           style: TextStyle(
-              //               color: AppColors.primaryColor2,
-              //               fontSize: 14,
-              //               fontWeight: FontWeight.bold),
-              //         ),
-              //         trailing: IconButton(
-              //             icon: Icon(
-              //               Icons.remove_circle,
-              //               color: AppColors.secondaryColor2,
-              //             ),
-              //             onPressed: () async {
-              //               try {
-              //                 // Show a confirmation dialog for deleting the task
-              //                 showDialog(
-              //                   context: context,
-              //                   builder: (BuildContext context) {
-              //                     return AlertDialog(
-              //                       title: Text('Confirm Delete'),
-              //                       content: Text('Are you sure you want to delete this User?'),
-              //                       actions: [
-              //                         TextButton(
-              //                           child: Text('Cancel'),
-              //                           onPressed: () {
-              //                             Navigator.of(context).pop();
-              //                           },
-              //                         ),
-              //                         TextButton(
-              //                           onPressed: () async {
-              //                             Navigator.of(context).pop();
-              //                             try {
-              //                               SharedPreferences prefs = await SharedPreferences.getInstance();
-              //                               final storedData = prefs.getString('jwtToken');
-              //                               String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-              //
-              //                               if (orgId == null) {
-              //                                 // If the user hasn't switched organizations, use the organization ID obtained during login time
-              //                                 orgId = prefs.getString('org_id') ?? "";
-              //                               }
-              //
-              //                               print("OrgId: $orgId");
-              //
-              //
-              //                               if (orgId == null) {
-              //                                 throw Exception('orgId not found locally');
-              //                               }
-              //
-              //                               final String teamId = widget.team.teamId!;
-              //                               final String userName = user; // Replace 'user' with the actual userName of the user you want to delete
-              //
-              //                               final userId = await getUserIdByUsername(user); // Make the userId nullable
-              //
-              //                               print("Userid: $userId");
-              //
-              //                               // Get the teamId and userId of the user to delete
-              //                               final String apiUrl = "http://43.205.97.189:8000/api/Team/deleteTeamUser?teamId=${widget.team.teamId}&userId=$userId&org_id=$orgId";
-              //
-              //                               // Prepare the query parameters
-              //                               final Map<String, String> queryParams = {
-              //                                 "teamId": teamId,
-              //                                 "userId":userId,
-              //                               };
-              //
-              //                               print("Body: $queryParams"); // Print the request body to debug
-              //
-              //                               // Make the HTTP DELETE request
-              //                               final response = await http.delete(
-              //                                 Uri.parse(apiUrl),
-              //                                 headers: {
-              //                                   'accept': '*/*',
-              //                                   'Authorization': "Bearer $storedData",
-              //                                   // Add any necessary authorization or authentication headers here
-              //                                 },
-              //                                 body: json.encode(queryParams), // Convert the queryParams to JSON
-              //                               );
-              //
-              //                               print("Response Body: ${response.body}");
-              //                               print("Statuscode: ${response.statusCode}");
-              //
-              //                               // Check the response status and handle accordingly
-              //                               if (response.statusCode == 200) {
-              //                                 // Deletion successful
-              //                                 print("User deleted successfully.");
-              //                                 _showDialog("User deleted Successfully");
-              //
-              //                               } else if (response.statusCode == 401) {
-              //                                 // Unauthorized
-              //                                 print("Unauthorized to perform the delete operation.");
-              //                               } else if (response.statusCode == 403) {
-              //                                 // Forbidden
-              //                                 print("Forbidden to perform the delete operation.");
-              //                               } else {
-              //                                 // Handle other response status codes if needed
-              //                                 print("An error occurred: ${response.statusCode}");
-              //                               }
-              //                             } catch (e) {
-              //                               print("Error: $e");
-              //                             }
-              //                           },
-              //                           child: Text('Delete'),
-              //                         ),
-              //                       ],
-              //                     );
-              //                   },
-              //                 );
-              //               } catch (e) {
-              //                 print('Error showing delete confirmation dialog: $e');
-              //               }
-              //             }
-              //         ),
-              //       )),
-              //       Row(
-              //         children: [
-              //           IconButton(
-              //             icon: Icon(Icons.add_circle, color: AppColors.primaryColor2),
-              //             onPressed: () {
-              //               _showUserSelectionModal(widget.team);
-              //             },
-              //           ),
-              //           Text("Add Members",
-              //             style: TextStyle(
-              //                 color: AppColors.secondaryColor2,
-              //                 fontSize: 12,
-              //                 fontWeight: FontWeight.bold),
-              //           ),
-              //         ],
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              SizedBox(height: 20,),
+                onTap: (){
+                  _showMembersDropdown(context);
+                },),
+              SizedBox(height: 20),
               Center(
                 child: SizedBox(
-                    height: 50,
-                    width: 150,
-                    child: RoundButton(title: "Save Changes", onPressed: ()async{
-                      List<String> usernames = _usercontroller.text.split(', ');
-
-                      // Convert usernames to user IDs
-                      List<String> userIds = [];
-                      for (String username in usernames) {
-                        String userId = await getUserIdByUsername(username);
-                        userIds.add(userId);
-                      }
-
-                      print("User IDs: $userIds");
-                      String newTeamName = _nameController.text;
-                      await updateTeamNameAndMembers(widget.team.teamId!, newTeamName,userIds);
-                      Navigator.pop(context,true);
-                      Navigator.pop(context,true);
-                    })),
+                  height: 50,
+                  width: 200,
+                  child: _isLoading // Check the loading state
+                      ? ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondaryColor2,
+                    ),
+                    onPressed: null, // Disable the button when loading
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Loading...', style: TextStyle(color:AppColors.secondaryColor2)),
+                        SizedBox(width: 10),
+                        CircularProgressIndicator(color: AppColors.secondaryColor2),
+                      ],
+                    ),
+                  )
+                      : ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondaryColor2,
+                    ),
+                    onPressed: _handleSaveChanges,
+                    child: Text("Save Changes", style: TextStyle(color: Colors.white)),
+                  ),
+                ),
               ),
             ],
           ),
