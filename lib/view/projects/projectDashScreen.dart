@@ -99,16 +99,7 @@ class _ProjectDashScreenState extends State<ProjectDashScreen> with SingleTicker
           iconTheme: IconThemeData(
             color: AppColors.primaryColor2,
           ),
-          elevation: 0,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: SizedBox(height: 50,width: 150,child:  RoundTextField(
-                onChanged: (query) {}, hintText: 'Search',
-                icon: "assets/images/search_icon.png",
-              ),),
-            ),
-          ],
+
           bottom: TabBar(
             controller: _tabController,
             tabs: [

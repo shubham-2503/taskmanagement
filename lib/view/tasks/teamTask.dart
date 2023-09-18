@@ -18,6 +18,7 @@ class TeamTaskScreen extends StatefulWidget {
   final VoidCallback refreshCallback;
   final Map<String, String?> selectedFilters;
 
+
   const TeamTaskScreen({super.key, required this.refreshCallback, required this.selectedFilters});
 
   @override
@@ -84,6 +85,7 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
 
           return Task(
             taskId: taskData['id'],
+            uniqueId: taskData['unique_id'] ?? '',
             taskName: taskData['task_name'] ?? '',
             assignedTo: assignedTo,
             status: taskData['status'] ?? '',
@@ -109,13 +111,16 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
 
   void filterMyTasks(String query) {
     setState(() {
-      if (query.length >= 3) {
-        print("Filtering with query: $query");
-        filteredteamTasks = teamtasks.where((mytask) =>
-            mytask.taskName.toLowerCase().contains(query.toLowerCase())).toList();
+      if (query.isEmpty) {
+        filteredteamTasks=List.from( teamtasks );
       } else {
-        // Filter with an empty query or a query with less than 3 characters
-        filteredteamTasks = teamtasks.toList();
+        filteredteamTasks= teamtasks.where((task){
+          final taskName=task.taskName.toLowerCase();
+          final status =task.status.toLowerCase();
+          final taskid=task.uniqueId?.toLowerCase();
+          final lowercaseQuery = query.toLowerCase();
+          return taskName.contains(lowercaseQuery) || status.contains(lowercaseQuery) || taskid!.contains(lowercaseQuery);
+        }).toList();
       }
     });
   }
@@ -126,37 +131,65 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
     super.initState();
     fetchTeamTasks();
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the back button
         iconTheme: IconThemeData(
           color: AppColors.whiteColor,
         ),
-        actions: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => MisTaskCreationScreen()),
-                  );
-
-                  if (result == true) {
-                    fetchTeamTasks();
-                  }
-                },
-                icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween, // To separate the search field and the "Add Projects" button
+          crossAxisAlignment: CrossAxisAlignment.center, // Align items vertically to the center
+          children: <Widget>[
+            // Search Field
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: SizedBox(
+                height: 55,
+                width: 160,
+                child: SingleChildScrollView(
+                  child: RoundTextField(
+                    onChanged: (query) {
+                      filterMyTasks(query);
+                    },
+                    hintText: 'Search',
+                    icon: "assets/images/search_icon.png",
+                  ),
+                ),
               ),
-              Text("Add tasks    ",style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.secondaryColor2
-              ),),
-            ],
-          ),
-        ],
+            ),
+
+            // "Add Projects" Button
+            GestureDetector(
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => MisTaskCreationScreen()),
+                );
+
+                if (result == true) {
+                  // Refresh the data by calling your fetchTeamProjects method
+                  // Or any other method to refresh
+                  fetchTeamTasks();
+                }
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+                  Text(
+                    "Add Projects",
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: AppColors.secondaryColor2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       body: Container(
         child: Column(
@@ -231,6 +264,27 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Task Id: ',
+                                        style: TextStyle(
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Container(
+                                        width:110,
+                                        child: Text(
+                                          task.uniqueId?? '',
+                                          style: TextStyle(
+                                              color: AppColors.secondaryColor2,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                   Row(
                                     children: [
                                       Text(

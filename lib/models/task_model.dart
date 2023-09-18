@@ -1,5 +1,6 @@
 class Task {
   final String? taskId;
+  final String? uniqueId;
   final String taskName;
   List<String> assignedTo;
   List<String> assignedTeam;
@@ -11,6 +12,7 @@ class Task {
   final String? dueDate;
 
   Task({
+  this.uniqueId,
     this.taskId,
     required this.taskName,
     required this.assignedTo,
@@ -26,6 +28,7 @@ class Task {
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
       taskId: json['taskId'],
+      uniqueId: json['unique_id'],
       taskName: json['taskName'],
       assignedTo: List<String>.from(json['assignedTo']),
       assignedTeam: List<String>.from(json['assignedTeam']),
@@ -41,6 +44,7 @@ class Task {
   Map<String, dynamic> toJson() {
     return {
       'taskId': taskId,
+      'uniqueId':uniqueId,
       'taskName': taskName,
       'assignedTo': assignedTo,
       'assignedTeam': assignedTeam,

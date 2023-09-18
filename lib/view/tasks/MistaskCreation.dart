@@ -559,53 +559,51 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                       ),
                       SizedBox(height: 16.0),
                       SingleChildScrollView(
-                        child: Row(
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: Container(
-                                padding: EdgeInsets.only(left: 5,right:5),                           child: RoundTextField(
-                                  hintText: "Start Date",
-                                  icon: "assets/icons/calendar_icon.png",
-                                  isReadOnly: true,
-                                  onTap: () {
-                                    _selectStartDate(context);
-                                  },
-                                  textEditingController: TextEditingController(
-                                    text: _startDate != null
-                                        ? DateFormat('yyyy-MM-dd')
-                                        .format(_startDate!)
-                                        : '',
-                                  ),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectStartDate(context);
-                                    });
-                                  },
+                            Container(
+                              padding: EdgeInsets.only(left: 5,right:5),
+                              child: RoundTextField(
+                                hintText: "Start Date",
+                                icon: "assets/icons/calendar_icon.png",
+                                isReadOnly: true,
+                                onTap: () {
+                                  _selectStartDate(context);
+                                },
+                                textEditingController: TextEditingController(
+                                  text: _startDate != null
+                                      ? DateFormat('yyyy-MM-dd')
+                                      .format(_startDate!)
+                                      : '',
                                 ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectStartDate(context);
+                                  });
+                                },
                               ),
                             ),
-                            Expanded(
-                              child: Container(
-                                padding: EdgeInsets.only(left: 5,right: 5),
-                                child: RoundTextField(
-                                  hintText: "End Date",
-                                  icon: "assets/icons/calendar_icon.png",
-                                  isReadOnly: true,
-                                  onTap: () {
-                                    _selectEndDate(context);
-                                  },
-                                  textEditingController: TextEditingController(
-                                    text: _endDate != null
-                                        ? DateFormat('yyyy-MM-dd')
-                                        .format(_endDate!)
-                                        : '',
-                                  ),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectStartDate(context);
-                                    });
-                                  },
+                            SizedBox(height: 16.0),
+                            Container(
+                              padding: EdgeInsets.only(left: 5,right: 5),
+                              child: RoundTextField(
+                                hintText: "End Date",
+                                icon: "assets/icons/calendar_icon.png",
+                                isReadOnly: true,
+                                onTap: () {
+                                  _selectEndDate(context);
+                                },
+                                textEditingController: TextEditingController(
+                                  text: _endDate != null
+                                      ? DateFormat('yyyy-MM-dd')
+                                      .format(_endDate!)
+                                      : '',
                                 ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectStartDate(context);
+                                  });
+                                },
                               ),
                             ),
                           ],

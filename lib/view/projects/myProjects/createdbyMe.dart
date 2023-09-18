@@ -80,6 +80,7 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
 
           return Project(
             id: projectId,
+            uniqueId: projectData['unique_id'] ?? '',
             name: projectData['projectName'] ?? '',
             owner: projectData['created_by'] ?? '',
             dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
@@ -95,6 +96,7 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
         setState(() {
           projects = projectsWithTasks;
           filteredprojects= List.from(projects);
+
         });
 
         // Store the projectId locally using SharedPreferences
@@ -112,13 +114,18 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
 
   void filterProjects(String query) {
     setState(() {
-      if (query.length >= 3) {
-        print("Filtering with query: $query");
-        filteredprojects = projects.where((project) =>
-            project.name.toLowerCase().contains(query.toLowerCase())).toList();
+      if (query.isEmpty) {
+        // If the query is empty, show all projects
+        filteredprojects = List.from(projects);
       } else {
-        // Reset the filteredprojects list when query length is less than 3
-        filteredprojects = projects.toList();
+        // If the query is not empty, filter projects based on project name or status
+        filteredprojects = projects.where((project) {
+          final projectName = project.name.toLowerCase();
+          final status = project.status.toLowerCase();
+          final projectId=project.uniqueId!.toLowerCase();
+          final lowercaseQuery = query.toLowerCase();
+          return projectName.contains(lowercaseQuery) || status.contains(lowercaseQuery) || projectId.contains(lowercaseQuery);
+        }).toList();
       }
     });
   }
@@ -154,46 +161,74 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
         return 5;
     }
   }
-
   @override
   Widget build(BuildContext context) {
-    return Consumer<ProjectDataProvider>(
-      builder: (context, projectProvider, child) {
-        List<Project> projects = projectProvider.projects;
-        return Scaffold(
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            iconTheme: IconThemeData(
-                color: AppColors.whiteColor
-            ),
-            actions: [
-              IconButton(
-                onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ProjectCreationScreen(Count: projectCount,)),
-                  );
-
-                  if (result == true) {
-                    // Refresh the data by calling your fetchTeamProjects method
-                    fetchCreatedbyProjects(); // Or any other method to refresh data
-                  }
-                },
-                icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the back button
+        iconTheme: IconThemeData(
+          color: AppColors.whiteColor,
+        ),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween, // To separate the search field and the "Add Projects" button
+          crossAxisAlignment: CrossAxisAlignment.center, // Align items vertically to the center
+          children: <Widget>[
+            // Search Field
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: SizedBox(
+                height: 55,
+                width: 160,
+                child: SingleChildScrollView(
+                  child: RoundTextField(
+                    onChanged: (query) {
+                      // Call a method to filter projects based on the query
+                      filterProjects(query);
+                    },
+                    hintText: 'Search',
+                    icon: "assets/images/search_icon.png",
+                  ),
+                ),
               ),
-              Text("Add Projects    ",style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.secondaryColor2
-              ),),
-            ],
-          ),
+            ),
+
+            // "Add Projects" Button
+            GestureDetector(
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ProjectCreationScreen(Count: projectCount)),
+                );
+
+                if (result == true) {
+                  // Refresh the data by calling your fetchTeamProjects method
+                  fetchCreatedbyProjects(); // Or any other method to refresh data
+                }
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.add_circle, color: AppColors.secondaryColor2),
+                  Text(
+                    "Add Projects",
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: AppColors.secondaryColor2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+
           body: Container(
             child: Padding(
               padding: const EdgeInsets.only(top: 30),
               child: Column(
                 children: [
                   Text(
-                    'My Projects',
+                    'Created by Me',
                     style: TextStyle(
                         color: AppColors.secondaryColor2,
                         fontWeight: FontWeight.bold,
@@ -237,6 +272,27 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              'Project Id: ',
+                                              style: TextStyle(
+                                                  color: AppColors.blackColor,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                            Container(
+                                              width:110,
+                                              child: Text(
+                                                project.uniqueId ?? '',
+                                                style: TextStyle(
+                                                    color: AppColors.secondaryColor2,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                         Row(
                                           children: [
                                             Text(
@@ -318,7 +374,7 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
             ),
           ),
         );
-      },);}
+      }
 
   void _showViewProjectDialog(Project project) async {
     showDialog(
