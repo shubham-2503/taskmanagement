@@ -38,8 +38,13 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
   List<Team> teams = [];
   List<String> selectedMembers = [];
   List<String> selectedTeams = [];
+  bool _isLoading = false;
 
-  Future<void> updateTasks(String taskId) async {
+  Future<void> _handleSaveChanges(String taskId) async {
+    if (_isLoading) {
+      // Don't allow multiple project creation attempts while loading
+      return;
+    }
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -76,19 +81,44 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       print("selectedTeams: $selectedTeams");
       print("selectedMember: $selectedMembers");
 
+
+      String? getMemberIdFromName(String memberName, List<User> users) {
+        for (User user in users) {
+          if (user.userName == memberName) {
+            return user.userId;
+          }
+        }
+        return null; // Return null if no matching member name is found
+      }
+
+      // Function to convert team names to IDs
+      String? getTeamIdFromName(String teamName, List<Team> teams) {
+        for (Team team in teams) {
+          if (team.teamName == teamName) {
+            return team.id;
+          }
+        }
+        return null; // Return null if no matching team name is found
+      }
+
+      // Usage example in your code
       List<String> selectedMemberIds = [];
       for (String memberName in selectedMembers) {
-        String memberId = getUserIdFromName(memberName, users); // Make sure this function works correctly
+        String? memberId = getMemberIdFromName(memberName, users);
         if (memberId != null) {
           selectedMemberIds.add(memberId);
+        } else {
+          print("Member ID not found for: $memberName");
         }
       }
 
       List<String> selectedTeamIds = [];
       for (String teamName in selectedTeams) {
-        String teamId = getTeamIdFromName(teamName, teams); // Make sure this function works correctly
+        String? teamId = getTeamIdFromName(teamName, teams);
         if (teamId != null) {
           selectedTeamIds.add(teamId);
+        } else {
+          print("Team ID not found for: $teamName");
         }
       }
 
@@ -106,6 +136,8 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         "end_date": endDateString,
         "project_id": null,
       });
+
+      print("Decoded Body: $body");
 
       final response =
       await http.patch(Uri.parse(url), headers: headers, body: body);
@@ -183,6 +215,12 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
           );
         },
       );
+    }
+    finally {
+      // Ensure that isLoading is set to false whether the creation succeeded or failed
+      setState(() {
+        _isLoading = false; // Stop loading
+      });
     }
   }
 
@@ -319,10 +357,6 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
           final List<User> users =
           data.map((userJson) => User.fromJson(userJson)).toList();
 
-          // Process the teams data as needed
-          // For example, you can store them in a state variable or display them in a dropdown menu
-
-          // Print the team names for testing
           for (User user in users) {
             print('User ID: ${user.userId}');
             print('User Name: ${user.userName}');
@@ -780,23 +814,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
                   child: RoundButton(
                       title: "Update Task",
                       onPressed: () async {
-                        // Task updatedTask = Task(
-                        //   taskId: widget.task.taskId,
-                        //   taskName: titleController.text.toString(),
-                        //   description: descriptionController.text.toString(),
-                        //   dueDate: formatDate(dueDate),
-                        //   assignedTo: List.from(_selectedMembers),
-                        //   assignedTeam: List.from(_selectedTeams),
-                        //   priority: _priority,
-                        //   status: _selectedStatus,
-                        // );
-                        // print("${task.taskId}");
-                        // print("${task.taskName}");
-                        // print("${task.dueDate}");
-                        // print("$_selectedStatus");
-                        // print("$_priority");
-                        // print("${task.taskId}");
-                        updateTasks(task.taskId!);
+                        _handleSaveChanges(task.taskId!);
                       }),
                 ),
               ),

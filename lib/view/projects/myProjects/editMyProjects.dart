@@ -32,6 +32,8 @@ class _EditMyProjectState extends State<EditMyProject> {
   late String activeText;
   List<User> users = [];
   List<Team> teams = [];
+  bool _isLoading = false;
+
 
   String getActiveText(bool? isActive) {
     if (isActive != null) {
@@ -41,7 +43,11 @@ class _EditMyProjectState extends State<EditMyProject> {
     }
   }
 
-  Future<void> updateProject() async {
+  Future<void> _handleSaveChanges() async {
+    if (_isLoading) {
+      // Don't allow multiple project creation attempts while loading
+      return;
+    }
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
     final String projectId = widget.project.id; // Replace with actual project ID
@@ -91,6 +97,10 @@ class _EditMyProjectState extends State<EditMyProject> {
       'Authorization': 'Bearer $storedData',
       'Content-Type': 'application/json',
     };
+
+    setState(() {
+      _isLoading = true; // Start loading
+    });
 
     try {
       final response = await http.patch(
@@ -167,6 +177,12 @@ class _EditMyProjectState extends State<EditMyProject> {
           );
         },
       );
+    }
+    finally {
+      // Ensure that isLoading is set to false whether the creation succeeded or failed
+      setState(() {
+        _isLoading = false; // Stop loading
+      });
     }
   }
 
@@ -563,12 +579,31 @@ class _EditMyProjectState extends State<EditMyProject> {
                 ),
                 SizedBox(height: 30,),
                 Center(
-                  child: SizedBox(
-                    height: 40,
-                    width: 120,
-                    child: RoundButton(title: "Update Project", onPressed: (){
-                      updateProject();
-                    }),
+                  child:SizedBox(
+                    height: 50,
+                    width: 200,
+                    child: _isLoading // Check the loading state
+                        ? ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondaryColor2,
+                      ),
+                      onPressed: null, // Disable the button when loading
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Loading...', style: TextStyle(color: AppColors.secondaryColor2)),
+                          SizedBox(width: 10),
+                          CircularProgressIndicator(color: AppColors.secondaryColor2),
+                        ],
+                      ),
+                    )
+                        : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondaryColor2,
+                      ),
+                      onPressed: _handleSaveChanges,
+                      child: Text("Create Project", style: TextStyle(color: Colors.white)),
+                    ),
                   ),
                 ),
               ],

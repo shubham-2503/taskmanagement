@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:Taskapp/Providers/project_provider.dart';
 import 'package:Taskapp/view/projects/myProjects/editMyProjects.dart';
 import 'package:Taskapp/view/projects/projectDetailsScreen.dart';
+import 'package:Taskapp/view/tasks/completedTasks.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -106,6 +107,102 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
       }
     } catch (e) {
       print('Error fetching projects: $e');
+    }
+  }
+
+  void _deleteProject(String projectId) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      ProjectCountManager projectCountManager = ProjectCountManager(prefs);
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Confirm Delete'),
+            content: Text('Are you sure you want to delete this Project?'),
+            actions: [
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop(); // Close the confirmation dialog
+
+                  try {
+                    SharedPreferences prefs = await SharedPreferences.getInstance();
+                    final storedData = prefs.getString('jwtToken');
+                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+                    if (orgId == null) {
+                      // If the user hasn't switched organizations, use the organization ID obtained during login time
+                      orgId = prefs.getString('org_id') ?? "";
+                    }
+
+                    print("OrgId: $orgId");
+
+                    if (orgId == null) {
+                      throw Exception('orgId not found locally');
+                    }
+
+                    final response = await http.delete(
+                      Uri.parse('http://43.205.97.189:8000/api/Project/deleteProject/$projectId'),
+                      headers: {
+                        'accept': '*/*',
+                        'Authorization': "Bearer $storedData",
+                      },
+                    );
+
+                    print("Delete API response: ${response.body}");
+                    print("Delete StatusCode: ${response.statusCode}");
+
+                    if (response.statusCode == 200) {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Thank You'),
+                            content: Text("Project deleted successfully."),
+                            actions: [
+                              InkWell(
+                                onTap: () {
+                                  Navigator.pop(context,true);
+                                  Navigator.pop(context,true);
+                                },
+                                child: Text(
+                                  "OK",
+                                  style: TextStyle(
+                                      color: AppColors.blackColor, fontSize: 20),
+                                ),
+                              )
+                            ],
+                          );
+                        },
+                      );
+                      print('Project deleted successfully.');
+                      setState(() {
+                        Navigator.pop(context);
+                        Navigator.pop(context, true); // Sending a result back to the previous screen
+                      });
+
+                    } else {
+                      print('Failed to delete Project.');
+                      // Handle other status codes, if needed
+                    }
+                  } catch (e) {
+                    print('Error deleting project: $e');
+                  }
+                },
+                child: Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print('Error showing delete confirmation dialog: $e');
     }
   }
 
@@ -240,16 +337,16 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                     }
                     return Container(
                         margin: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 2),
+                            vertical: 8, horizontal: 0),
                         padding:
-                            EdgeInsets.symmetric(vertical: 8, horizontal: 9),
+                        EdgeInsets.symmetric(vertical: 8, horizontal: 7),
                         decoration: BoxDecoration(
                           color: AppColors.whiteColor,
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 20),
+                              vertical: 20, horizontal: 10),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(colors: [
                               AppColors.primaryColor2.withOpacity(0.3),
@@ -268,20 +365,23 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                     Row(
                                       children: [
                                         Text(
-                                          'Project Id: ',
+                                          'Project ID: ',
                                           style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
+                                            color: AppColors.blackColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                         Container(
-                                          width:110,
+                                          width: 110,
                                           child: Text(
-                                            project.uniqueId ?? '',
+                                            project.uniqueId ?? "", // Use the null-aware operator to handle null values
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                                color: AppColors.secondaryColor2,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold),
+                                              color: AppColors.secondaryColor2,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -296,7 +396,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                               fontWeight: FontWeight.bold),
                                         ),
                                         Container(
-                                          width:110,
+                                          width:90,
                                           child: Text(
                                             project.name.length >10
                                                 ? project.name.substring(0,10) + '...'
@@ -331,31 +431,36 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
                                   ],
                                 ),
                               ),
+                              // SizedBox(width: 20,),
                               Spacer(),
                               IconButton(
-                                icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2),
+                                icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2,size: 20,),
                                 onPressed: () {
                                   _showViewProjectDialog(project);
                                 },
-                              ), // Add a Spacer to push the menu image to the end
-                              GestureDetector(
-                                onTap: () async {
-                                  bool? shouldRefresh = await showModalBottomSheet<bool>(
+                              ),
+                              SizedBox(width: 1,),// Add a Spacer to push the menu image to the end
+                              IconButton(
+                                icon: Icon(Icons.edit, color: AppColors.secondaryColor2, size: 20,),
+                                onPressed: () async {
+                                  bool? edited = await showModalBottomSheet<bool>(
                                     context: context,
-                                    builder: (context) {
+                                    builder: (BuildContext context) {
                                       return ProjectDetailsModal(project: project);
                                     },
                                   );
 
-                                  if (shouldRefresh ?? false) {
+                                  if (edited == true) {
                                     await fetchTeamProjects();
                                   }
                                 },
-                                child: Image.asset(
-                                  "assets/images/menu.png",
-                                  width: 40,
-                                  height: 20,
-                                ),
+                              ),
+                              SizedBox(width: 1,),
+                              IconButton(
+                                icon: Icon(Icons.delete, color: AppColors.secondaryColor2,size: 20,),
+                                onPressed: () {
+                                  _deleteProject(project.id);
+                                },
                               ),
                             ],
                           ),
@@ -527,101 +632,6 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
     }
   }
 
-  void _deleteProject(String projectId) async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      ProjectCountManager projectCountManager = ProjectCountManager(prefs);
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this Project?'),
-            actions: [
-              TextButton(
-                child: Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop(); // Close the confirmation dialog
-
-                  try {
-                    SharedPreferences prefs = await SharedPreferences.getInstance();
-                    final storedData = prefs.getString('jwtToken');
-                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-                    if (orgId == null) {
-                      // If the user hasn't switched organizations, use the organization ID obtained during login time
-                      orgId = prefs.getString('org_id') ?? "";
-                    }
-
-                    print("OrgId: $orgId");
-
-                    if (orgId == null) {
-                      throw Exception('orgId not found locally');
-                    }
-
-                    final response = await http.delete(
-                      Uri.parse('http://43.205.97.189:8000/api/Project/deleteProject/$projectId'),
-                      headers: {
-                        'accept': '*/*',
-                        'Authorization': "Bearer $storedData",
-                      },
-                    );
-
-                    print("Delete API response: ${response.body}");
-                    print("Delete StatusCode: ${response.statusCode}");
-
-                    if (response.statusCode == 200) {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text('Thank You'),
-                            content: Text("Project deleted successfully."),
-                            actions: [
-                              InkWell(
-                                onTap: () {
-                                  Navigator.pop(context,true);
-                                  Navigator.pop(context,true);
-                                },
-                                child: Text(
-                                  "OK",
-                                  style: TextStyle(
-                                      color: AppColors.blackColor, fontSize: 20),
-                                ),
-                              )
-                            ],
-                          );
-                        },
-                      );
-                      print('Project deleted successfully.');
-                      setState(() {
-                        Navigator.pop(context);
-                        Navigator.pop(context, true); // Sending a result back to the previous screen
-                      });
-
-                    } else {
-                      print('Failed to delete Project.');
-                      // Handle other status codes, if needed
-                    }
-                  } catch (e) {
-                    print('Error deleting project: $e');
-                  }
-                },
-                child: Text('Delete'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      print('Error showing delete confirmation dialog: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -633,9 +643,21 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              "Project Name",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+            Row(
+              children: [
+                Text(
+                  "Project Name",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+                ),
+                IconButton(onPressed: () async {
+                  bool edited = await Navigator.push(context,MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project)));
+
+                  if (edited == true) {
+                    // Fetch tasks using your API call here
+                    await fetchTeamProjects();
+                  }
+                }, icon: Icon(Icons.edit)),
+              ],
             ),
             SizedBox(height: 10,),
             Container(
@@ -735,30 +757,6 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
                   ),
                 ],
               ),
-            ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(height: 30,width: 70,child: RoundButton(
-                  onPressed: () async {
-                    bool edited = await Navigator.push(context,MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project)));
-
-                    if (edited == true) {
-                      // Fetch tasks using your API call here
-                      await fetchTeamProjects();
-                    }
-                  },
-                  title: "Edit",
-                ),),
-                SizedBox(width: 50,),
-                SizedBox(height: 30,width: 70,child: RoundButton(
-                  onPressed: (){
-                    _deleteProject("${widget.project.id}");
-                  },
-                  title: "Delete",
-                ),),
-              ],
             ),
           ],
         ),

@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../Providers/project_provider.dart';
 import '../../View_model/fetchApiSrvices.dart';
+import '../../common_widgets/date_widget.dart';
 import '../../common_widgets/round_button.dart';
 import '../../models/project_model.dart';
 import '../../models/project_team_model.dart';
@@ -37,6 +38,7 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
   DateTime? _endDate;
   List<dynamic> statuses = [];
   TextEditingController _attachmentController = TextEditingController();
+  bool _isLoading = false;
 
   void showSnackbar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -52,159 +54,159 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
       ),
     );
   }
-
-  void createProject(int ProjectCount) async {
-    if (_titleController.text.isEmpty) {
-      showSnackbar(context, "Title is required");
-      return;
-    }
-
-    if (_descriptionController.text.isEmpty) {
-      showSnackbar(context, 'Description is required.');
-      return;
-    }
-
-
-
-    if (_startDate == null) {
-      showSnackbar(context, 'Start Date is required.');
-      return;
-    }
-
-    if (_endDate == null) {
-      showSnackbar(context, 'End Date is required.');
-      return;
-    }
-
-    if (_selectedStatus==null) {
-      showSnackbar(context, 'Status is required.');
-      return;
-    }
-
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-      if (orgId == null) {
-        // If the user hasn't switched organizations, use the organization ID obtained during login time
-        orgId = prefs.getString('org_id') ?? "";
-      }
-
-      print("OrgId: $orgId");
-
-      if (orgId == null) {
-        throw Exception('orgId not found locally');
-      }
-
-      final url = 'http://43.205.97.189:8000/api/Project/addProjects?org_id=$orgId';
-
-      final headers = {
-        'accept': '*/*',
-        'Authorization': 'Bearer $storedData',
-        'Content-Type': 'application/json',
-      };
-
-      final body = jsonEncode({
-        "name": _titleController.text.toString(),
-        "start_date": _startDate!.toUtc().toIso8601String(),
-        "end_date": _endDate!.toUtc().toIso8601String(),
-       /* "start_date": _startDate?.toUtc().toIso8601String(),
-        "end_date": _endDate?.toUtc().toIso8601String(),*/
-
-        "status" : _selectedStatus!, //changes
-        "team_id": _selectedTeams, // Remove the square brackets here
-        "user_id": _selectedMembers, // Remove the square brackets here
-      });
-
-      final response = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: body,
-      );
-      print("Response: ${response.body}");
-      print("StatusCode: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['status'] == true) {
-          ProjectCountManager projectCountManager = ProjectCountManager(prefs);
-          await projectCountManager.incrementProjectCount();
-          await projectCountManager.fetchTotalProjectCount();
-          await projectCountManager.updateProjectCount();
-
-          final project = data['data']['project'];
-
-          // Handle the project data as needed
-          print('Project ID: ${project['id']}');
-          print('Project Name: ${project['name']}');
-
-          // Create a Project instance with relevant data
-          Project createdProject = Project(
-            id: project['id'],
-            name: project['name'],owner: project['created_by'], status: project['status'], description: project['description'] ?? " ",
-            // Set other properties as needed
-          );
-
-          // Navigator.pop(context);
-          // final ProjectDataProvider projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
-          // projectProvider.addProject(createdProject);
-
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: Text('Thank You'),
-                content: RichText(
-                  text: TextSpan(
-                    text: 'Your project ',
-                    style: TextStyle(color: Colors.black),
-                    children: [
-                      TextSpan(
-                        text: _titleController.text.isNotEmpty
-                            ? _titleController.text
-                            : '',
-                        style: TextStyle(
-                          color: Colors.black, // Set the desired color here
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' has been successfully created.',
-                        style: TextStyle(color: Colors.black),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  InkWell(
-                  onTap: () async {
-                    Navigator.pop(context,true);
-                    Navigator.pop(context,true);
-                   },
-                   child: Text(
-                      "OK",
-                      style: TextStyle(
-                        color: AppColors.blackColor,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        } else {
-          print('Error creating project: ${data['message']}');
-        }
-      } else {
-        print('Error creating project: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error creating project: $e');
-    }
-  }
+  //
+  // void createProject(int ProjectCount) async {
+  //   if (_titleController.text.isEmpty) {
+  //     showSnackbar(context, "Title is required");
+  //     return;
+  //   }
+  //
+  //   if (_descriptionController.text.isEmpty) {
+  //     showSnackbar(context, 'Description is required.');
+  //     return;
+  //   }
+  //
+  //
+  //
+  //   if (_startDate == null) {
+  //     showSnackbar(context, 'Start Date is required.');
+  //     return;
+  //   }
+  //
+  //   if (_endDate == null) {
+  //     showSnackbar(context, 'End Date is required.');
+  //     return;
+  //   }
+  //
+  //   if (_selectedStatus==null) {
+  //     showSnackbar(context, 'Status is required.');
+  //     return;
+  //   }
+  //
+  //   try {
+  //     SharedPreferences prefs = await SharedPreferences.getInstance();
+  //     final storedData = prefs.getString('jwtToken');
+  //     String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+  //
+  //     if (orgId == null) {
+  //       // If the user hasn't switched organizations, use the organization ID obtained during login time
+  //       orgId = prefs.getString('org_id') ?? "";
+  //     }
+  //
+  //     print("OrgId: $orgId");
+  //
+  //     if (orgId == null) {
+  //       throw Exception('orgId not found locally');
+  //     }
+  //
+  //     final url = 'http://43.205.97.189:8000/api/Project/addProjects?org_id=$orgId';
+  //
+  //     final headers = {
+  //       'accept': '*/*',
+  //       'Authorization': 'Bearer $storedData',
+  //       'Content-Type': 'application/json',
+  //     };
+  //
+  //     final body = jsonEncode({
+  //       "name": _titleController.text.toString(),
+  //       "start_date": _startDate!.toUtc().toIso8601String(),
+  //       "end_date": _endDate!.toUtc().toIso8601String(),
+  //      /* "start_date": _startDate?.toUtc().toIso8601String(),
+  //       "end_date": _endDate?.toUtc().toIso8601String(),*/
+  //
+  //       "status" : _selectedStatus!, //changes
+  //       "team_id": _selectedTeams, // Remove the square brackets here
+  //       "user_id": _selectedMembers, // Remove the square brackets here
+  //     });
+  //
+  //     final response = await http.post(
+  //       Uri.parse(url),
+  //       headers: headers,
+  //       body: body,
+  //     );
+  //     print("Response: ${response.body}");
+  //     print("StatusCode: ${response.statusCode}");
+  //
+  //     if (response.statusCode == 200) {
+  //       final data = jsonDecode(response.body);
+  //       if (data['status'] == true) {
+  //         ProjectCountManager projectCountManager = ProjectCountManager(prefs);
+  //         await projectCountManager.incrementProjectCount();
+  //         await projectCountManager.fetchTotalProjectCount();
+  //         await projectCountManager.updateProjectCount();
+  //
+  //         final project = data['data']['project'];
+  //
+  //         // Handle the project data as needed
+  //         print('Project ID: ${project['id']}');
+  //         print('Project Name: ${project['name']}');
+  //
+  //         // Create a Project instance with relevant data
+  //         Project createdProject = Project(
+  //           id: project['id'],
+  //           name: project['name'],owner: project['created_by'], status: project['status'], description: project['description'] ?? " ",
+  //           // Set other properties as needed
+  //         );
+  //
+  //         // Navigator.pop(context);
+  //         // final ProjectDataProvider projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
+  //         // projectProvider.addProject(createdProject);
+  //
+  //         showDialog(
+  //           context: context,
+  //           builder: (BuildContext context) {
+  //             return AlertDialog(
+  //               title: Text('Thank You'),
+  //               content: RichText(
+  //                 text: TextSpan(
+  //                   text: 'Your project ',
+  //                   style: TextStyle(color: Colors.black),
+  //                   children: [
+  //                     TextSpan(
+  //                       text: _titleController.text.isNotEmpty
+  //                           ? _titleController.text
+  //                           : '',
+  //                       style: TextStyle(
+  //                         color: Colors.black, // Set the desired color here
+  //                         fontWeight: FontWeight.bold,
+  //                         fontSize: 20,
+  //                       ),
+  //                     ),
+  //                     TextSpan(
+  //                       text: ' has been successfully created.',
+  //                       style: TextStyle(color: Colors.black),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //               actions: [
+  //                 InkWell(
+  //                 onTap: () async {
+  //                   Navigator.pop(context,true);
+  //                   Navigator.pop(context,true);
+  //                  },
+  //                  child: Text(
+  //                     "OK",
+  //                     style: TextStyle(
+  //                       color: AppColors.blackColor,
+  //                       fontSize: 20,
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ],
+  //             );
+  //           },
+  //         );
+  //       } else {
+  //         print('Error creating project: ${data['message']}');
+  //       }
+  //     } else {
+  //       print('Error creating project: ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     print('Error creating project: $e');
+  //   }
+  // }
 
   void _showTeamsDropdown(BuildContext context) async {
     List<Team> teams = await _fetchTeams();
@@ -619,14 +621,40 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
                         ),
                       ),
                       SizedBox(height: 40.0),
-                      SizedBox(
+                      /*SizedBox(
                           height: 40,
                           width: 90,
                           child: RoundButton(
                               title: "Create Project", onPressed: (){
                                 createProject(widget.Count!);
                                 print("Count: ${widget.Count}");
-                          })),
+                          }))*/
+                      SizedBox(
+                        height: 50,
+                        width: 200,
+                        child: _isLoading // Check the loading state
+                            ? ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondaryColor2,
+                          ),
+                          onPressed: null, // Disable the button when loading
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('Loading...', style: TextStyle(color: AppColors.secondaryColor2)),
+                              SizedBox(width: 10),
+                              CircularProgressIndicator(color: AppColors.secondaryColor2),
+                            ],
+                          ),
+                        )
+                            : ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondaryColor2,
+                          ),
+                          onPressed: _handleSaveChanges,
+                          child: Text("Create Project", style: TextStyle(color: Colors.white)),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -637,31 +665,186 @@ class _ProjectCreationScreenState extends State<ProjectCreationScreen> {
       ),
     );
   }
+  void _handleSaveChanges() async {
+    if (_isLoading) {
+      // Don't allow multiple project creation attempts while loading
+      return;
+    }
+
+    if (_titleController.text.isEmpty) {
+      showSnackbar(context, "Title is required");
+      return;
+    }
+
+    if (_descriptionController.text.isEmpty) {
+      showSnackbar(context, 'Description is required.');
+      return;
+    }
+
+    if (_startDate == null) {
+      showSnackbar(context, 'Start Date is required.');
+      return;
+    }
+
+    if (_endDate == null) {
+      showSnackbar(context, 'End Date is required.');
+      return;
+    }
+
+    if (_selectedStatus == null) {
+      showSnackbar(context, 'Status is required.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true; // Start loading
+    });
+
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final url = 'http://43.205.97.189:8000/api/Project/addProjects?org_id=$orgId';
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+        'Content-Type': 'application/json',
+      };
+
+      final body = jsonEncode({
+        "name": _titleController.text.toString(),
+        "start_date": _startDate!.toUtc().toIso8601String(),
+        "end_date": _endDate!.toUtc().toIso8601String(),
+        "status": _selectedStatus!,
+        "team_id": _selectedTeams,
+        "user_id": _selectedMembers,
+      });
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: body,
+      );
+      print("Response: ${response.body}");
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == true) {
+          ProjectCountManager projectCountManager = ProjectCountManager(prefs);
+          await projectCountManager.incrementProjectCount();
+          await projectCountManager.fetchTotalProjectCount();
+          await projectCountManager.updateProjectCount();
+
+          final project = data['data']['project'];
+
+          // Handle the project data as needed
+          print('Project ID: ${project['id']}');
+          print('Project Name: ${project['name']}');
+
+          // Create a Project instance with relevant data
+          Project createdProject = Project(
+            id: project['id'],
+            name: project['name'],
+            owner: project['created_by'],
+            status: project['status'],
+            description: project['description'] ?? " ",
+            // Set other properties as needed
+          );
+
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: Text('Thank You'),
+                content: RichText(
+                  text: TextSpan(
+                    text: 'Your project ',
+                    style: TextStyle(color: Colors.black),
+                    children: [
+                      TextSpan(
+                        text: _titleController.text.isNotEmpty
+                            ? _titleController.text
+                            : '',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' has been successfully created.',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  InkWell(
+                    onTap: () async {
+                      Navigator.pop(context, true);
+                      Navigator.pop(context, true);
+                    },
+                    child: Text(
+                      "OK",
+                      style: TextStyle(
+                        color: AppColors.blackColor,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        } else {
+          print('Error creating project: ${data['message']}');
+          showSnackbar(context, 'Error creating project: ${data['message']}');
+        }
+      } else {
+        print('Error creating project: ${response.statusCode}');
+        showSnackbar(context, 'Error creating project: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error creating project: $e');
+      showSnackbar(context, 'Error creating project: $e');
+    } finally {
+      // Ensure that isLoading is set to false whether the creation succeeded or failed
+      setState(() {
+        _isLoading = false; // Stop loading
+      });
+    }
+  }
+
 
   void _selectStartDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().toUtc(), // Set initial date in UTC format
-      firstDate: DateTime.now().toUtc(), // Set first selectable date in UTC format
-      lastDate: DateTime.now().add(Duration(days: 365)).toUtc(), // Set last selectable date in UTC format
-    );
-    if (picked != null) {
+    DateTime? startDate = await DatePickerUtils.selectStartDate(context);
+    if (startDate != null) {
       setState(() {
-        _startDate = picked;
+        _startDate = startDate;
       });
     }
   }
 
   void _selectEndDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: (_startDate ?? DateTime.now()).toUtc(), // Set initial date in UTC format, considering the selected start date if available
-      firstDate: (_startDate ?? DateTime.now()).toUtc(), // Set first selectable date in UTC format, considering the selected start date if available
-      lastDate: DateTime.now().add(Duration(days: 365)).toUtc(), // Set last selectable date in UTC format
-    );
-    if (picked != null) {
+    // Use DatePickerUtils.selectEndDate instead of showDatePicker directly
+    DateTime? endDate = await DatePickerUtils.selectEndDate(context, _startDate);
+    if (endDate != null) {
       setState(() {
-        _endDate = picked;
+        _endDate = endDate;
       });
     }
   }

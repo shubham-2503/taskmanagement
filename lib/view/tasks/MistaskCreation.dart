@@ -42,6 +42,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
   String? _selectedStatus;
   List<Project> projects = [];
   String? _selectedProject;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -218,10 +219,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
           final List<dynamic> data = jsonDecode(responseBody);
           final List<User> users = data.map((userJson) => User.fromJson(userJson)).toList();
 
-          // Process the teams data as needed
-          // For example, you can store them in a state variable or display them in a dropdown menu
 
-          // Print the team names for testing
           for (User user in users) {
             print('User ID: ${user.userId}');
             print('User Name: ${user.userName}');
@@ -701,11 +699,29 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                       ),
                       SizedBox(height: 30.0),
                       SizedBox(
-                        height: 40,
-                        width: 100,
-                        child: RoundButton(
-                          title: "Create Task",
-                          onPressed: createTask,
+                        height: 50,
+                        width: 200,
+                        child: _isLoading // Check the loading state
+                            ? ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondaryColor2,
+                          ),
+                          onPressed: null, // Disable the button when loading
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('Loading...', style: TextStyle(color: AppColors.secondaryColor2)),
+                              SizedBox(width: 10),
+                              CircularProgressIndicator(color: AppColors.secondaryColor2),
+                            ],
+                          ),
+                        )
+                            : ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondaryColor2,
+                          ),
+                          onPressed: _handleSaveChanges,
+                          child: Text("Create Project", style: TextStyle(color: Colors.white)),
                         ),
                       ),
                     ],
@@ -718,6 +734,8 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       ),
     );
   }
+
+  //onpressed:create task
 
   void _selectStartDate(BuildContext context) async {
     DateTime? startDate = await DatePickerUtils.selectStartDate(context);
@@ -755,7 +773,12 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     );
   }
 
-  void createTask() async {
+  void _handleSaveChanges() async {
+    if (_isLoading) {
+      // Don't allow multiple project creation attempts while loading
+      return;
+    }
+
     if (_taskTitle.isEmpty) {
       showSnackbar(context, "Title is required");
       return;
@@ -766,20 +789,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       return;
     }
 
-    // if (_attachment.isEmpty) {
-    // DialogUtils.showSnackbar(context, 'Attachment is required.');
-    //   return;
-    // }
 
-    // if (_selectedMembers.isEmpty) {
-    //   DialogUtils.showSnackbar(context, 'Assignee Members is required.');
-    //   return;
-    // }
-
-    // if (_selectedTeams.isEmpty) {
-    //   DialogUtils.showSnackbar(context, 'AssigneeTeam is required.');
-    //   return;
-    // }
 
     if (_startDate == null) {
       showSnackbar(context, 'Start Date is required.');
@@ -839,7 +849,9 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     if (_selectedProject != "NA") {
       taskData["project_id"] = _selectedProject;
     }
-
+    setState(() {
+      _isLoading = true; // Start loading
+    });
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -931,6 +943,11 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       }
     } catch (e) {
       print('Error while creating task: $e');
+    } finally {
+      // Ensure that isLoading is set to false whether the creation succeeded or failed
+      setState(() {
+        _isLoading = false; // Stop loading
+      });
     }
   }
 }

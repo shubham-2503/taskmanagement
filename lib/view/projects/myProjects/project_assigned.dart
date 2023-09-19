@@ -251,16 +251,16 @@ class _AssignedToMeState extends State<AssignedToMe> {
                        }
                        return Container(
                            margin: const EdgeInsets.symmetric(
-                               vertical: 8, horizontal: 2),
+                               vertical: 8, horizontal: 0),
                            padding:
-                           EdgeInsets.symmetric(vertical: 8, horizontal: 9),
+                           EdgeInsets.symmetric(vertical: 8, horizontal: 7),
                            decoration: BoxDecoration(
                              color: AppColors.whiteColor,
                              borderRadius: BorderRadius.circular(15),
                            ),
                            child: Container(
                              padding: const EdgeInsets.symmetric(
-                                 vertical: 15, horizontal: 20),
+                                 vertical: 20, horizontal: 10),
                              decoration: BoxDecoration(
                                gradient: LinearGradient(colors: [
                                  AppColors.primaryColor2.withOpacity(0.3),
@@ -279,20 +279,23 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                        Row(
                                          children: [
                                            Text(
-                                             'Project Id: ',
+                                             'Project ID: ',
                                              style: TextStyle(
-                                                 color: AppColors.blackColor,
-                                                 fontSize: 14,
-                                                 fontWeight: FontWeight.bold),
+                                               color: AppColors.blackColor,
+                                               fontSize: 14,
+                                               fontWeight: FontWeight.bold,
+                                             ),
                                            ),
                                            Container(
-                                             width:110,
+                                             width: 110,
                                              child: Text(
-                                               project.uniqueId ?? '',
+                                               project.uniqueId ?? "", // Use the null-aware operator to handle null values
+                                               overflow: TextOverflow.ellipsis,
                                                style: TextStyle(
-                                                   color: AppColors.secondaryColor2,
-                                                   fontSize: 14,
-                                                   fontWeight: FontWeight.bold),
+                                                 color: AppColors.secondaryColor2,
+                                                 fontSize: 14,
+                                                 fontWeight: FontWeight.bold,
+                                               ),
                                              ),
                                            ),
                                          ],
@@ -307,12 +310,11 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                                  fontWeight: FontWeight.bold),
                                            ),
                                            Container(
-                                             width: 110,
+                                             width:90,
                                              child: Text(
                                                project.name.length >10
                                                    ? project.name.substring(0,10) + '...'
                                                    : project.name,
-                                               overflow: TextOverflow.ellipsis,
                                                style: TextStyle(
                                                    color: AppColors.secondaryColor2,
                                                    fontSize: 14,
@@ -339,34 +341,40 @@ class _AssignedToMeState extends State<AssignedToMe> {
                                            ),
                                          ],
                                        ),
+
                                      ],
                                    ),
                                  ),
+                                 // SizedBox(width: 20,),
                                  Spacer(),
                                  IconButton(
-                                   icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2),
+                                   icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2,size: 20,),
                                    onPressed: () {
                                      _showViewProjectDialog(project);
                                    },
-                                 ), // Add a Spacer to push the menu image to the end
-                                 GestureDetector(
-                                   onTap: () async {
-                                     bool? shouldRefresh = await showModalBottomSheet<bool>(
+                                 ),
+                                 SizedBox(width: 1,),// Add a Spacer to push the menu image to the end
+                                 IconButton(
+                                   icon: Icon(Icons.edit, color: AppColors.secondaryColor2, size: 20,),
+                                   onPressed: () async {
+                                     bool? edited = await showModalBottomSheet<bool>(
                                        context: context,
-                                       builder: (context) {
+                                       builder: (BuildContext context) {
                                          return ProjectDetailsModal(project: project);
                                        },
                                      );
 
-                                     if (shouldRefresh ?? false) {
+                                     if (edited == true) {
                                        await fetchMyProjects();
                                      }
                                    },
-                                   child: Image.asset(
-                                     "assets/images/menu.png",
-                                     width: 40,
-                                     height: 20,
-                                   ),
+                                 ),
+                                 SizedBox(width: 1,),
+                                 IconButton(
+                                   icon: Icon(Icons.delete, color: AppColors.secondaryColor2,size: 20,),
+                                   onPressed: () {
+                                     _deleteProject(project.id);
+                                   },
                                  ),
                                ],
                              ),
@@ -455,99 +463,6 @@ class _AssignedToMeState extends State<AssignedToMe> {
       },
     );
   }
-}
-
-class ProjectDetailsModal extends StatefulWidget {
-  final Project project;
-
-  ProjectDetailsModal({required this.project});
-
-  @override
-  State<ProjectDetailsModal> createState() => _ProjectDetailsModalState();
-}
-
-class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
-  List<Project> projects = [];
-
-  Future<void> fetchMyProjects() async {
-    try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
-      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-      if (orgId == null) {
-        // If the user hasn't switched organizations, use the organization ID obtained during login time
-        orgId = prefs.getString('org_id') ?? "";
-      }
-
-      print("OrgId: $orgId");
-
-      if (orgId == null) {
-        throw Exception('orgId not found locally');
-      }
-      // Use the selected filters to build the query parameters
-      Map<String, String?> queryParameters = {
-        'org_id': orgId,
-      };
-
-      final url = Uri.http('43.205.97.189:8000', '/api/Project/myProjects', queryParameters);
-
-      final headers = {
-        'accept': '*/*',
-        'Authorization': 'Bearer $storedData',
-      };
-
-      final response = await http.get(url, headers: headers);
-
-      if (response.statusCode == 200) {
-        final List<dynamic> responseData = jsonDecode(response.body);
-        final List<Future<Project>> fetchedProjects = responseData.map((projectData) async {
-          String projectId = projectData['project_id'] ?? '';
-
-          // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
-          List<Team> teams = (projectData['teams'] as List<dynamic>).map((teamData) {
-            return Team(
-              id: teamData['teamId'] ?? '',
-              teamName: teamData['teamName'] ?? '',
-            );
-          }).toList();
-
-          List<User> users = (projectData['users'] as List<dynamic>).map((userData) {
-            return User.fromJson(userData); // Create User object from JSON data
-          }).toList();
-
-          return Project(
-            description: projectData['description'] ?? '',
-            id: projectId,
-            name: projectData['projectName'] ?? '',
-            owner: projectData['created_by'] ?? '',
-            dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
-            // tasks: tasks,
-            teams: teams,
-            users: users, status: projectData['status'] ?? " ",
-            active: projectData['active'] ?? " ",
-          );
-        }).toList();
-
-        final List<Project> projectsWithTasks = await Future.wait(fetchedProjects);
-
-        setState(() {
-          projects = projectsWithTasks;
-        });
-
-        // Store the projectId locally using SharedPreferences
-        final List<String> projectIds = projectsWithTasks.map((project) => project.id).toList();
-        await prefs.setStringList('projectIds', projectIds);
-        print("ProjectID: $projectIds");
-
-      } else {
-        print('Error fetching projects: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error fetching projects: $e');
-    }
-  }
-
   void _deleteProject(String projectId) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -643,6 +558,98 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
       print('Error showing delete confirmation dialog: $e');
     }
   }
+}
+
+class ProjectDetailsModal extends StatefulWidget {
+  final Project project;
+
+  ProjectDetailsModal({required this.project});
+
+  @override
+  State<ProjectDetailsModal> createState() => _ProjectDetailsModalState();
+}
+
+class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
+  List<Project> projects = [];
+
+  Future<void> fetchMyProjects() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+      // Use the selected filters to build the query parameters
+      Map<String, String?> queryParameters = {
+        'org_id': orgId,
+      };
+
+      final url = Uri.http('43.205.97.189:8000', '/api/Project/myProjects', queryParameters);
+
+      final headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer $storedData',
+      };
+
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> responseData = jsonDecode(response.body);
+        final List<Future<Project>> fetchedProjects = responseData.map((projectData) async {
+          String projectId = projectData['project_id'] ?? '';
+
+          // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
+          List<Team> teams = (projectData['teams'] as List<dynamic>).map((teamData) {
+            return Team(
+              id: teamData['teamId'] ?? '',
+              teamName: teamData['teamName'] ?? '',
+            );
+          }).toList();
+
+          List<User> users = (projectData['users'] as List<dynamic>).map((userData) {
+            return User.fromJson(userData); // Create User object from JSON data
+          }).toList();
+
+          return Project(
+            description: projectData['description'] ?? '',
+            id: projectId,
+            name: projectData['projectName'] ?? '',
+            owner: projectData['created_by'] ?? '',
+            dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
+            // tasks: tasks,
+            teams: teams,
+            users: users, status: projectData['status'] ?? " ",
+            active: projectData['active'] ?? " ",
+          );
+        }).toList();
+
+        final List<Project> projectsWithTasks = await Future.wait(fetchedProjects);
+
+        setState(() {
+          projects = projectsWithTasks;
+        });
+
+        // Store the projectId locally using SharedPreferences
+        final List<String> projectIds = projectsWithTasks.map((project) => project.id).toList();
+        await prefs.setStringList('projectIds', projectIds);
+        print("ProjectID: $projectIds");
+
+      } else {
+        print('Error fetching projects: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching projects: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -654,9 +661,21 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              "Project Name",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+            Row(
+              children: [
+                Text(
+                  "Project Name",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+                ),
+                IconButton(onPressed: () async {
+                  bool edited = await Navigator.push(context,MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project)));
+
+                  if (edited == true) {
+                    // Fetch tasks using your API call here
+                    await fetchMyProjects();
+                  }
+                }, icon: Icon(Icons.edit)),
+              ],
             ),
             SizedBox(height: 10,),
             Container(
@@ -756,30 +775,6 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
                   ),
                 ],
               ),
-            ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(height: 30,width: 70,child: RoundButton(
-                  onPressed: () async {
-                    bool edited = await Navigator.push(context,MaterialPageRoute(builder: (context)=>EditMyProject(project: widget.project)));
-
-                    if (edited == true) {
-                      // Fetch tasks using your API call here
-                      await fetchMyProjects();
-                    }
-                  },
-                  title: "Edit",
-                ),),
-                SizedBox(width: 50,),
-                SizedBox(height: 30,width: 70,child: RoundButton(
-                  onPressed: (){
-                    _deleteProject("${widget.project.id}");
-                  },
-                  title: "Delete",
-                ),),
-              ],
             ),
           ],
         ),
