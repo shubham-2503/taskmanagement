@@ -10,17 +10,19 @@ import '../../../models/fetch_user_model.dart';
 import '../../../models/task_model.dart';
 import '../../../utils/app_colors.dart';
 
-class CommentScreen extends StatefulWidget {
+class ReplyScreen extends StatefulWidget {
+  final Comment comment;
   final Task task;
-  const CommentScreen({super.key, required this.task});
+  final Reply reply;
+  const ReplyScreen({super.key, required this.reply, required this.task, required this.comment, });
 
   @override
-  State<CommentScreen> createState() => _CommentScreenState();
+  State<ReplyScreen> createState() => _ReplyScreenState();
 }
 
-class _CommentScreenState extends State<CommentScreen> {
+class _ReplyScreenState extends State<ReplyScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  bool showReplies = false;
+  bool showReplies =false;
   TextEditingController _replyController = TextEditingController();
   List<String> suggestedUsers = [];
   List<String> mentionedUserIds = [];
@@ -30,8 +32,8 @@ class _CommentScreenState extends State<CommentScreen> {
   Future<List<Comment>> fetchComments(String taskId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId =
-        prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId = prefs.getString(
+        "selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -39,6 +41,7 @@ class _CommentScreenState extends State<CommentScreen> {
     }
 
     print("OrgId: $orgId");
+
 
     if (orgId == null) {
       throw Exception('orgId not found locally');
@@ -60,19 +63,18 @@ class _CommentScreenState extends State<CommentScreen> {
       List<Comment> commentsData = jsonData.map((commentMap) {
         List<Map<String, String>> taggedUsers = List<Map<String, String>>.from(
           (commentMap['tagged'] as List<dynamic>).map(
-            (taggedUserMap) => {
+                (taggedUserMap) =>
+            {
               'name': taggedUserMap['name'] as String,
               'user_id': taggedUserMap['user_id'] as String,
             },
           ),
         );
 
-        List<Reply> replies = (commentMap['replies'] as List<dynamic>)
-            .map(
-              (replyMap) => Reply.fromJson(
-                  replyMap), // Pass the correct JSON data for reply parsing
-            )
-            .toList();
+        List<Reply> replies = (commentMap['replies'] as List<dynamic>).map(
+              (replyMap) =>
+              Reply.fromJson(replyMap), // Pass the correct JSON data for reply parsing
+        ).toList();
 
         return Comment(
           commentId: commentMap['comment_id'] as String,
@@ -111,8 +113,8 @@ class _CommentScreenState extends State<CommentScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId =
-          prefs.getString("selectedOrgId"); // Get the selected organization ID
+      String? orgId = prefs.getString(
+          "selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
         // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -120,6 +122,7 @@ class _CommentScreenState extends State<CommentScreen> {
       }
 
       print("OrgId: $orgId");
+
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -145,7 +148,10 @@ class _CommentScreenState extends State<CommentScreen> {
         if (responseBody != null && responseBody.isNotEmpty) {
           final List<dynamic> data = jsonDecode(responseBody);
           final List<String> users =
-              data.map((userJson) => User.fromJson(userJson).userName).toList();
+          data.map((userJson) =>
+          User
+              .fromJson(userJson)
+              .userName).toList();
 
           setState(() {
             suggestedUsers = users;
@@ -169,20 +175,15 @@ class _CommentScreenState extends State<CommentScreen> {
     }
   }
 
-  Future<void> replyComment(
-    String commentId,
-    String replyText,
-    String taskId,
-    List<String> mentionedUserIds,
-  ) async {
+  Future<void> replyComment(String commentId, String replyText, String taskId, List<String> mentionedUserIds,) async {
     print("Commentid: $commentId");
     print("ReplyText: $replyText");
     print("TaskId: $taskId");
     print("MentionedUsers: $mentionedUserIds");
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
-    String? orgId =
-        prefs.getString("selectedOrgId"); // Get the selected organization ID
+    String? orgId = prefs.getString(
+        "selectedOrgId"); // Get the selected organization ID
 
     if (orgId == null) {
       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -190,6 +191,7 @@ class _CommentScreenState extends State<CommentScreen> {
     }
 
     print("OrgId: $orgId");
+
 
     if (orgId == null) {
       throw Exception('orgId not found locally');
@@ -232,7 +234,7 @@ class _CommentScreenState extends State<CommentScreen> {
               InkWell(
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.pop(context, true);
+                  Navigator.pop(context,true);
                   setState(() {
                     fetchComments(widget.task.taskId!);
                   });
@@ -320,14 +322,14 @@ class _CommentScreenState extends State<CommentScreen> {
     return Text('Loading data...');
   }
 
-  void _deleteComments(String commentId) async {
+  void _deleteReply(String replyId) async {
     try {
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
             title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this comments?'),
+            content: Text('Are you sure you want to delete this reply?'),
             actions: [
               TextButton(
                 child: Text('Cancel'),
@@ -340,10 +342,9 @@ class _CommentScreenState extends State<CommentScreen> {
                   Navigator.of(context).pop();
                   try {
                     SharedPreferences prefs =
-                        await SharedPreferences.getInstance();
+                    await SharedPreferences.getInstance();
                     final storedData = prefs.getString('jwtToken');
-                    String? orgId = prefs.getString(
-                        "selectedOrgId"); // Get the selected organization ID
+                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
                     if (orgId == null) {
                       // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -357,7 +358,7 @@ class _CommentScreenState extends State<CommentScreen> {
                     }
 
                     final url = Uri.parse(
-                        'http://43.205.97.189:8000/api/Comment/deleteComment?comment_id=$commentId&org_id=$orgId');
+                        'http://43.205.97.189:8000/api/Comment/deleteComment?comment_id=$replyId&org_id=$orgId');
 
                     final headers = {
                       'accept': '*/*',
@@ -385,15 +386,13 @@ class _CommentScreenState extends State<CommentScreen> {
                                 onTap: () {
                                   Navigator.pop(context);
                                   setState(() {
-                                    comments.removeWhere((comment) =>
-                                        comment.commentId == commentId);
+                                    comments.removeWhere((comment) => comment.commentId == comment.commentId);
                                   });
                                 },
                                 child: Text(
                                   "OK",
                                   style: TextStyle(
-                                      color: AppColors.blackColor,
-                                      fontSize: 20),
+                                      color: AppColors.blackColor, fontSize: 20),
                                 ),
                               )
                             ],
@@ -415,7 +414,9 @@ class _CommentScreenState extends State<CommentScreen> {
             ],
           );
         },
-      ).then((value) {});
+      ).then((value) {
+
+      });
     } catch (e) {
       print('Error showing delete confirmation dialog: $e');
     }
@@ -425,8 +426,8 @@ class _CommentScreenState extends State<CommentScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
-      String? orgId =
-          prefs.getString("selectedOrgId"); // Get the selected organization ID
+      String? orgId = prefs.getString(
+          "selectedOrgId"); // Get the selected organization ID
 
       if (orgId == null) {
         // If the user hasn't switched organizations, use the organization ID obtained during login time
@@ -434,6 +435,7 @@ class _CommentScreenState extends State<CommentScreen> {
       }
 
       print("OrgId: $orgId");
+
 
       if (orgId == null) {
         throw Exception('orgId not found locally');
@@ -456,7 +458,7 @@ class _CommentScreenState extends State<CommentScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> users = jsonDecode(response.body);
         final user = users.firstWhere(
-          (user) => user['name'].toLowerCase() == username.toLowerCase(),
+              (user) => user['name'].toLowerCase() == username.toLowerCase(),
           orElse: () => null,
         );
 
@@ -478,7 +480,7 @@ class _CommentScreenState extends State<CommentScreen> {
     }
   }
 
-  void _replyBottomSheet(BuildContext context, Comment comment) async {
+  void _replyBottomSheet(BuildContext context,Comment comment)async{
     await fetchUsers();
     showModalBottomSheet(
       context: context,
@@ -486,8 +488,7 @@ class _CommentScreenState extends State<CommentScreen> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return Container(
-              padding: EdgeInsets.fromLTRB(
-                  16.0, 16.0, 16.0, 48.0), // Added padding from bottom
+              padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 48.0), // Added padding from bottom
               margin: EdgeInsets.only(bottom: 100.0),
               child: SingleChildScrollView(
                 child: Column(
@@ -497,25 +498,18 @@ class _CommentScreenState extends State<CommentScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            "Reply to ${comment.commenterName}",
-                            style: TextStyle(
-                              color: AppColors.secondaryColor2,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                          IconButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              icon: Icon(Icons.close)),
+                          Text("Reply to ${comment.commenterName}",style: TextStyle(
+                            color: AppColors.secondaryColor2,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),),
+                          IconButton(onPressed: (){
+                            Navigator.pop(context);
+                          }, icon: Icon(Icons.close)),
                         ],
                       ),
                     ),
-                    SizedBox(
-                      height: 10,
-                    ),
+                    SizedBox(height: 10,),
                     Container(
                       width: MediaQuery.of(context).size.width * 0.8,
                       decoration: BoxDecoration(
@@ -525,8 +519,7 @@ class _CommentScreenState extends State<CommentScreen> {
                       child: TextFormField(
                         decoration: InputDecoration(
                             hintText: "Reply to ${comment.commenterName}",
-                            contentPadding: const EdgeInsets.symmetric(
-                                vertical: 15, horizontal: 15),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
                             border: OutlineInputBorder(
@@ -534,8 +527,9 @@ class _CommentScreenState extends State<CommentScreen> {
                                 color: AppColors.secondaryColor2,
                                 width: 1.2,
                               ),
-                            )),
-                        controller: _replyController,
+                            )
+                        ),
+                        controller:_replyController,
                         onChanged: (text) {
                           print("Text: $text");
                           if (text.endsWith('@')) {
@@ -562,11 +556,8 @@ class _CommentScreenState extends State<CommentScreen> {
                               final currentText = _replyController.text;
                               final cursorPosition =
                                   _replyController.selection.base.offset;
-                              final newText =
-                                  currentText.substring(0, cursorPosition) +
-                                      suggestedUsers[index] +
-                                      ' ' +
-                                      currentText.substring(cursorPosition);
+                              final newText = currentText.substring(0, cursorPosition) + suggestedUsers[index] + ' ' +
+                                  currentText.substring(cursorPosition);
 
                               setState(() {
                                 _replyController.text = newText;
@@ -577,17 +568,14 @@ class _CommentScreenState extends State<CommentScreen> {
                           );
                         },
                       ),
-                    SizedBox(
-                      height: 20,
-                    ),
+                    SizedBox(height: 20,),
                     RoundGradientButton(
                       title: "Add Reply",
                       onPressed: () async {
                         String replyText = _replyController.text;
                         print("Reply Text: $replyText");
 
-                        List<String> mentionedUserIdsList =
-                            []; // Create a list to store user IDs
+                        List<String> mentionedUserIdsList = []; // Create a list to store user IDs
 
                         for (String mentionedUser in mentionedUserIds) {
                           print("Mentioned User: @$mentionedUser");
@@ -595,35 +583,25 @@ class _CommentScreenState extends State<CommentScreen> {
 
                         String replyTextWithoutMentions = replyText;
                         for (String mentionedUser in mentionedUserIds) {
-                          replyTextWithoutMentions = replyTextWithoutMentions
-                              .replaceAll('@$mentionedUser', '');
+                          replyTextWithoutMentions = replyTextWithoutMentions.replaceAll('@$mentionedUser', '');
                         }
-                        replyTextWithoutMentions = replyTextWithoutMentions
-                            .trim(); // Remove unnecessary spaces
+                        replyTextWithoutMentions = replyTextWithoutMentions.trim(); // Remove unnecessary spaces
 
-                        print(
-                            "Reply Text without Mentions: $replyTextWithoutMentions");
+                        print("Reply Text without Mentions: $replyTextWithoutMentions");
 
                         for (String mentionedUser in mentionedUserIds) {
                           try {
-                            String userId =
-                                await getUserIdByUsername(mentionedUser);
+                            String userId = await getUserIdByUsername(mentionedUser);
                             if (!mentionedUserIdsList.contains(userId)) {
-                              mentionedUserIdsList.add(
-                                  userId); // Store user ID in the list if not already present
+                              mentionedUserIdsList.add(userId); // Store user ID in the list if not already present
                             }
                             print("Mentioned User: [$userId]");
                           } catch (e) {
-                            print(
-                                "Error getting user ID for $mentionedUser: $e");
+                            print("Error getting user ID for $mentionedUser: $e");
                           }
                         }
                         print("Mentioned User IDs List: $mentionedUserIdsList");
-                        await replyComment(
-                            comment.commentId,
-                            replyTextWithoutMentions,
-                            widget.task.taskId!,
-                            mentionedUserIdsList);
+                        await replyComment(comment.commentId, replyTextWithoutMentions, widget.task.taskId!, mentionedUserIdsList);
                       },
                     ),
                   ],
@@ -641,7 +619,7 @@ class _CommentScreenState extends State<CommentScreen> {
       key: _scaffoldKey,
       body: Container(
         child: FutureBuilder<List<Comment>>(
-          future: fetchComments(widget.task.taskId!),
+          future: fetchComments(widget.comment.commentId!),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return _buildLoadingText();
@@ -651,7 +629,7 @@ class _CommentScreenState extends State<CommentScreen> {
               List<Comment> commentsData = snapshot.data ?? [];
 
               if (commentsData.isEmpty) {
-                return Text('No comments available.');
+                return Text('No reply available.');
               }
 
               return ListView.separated(
@@ -669,10 +647,9 @@ class _CommentScreenState extends State<CommentScreen> {
   }
 
   Widget _buildCommentTile(Comment comment) {
-    final taggedUserNames =
-        comment.taggedUsers.map((user) => "@${user['name']}").join(', ');
+    final taggedUserNames = widget.reply.taggedUsers.map((user) => "@${user['name']}").join(', ');
 
-    final commentTextParts = comment.commentText.split(" ");
+    final commentTextParts = widget.reply.replyText.split(" ");
     final textSpans = <InlineSpan>[];
 
     if (taggedUserNames.isNotEmpty) {
@@ -697,188 +674,14 @@ class _CommentScreenState extends State<CommentScreen> {
       }
       return TextSpan(
         text: textPart + " ",
-        style: TextStyle(
-            color: AppColors.primaryColor2, fontWeight: FontWeight.bold),
-      );
-    }));
-
-    return Column(
-      children: [
-        ListTile(
-          leading: CircleAvatar(
-            child: Text(
-              comment.commenterName[0],
-              style: TextStyle(
-                color: Colors.white,
-              ),
-            ),
-            backgroundColor: AppColors.primaryColor1,
-          ),
-          title: Row(
-            children: [
-              Container(
-                width: 100,
-                child: RichText(
-                  text: TextSpan(
-                    text: "${comment.commenterName}: ",
-                    style: TextStyle(
-                      color: AppColors.secondaryColor2,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    children: textSpans,
-                  ),
-                ),
-              ),
-              Spacer(),
-              _buildIconButton(Icons.reply, () {
-                _replyBottomSheet(context, comment);
-              }),
-              SizedBox(
-                width: 1,
-              ),
-              _buildIconButton(Icons.edit, () {
-                showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return EditDeleteComments(
-                          comment: comment, task: widget.task);
-                    });
-              }),
-              SizedBox(
-                width: 1,
-              ),
-              _buildIconButton(Icons.delete, () {
-                _deleteComments(comment.commentId);
-              }),
-            ],
-          ),
-          subtitle: Row(
-            children: [
-              Text(
-                '${DateFormat('dd MMMM, yyyy').format(DateTime.parse(comment.commentTime))}',
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                  fontSize: 12,
-                ),
-              ),
-              SizedBox(width: 10),
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    comment.showReplies = !comment.showReplies;
-                  });
-                  print("Show Replies");
-                },
-                child: comment.replies.isNotEmpty
-                    ? Text(
-                        comment.showReplies
-                            ? "Hide comments"
-                            : "View ${comment.replies.length} comments",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          color: AppColors.secondaryColor2,
-                        ),
-                      )
-                    : SizedBox(), // Use SizedBox() to render nothing when there are no replies
-              ),
-            ],
-          ),
-        ),
-        // Display replies if comment.showReplies is true
-        // Display replies here using ListView.builder or other widgets
-        if (comment.replies.isNotEmpty && showReplies)
-          Padding(
-              padding: const EdgeInsets.only(
-                  left: 40.0), // Add indentation for replies
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: comment.replies.map((reply) {
-                  return ListTile(
-                    leading: CircleAvatar(
-                      child: Text(
-                        reply.replierName[0],
-                        style: TextStyle(
-                          color: Colors.white,
-                        ),
-                      ),
-                      backgroundColor: AppColors.primaryColor1,
-                    ),
-                    title: Text(
-                      "${reply.replierName}:",
-                      style: TextStyle(
-                        color: AppColors.secondaryColor2,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          reply.replyText,
-                          style: TextStyle(
-                              color: AppColors.blackColor, fontSize: 10),
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              '${DateFormat('dd MMMM, yyyy hh:mm a').format(DateTime.parse(reply.replyTime))}',
-                              style: TextStyle(
-                                fontStyle: FontStyle.italic,
-                                fontSize: 8,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ))
-      ],
-    );
-  }
-
-  Widget _buildReplyTile(Reply reply) {
-    final taggedUserNames =
-        reply.taggedUsers.map((user) => "@${user['name']}").join(', ');
-
-    final replyTextParts = reply.replyText.split(" ");
-    final textSpans = <InlineSpan>[];
-
-    if (taggedUserNames.isNotEmpty) {
-      textSpans.add(
-        TextSpan(
-          text: taggedUserNames,
-          style: TextStyle(
-            color: AppColors.primaryColor2,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-      textSpans.add(const TextSpan(text: " "));
-    }
-
-    textSpans.addAll(replyTextParts.map((textPart) {
-      if (!textPart.startsWith("@")) {
-        return TextSpan(
-          text: textPart,
-          style: TextStyle(color: AppColors.blackColor),
-        );
-      }
-      return TextSpan(
-        text: textPart + " ",
-        style: TextStyle(
-            color: AppColors.primaryColor2, fontWeight: FontWeight.bold),
+        style: TextStyle(color: AppColors.primaryColor2, fontWeight: FontWeight.bold),
       );
     }));
 
     return ListTile(
       leading: CircleAvatar(
         child: Text(
-          reply.replierName[0],
+          widget.reply.replierName[0],
           style: TextStyle(
             color: Colors.white,
           ),
@@ -891,7 +694,7 @@ class _CommentScreenState extends State<CommentScreen> {
             width: 100,
             child: RichText(
               text: TextSpan(
-                text: "${reply.replierName}: ",
+                text: "${widget.reply.replierName}: ",
                 style: TextStyle(
                   color: AppColors.secondaryColor2,
                   fontSize: 12,
@@ -903,19 +706,15 @@ class _CommentScreenState extends State<CommentScreen> {
           ),
           Spacer(),
           _buildIconButton(Icons.reply, () {
-            // _replyBottomSheet(context, reply);
+            _replyBottomSheet(context, comment);
           }),
-          SizedBox(
-            width: 1,
-          ),
+          SizedBox(width: 1,),
           _buildIconButton(Icons.edit, () {
-            // showDialog(context: context, builder: (BuildContext context){
-            //   return EditDeleteComments(comment: comment, task: widget.task);
-            // });
+            showDialog(context: context, builder: (BuildContext context){
+              return EditDeleteComments(comment: comment, task: widget.task);
+            });
           }),
-          SizedBox(
-            width: 1,
-          ),
+          SizedBox(width: 1,),
           // _buildIconButton(Icons.more_vert, () async {
           //   bool edited = await showModalBottomSheet(
           //     context: context,
@@ -928,14 +727,14 @@ class _CommentScreenState extends State<CommentScreen> {
           //   }
           // }),
           _buildIconButton(Icons.delete, () {
-            // _deleteComments(comment.commentId);
+            _deleteReply(comment.commentId);
           }),
         ],
       ),
       subtitle: Row(
         children: [
           Text(
-            '${DateFormat('dd MMMM, yyyy').format(DateTime.parse(reply.replyTime))}',
+            '${DateFormat('dd MMMM, yyyy').format(DateTime.parse(comment.commentTime))}',
             style: TextStyle(
               fontStyle: FontStyle.italic,
               fontSize: 12,
@@ -948,16 +747,14 @@ class _CommentScreenState extends State<CommentScreen> {
                 showReplies = !showReplies;
               });
             },
-            child: reply.replyOfReply.length > 0
-                ? Text(
-                    "View ${reply.replyOfReply.length} comments",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                      color: AppColors.secondaryColor2,
-                    ),
-                  )
-                : SizedBox(), // Use SizedBox() to render nothing when there are no replies
+            child: comment.replies.length > 0 ? Text(
+              "View ${widget.reply.replyOfReply.length} reply",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: AppColors.secondaryColor2,
+              ),
+            ) : SizedBox(), // Use SizedBox() to render nothing when there are no replies
           ),
         ],
       ),
@@ -973,4 +770,5 @@ class _CommentScreenState extends State<CommentScreen> {
       ),
     );
   }
+
 }

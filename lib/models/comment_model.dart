@@ -5,6 +5,7 @@ class Comment {
   final String commentTime;
   final List<Map<String, String>> taggedUsers;
   final List<Reply> replies;
+  bool showReplies = false;
 
   Comment({
     required this.commentId,
