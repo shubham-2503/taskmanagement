@@ -55,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   ValueNotifier<String> userNameNotifier = ValueNotifier<String>("");
   ValueNotifier<String> orgNameNotifier = ValueNotifier<String>("");
   bool hasNewNotifications = true;
+  int newNotificationCount = 0;
 
   void refreshScreen() {
     print("RefreshScreen");
@@ -84,7 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
     notificationCount = 0;
     subscription.cancel();
     super.dispose();
-
   }
 
   showDialogBox() async {
@@ -342,45 +342,51 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    IconButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, NotificationScreen.routeName);
-                      },
-                      icon: Stack(
-                        children: [
-                          Image.asset(
-                            "assets/images/notification_clear.png", // Use the image without the count
+                    Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            // Navigate to the NotificationScreen
+                            Navigator.pushNamed(context, NotificationScreen.routeName);
+
+                            // Clear the badge when the NotificationScreen is opened
+                            setState(() {
+                              hasNewNotifications = false;
+                            });
+                          },
+                          icon: Image.asset(
+                            "assets/images/notification.png",
                             width: 25,
                             height: 25,
                             fit: BoxFit.fitHeight,
                           ),
-                          if (notificationCount > 0)
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                padding: EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.red, // Choose a color for the count badge
-                                ),
-                                child: Text(
-                                  notificationCount.toString(),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12, // Choose a suitable font size
-                                  ),
+                        ),
+                        if (hasNewNotifications)
+                          Container(
+                            width: 18, // Adjust the width to accommodate larger numbers
+                            height: 18, // Adjust the height to accommodate larger numbers
+                            decoration: BoxDecoration(
+                              color: Colors.red, // Customize the badge color
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$newNotificationCount', // Display the count of new notifications here
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12, // Adjust the font size for larger numbers
                                 ),
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
+
                     SizedBox(
                       width: 1,
                     ),
-                  ],
-                ),
+                  ],),
               ],
             ),
           ),

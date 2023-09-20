@@ -12,7 +12,8 @@ import '../../utils/app_colors.dart';
 
 class AddOrganization extends StatefulWidget {
   final String userId;
-  AddOrganization({required this.userId});
+  final Function() refreshCallback;
+  AddOrganization({required this.userId, required this.refreshCallback});
 
   @override
   State<AddOrganization> createState() => _AddOrganizationState();
@@ -63,7 +64,7 @@ class _AddOrganizationState extends State<AddOrganization> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PlanSelectionScreen(orgId: orgId),
+            builder: (context) => PlanSelectionScreen(orgId: orgId, refreshCallback: widget.refreshCallback,),
           ),
         );
       } else if (response.statusCode == 401) {

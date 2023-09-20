@@ -10,8 +10,10 @@ import '../../models/subscription.dart';
 
 class PlanSelectionScreen extends StatefulWidget {
   final String orgId;
+  final Function() refreshCallback;
 
-  const PlanSelectionScreen({super.key, required this.orgId});
+
+  const PlanSelectionScreen({super.key, required this.orgId, required this.refreshCallback});
   @override
   _PlanSelectionScreenState createState() => _PlanSelectionScreenState();
 }
@@ -60,9 +62,8 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                  Navigator.pop(context);
+                  widget.refreshCallback();
+                  Navigator.popUntil(context, (route) => route.isFirst);
                 },
                 child: Text("OK"),
               ),
@@ -119,9 +120,11 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
               actions: [
                 InkWell(
                     onTap: (){
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                      Navigator.pop(context,true);
+                      // Navigator.pop(context);
+                      // Navigator.pop(context);
+                      // Navigator.pop(context,true);
+                      widget.refreshCallback();
+                      Navigator.popUntil(context, (route) => route.isFirst);
                     },
                     child: Text("OK",style: TextStyle(
                         color: AppColors.blackColor,

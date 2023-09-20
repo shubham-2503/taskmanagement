@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pin_code_fields/pin_code_fields.dart';
@@ -247,6 +246,18 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           );
           print('OTP verification failed!');
         }
+      } else if (response.statusCode == 401) {
+        String errorMessage = "Please Enter Correct OTP";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              errorMessage,
+              style: TextStyle(color: Colors.black54),
+            ),
+            backgroundColor: AppColors.primaryColor1,
+          ),
+        );
+        print('Unauthorized: Please check the OTP entered.');
       } else {
         String errorMessage = "Request failed with status: ${response.statusCode}";
         ScaffoldMessenger.of(context).showSnackBar(
@@ -304,12 +315,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     var media = MediaQuery.of(context).size;
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/bagroud.png"), // Replace with your background image
-            fit: BoxFit.cover,
-          ),
-        ),
         child: Padding(
           padding: EdgeInsets.only(top: 300, left: 20, right: 20),
           child: SingleChildScrollView(

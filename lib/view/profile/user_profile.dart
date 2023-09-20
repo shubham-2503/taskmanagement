@@ -48,6 +48,13 @@ class _UserProfileState extends State<UserProfile> {
     },
     {"image": "assets/icons/p_setting.png", "name": "Setting", "tag": "7"},
   ];
+
+  void refreshFirstScreen() {
+    setState(() {
+
+    });
+  }
+
   Future<Map<String, dynamic>> fetchUserProfile() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final storedData = prefs.getString('jwtToken');
@@ -222,7 +229,6 @@ class _UserProfileState extends State<UserProfile> {
     final _selectedOrganizationIndex = organizationProvider.selectedOrganizationIndex;
     final _organizationList = organizationProvider.organizationList;
     print('Organization List Length: ${_organizationList}');
-
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
       appBar: AppBar(
@@ -381,8 +387,11 @@ class _UserProfileState extends State<UserProfile> {
                       icon: Icon(Icons.add_circle),
                       onPressed: () async {
                         print("UserId: $userId");
-                        final result = Navigator.push(context, MaterialPageRoute(builder: (context)=>AddOrganization(userId: userId)));
+                        final result = Navigator.push(context, MaterialPageRoute(builder: (context)=>AddOrganization(userId: userId,refreshCallback: refreshFirstScreen,)));
                         if (result == true) {
+                          setState(() {
+
+                          });
                           await _fetchOrganizationList(); // Replace with your actual fetch function.
                         }
                       },
