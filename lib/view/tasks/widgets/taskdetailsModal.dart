@@ -19,98 +19,6 @@ class TaskDetailsModal extends StatefulWidget {
 
 class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
-  void _deleteTask(String taskId) async {
-    try {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this task?'),
-            actions: [
-              TextButton(
-                child: Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  try {
-                    SharedPreferences prefs =
-                    await SharedPreferences.getInstance();
-                    final storedData = prefs.getString('jwtToken');
-                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-                    if (orgId == null) {
-                      // If the user hasn't switched organizations, use the organization ID obtained during login time
-                      orgId = prefs.getString('org_id') ?? "";
-                    }
-
-                    print("OrgId: $orgId");
-
-                    if (orgId == null) {
-                      throw Exception('orgId not found locally');
-                    }
-
-                    final response = await http.delete(
-                      Uri.parse(
-                          'http://43.205.97.189:8000/api/Task/tasks/$taskId'),
-                      headers: {
-                        'accept': '*/*',
-                        'Authorization': "Bearer $storedData",
-                      },
-                    );
-
-                    print("Delete API response: ${response.body}");
-                    print("Delete StatusCode: ${response.statusCode}");
-
-                    if (response.statusCode == 200) {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text('Thank You'),
-                            content: Text("Task deleted successfully."),
-                            actions: [
-                              InkWell(
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  Navigator.pop(context,true);
-                                },
-                                child: Text(
-                                  "OK",
-                                  style: TextStyle(
-                                      color: AppColors.blackColor, fontSize: 20),
-                                ),
-                              )
-                            ],
-                          );
-                        },
-                      );
-
-                    } else {
-                      print('Failed to delete task.');
-                      // Handle other status codes, if needed
-                    }
-                  } catch (e) {
-                    print('Error deleting task: $e');
-                  }
-                },
-                child: Text('Delete'),
-              ),
-            ],
-          );
-        },
-      ).then((value) {
-
-      });
-    } catch (e) {
-      print('Error showing delete confirmation dialog: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -121,9 +29,33 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              "Task Name",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Task Name",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
+                ),
+                IconButton(onPressed: () async {
+                  bool edited = await showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text("Edit Task"),
+                        content: EditMyTask(task: widget.task),
+                        actions: <Widget>[
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop(); // Close the dialog
+                            },
+                            child: Text("Close"),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }, icon: Icon(Icons.edit,color: AppColors.secondaryColor2,))
+              ],
             ),
             SizedBox(height: 10,),
             Container(
@@ -249,41 +181,6 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                   ),
                 ],
               ),
-            ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(height: 30,width: 70,child: RoundButton(
-                  onPressed: () async {
-                    bool edited = await showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text("Edit Task"),
-                          content: EditMyTask(task: widget.task),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop(); // Close the dialog
-                              },
-                              child: Text("Close"),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                  title: "Edit",
-                ),),
-                SizedBox(width: 50,),
-                SizedBox(height: 30,width: 70,child: RoundButton(
-                  onPressed: (){
-                    _deleteTask("${widget.task.taskId}");
-                  },
-                  title: "Delete",
-                ),),
-              ],
             ),
           ],
         ),

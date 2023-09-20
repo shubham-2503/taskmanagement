@@ -213,227 +213,102 @@ class _EditDeleteCommentsState extends State<EditDeleteComments> {
     return taggedUserNames;
   }
 
-  Future<void> deleteComment(String commentId) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    final storedData = prefs.getString('jwtToken');
-    String? orgId = prefs.getString(
-        "selectedOrgId"); // Get the selected organization ID
-
-    if (orgId == null) {
-      // If the user hasn't switched organizations, use the organization ID obtained during login time
-      orgId = prefs.getString('org_id') ?? "";
-    }
-
-    print("OrgId: $orgId");
-
-
-    if (orgId == null) {
-      throw Exception('orgId not found locally');
-    }
-
-    print("OrgId: $orgId");
-    final url = Uri.parse(
-        'http://43.205.97.189:8000/api/Comment/deleteComment?comment_id=$commentId&org_id=$orgId');
-
-    final headers = {
-      'accept': '*/*',
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $storedData',
-    };
-
-    final response = await http.delete(
-      url,
-      headers: headers,
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      if (responseData['status'] == true) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              content: Text(
-                  responseData['message'] ?? "Comment deleted successfully!"),
-              actions: [
-                InkWell(
-                  onTap: () {
-                    Navigator.pop(context,true);
-                    Navigator.pop(context,true);
-                    setState(() {
-                      fetchComments(widget.task.taskId!);
-                    });
-                  },
-                  child: Text(
-                    "OK",
-                    style: TextStyle(color: AppColors.blackColor, fontSize: 20),
-                  ),
-                )
-              ],
-            );
-          },
-        );
-      } else {
-        // Handle the case when the status is false and show the appropriate error message.
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              content: Text(
-                  responseData['message'] ?? "Failed to delete comment!"),
-              actions: [
-                InkWell(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    "OK",
-                    style: TextStyle(color: AppColors.blackColor, fontSize: 20),
-                  ),
-                )
-              ],
-            );
-          },
-        );
-      }
-    } else if (response.statusCode == 401) {
-      // Handle unauthorized error
-      print('Unauthorized: ${response.body}');
-    } else if (response.statusCode == 403) {
-      // Handle forbidden error
-      print('Forbidden: ${response.body}');
-    } else {
-      // Handle other error cases
-      print('Error: ${response.body}');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: Container(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.edit),
-                title: Text('Edit'),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      _editCommentController.text = widget.comment.commentText; // Set the existing comment text to the controller
-                      return AlertDialog(
-                        title: Text("Edit Comment"),
-                        content: Column(
-                          children: [
-                            Wrap(
-                              spacing: 4,
-                              children: widget.comment.taggedUsers.toList().asMap().entries.map((entry) {
-                                int index = entry.key;
-                                Map<String, String> taggedUser = entry.value;
+      body: Container(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                _editCommentController.text = widget.comment.commentText; // Set the existing comment text to the controller
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: Text("Edit Comment"),
+                      content: Column(
+                        children: [
+                          Wrap(
+                            spacing: 4,
+                            children: widget.comment.taggedUsers.toList().asMap().entries.map((entry) {
+                              int index = entry.key;
+                              Map<String, String> taggedUser = entry.value;
 
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  padding: EdgeInsets.symmetric(horizontal: 8),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(taggedUser['name']!),
-                                      SizedBox(width: 4),
-                                      GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            List<Map<String, String>> updatedTaggedUsers = List.from(widget.comment.taggedUsers);
-                                            updatedTaggedUsers.removeAt(index);
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(taggedUser['name']!),
+                                    SizedBox(width: 4),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          List<Map<String, String>> updatedTaggedUsers = List.from(widget.comment.taggedUsers);
+                                          updatedTaggedUsers.removeAt(index);
 
-                                            // Create a new instance of Reply with updated taggedUsers
-                                            Reply updatedReply = Reply(
-                                              replyId: widget.comment.commentId,
-                                              replierName: widget.comment.commenterName,
-                                              replyText: widget.comment.commentText,
-                                              replyTime: widget.comment.commentTime,
-                                              taggedUsers: updatedTaggedUsers,
-                                              replyOfReply: widget.comment.replies,
-                                            );
+                                          // Create a new instance of Reply with updated taggedUsers
+                                          Reply updatedReply = Reply(
+                                            replyId: widget.comment.commentId,
+                                            replierName: widget.comment.commenterName,
+                                            replyText: widget.comment.commentText,
+                                            replyTime: widget.comment.commentTime,
+                                            taggedUsers: updatedTaggedUsers,
+                                            replyOfReply: widget.comment.replies,
+                                          );
 
-                                            // Set the updated reply instance to the reply variable
-                                            // widget.reply = updatedReply;
-                                            print("Reply: ${widget.comment.taggedUsers}");
-                                          });
-                                        },
-                                        child: Icon(Icons.close, size: 16),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                                          // Set the updated reply instance to the reply variable
+                                          // widget.reply = updatedReply;
+                                          print("Reply: ${widget.comment.taggedUsers}");
+                                        });
+                                      },
+                                      child: Icon(Icons.close, size: 16),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          TextField(
+                            controller: _editCommentController,
+                            decoration: InputDecoration(
+                              hintText: "Edit your comment...",
                             ),
-                            TextField(
-                              controller: _editCommentController,
-                              decoration: InputDecoration(
-                                  hintText: "Edit your comment..."),
-                            ),
-                          ],
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            String editedCommentText = _editCommentController.text;
+                            List<String> editedTaggedUsers = _getTaggedUserNames(_editCommentController.text);
+                            editComment(widget.comment.commentId, editedCommentText);
+                            Navigator.pop(context);
+                          },
+                          child: Text("Save"),
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              String editedCommentText = _editCommentController.text;
-                              List<String> editedTaggedUsers = _getTaggedUserNames(_editCommentController.text);
-                              editComment(widget.comment.commentId, editedCommentText,);
-                              Navigator.pop(context);
-                            },
-                            child: Text("Save"),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context); // Close the dialog
-                            },
-                            child: Text("Cancel"),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.delete),
-                title: Text('Delete'),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text("Delete Comment"),
-                        content: Text(
-                            "Are you sure you want to delete this comment?"),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              deleteComment(widget.comment.commentId);
-                              Navigator.pop(context); // Close the dialog
-                            },
-                            child: Text("Yes"),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context); // Close the dialog
-                            },
-                            child: Text("No"),
-                          ),
-                        ],
-                      );
-                    },
-                  ); // Close the bottom sheet
-                },
-              ),
-            ],
-          ),
-        ));
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context); // Close the dialog
+                          },
+                          child: Text("Cancel"),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: Text("Edit Comment"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

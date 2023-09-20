@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:Taskapp/common_widgets/round_gradient_button.dart';
+import 'package:Taskapp/common_widgets/userSuggestionTextFields.dart';
 import 'package:Taskapp/view/tasks/all.dart';
 import 'package:Taskapp/view/tasks/comments/comments.dart';
 import 'package:Taskapp/view/tasks/history.dart';
@@ -382,26 +383,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>  with SingleTicke
     }
   }
 
-  Color getPriorityColor(String? priority) {
-    if (priority == null) {
-      return Colors.grey; // Return a default color when priority is null
-    }
-
-    switch (priority.toLowerCase()) {
-      case 'high':
-        return Color(
-            0xFFE1B297); // Set the appropriate color for "High" priority
-      case 'low':
-        return Colors.green; // Set the appropriate color for "Low" priority
-      case 'critical':
-        return Colors.red; // Set the appropriate color for "Critical" priority
-      case 'medium':
-        return Colors.yellow; // Set the appropriate color for "Medium" priority
-      default:
-        return Colors.grey; // Default color for unknown priority values
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -409,7 +390,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>  with SingleTicke
         actions: [
           IconButton(
             onPressed: () {
-              _openBottomSheet(context);
+            _openBottomSheet(context);
             },
             icon: Icon(Icons.add_circle, color: AppColors.secondaryColor2),
           ),
@@ -485,110 +466,112 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>  with SingleTicke
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return Container(
-              padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 48.0), // Added padding from bottom
-              margin: EdgeInsets.only(bottom: 20.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text("Add Comments",style: TextStyle(
-                      color: AppColors.secondaryColor2,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),),
-                    SizedBox(height: 10,),
-                    Container(
-                      width: MediaQuery.of(context).size.width * 0.8,
-                      decoration: BoxDecoration(
-                        color: AppColors.whiteColor,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: TextFormField(
-                        decoration: InputDecoration(
-                          hintText: "Write your Comments",
-                          contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          border: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: AppColors.secondaryColor2,
-                              width: 1.2,
-                            ),
-                          )
+            return SafeArea(
+              child: Container(
+                padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 48.0), // Added padding from bottom
+                margin: EdgeInsets.only(bottom: 100.0),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text("Add Comments",style: TextStyle(
+                        color: AppColors.secondaryColor2,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),),
+                      SizedBox(height: 10,),
+                      Container(
+                        width: MediaQuery.of(context).size.width * 0.8,
+                        decoration: BoxDecoration(
+                          color: AppColors.whiteColor,
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        controller: _commentController,
-                        onChanged: (text) {
-                          if (text.endsWith('@')) {
-                            setState(() {
-                              showSuggestions = true;
-                            });
-                          } else {
-                            setState(() {
-                              showSuggestions = false;
-                            });
-                          }
-                        },
-                      ),
-                    ),
-                    if (showSuggestions)
-                      ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: suggestedUsers.length,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            title: Text(suggestedUsers[index]),
-                            onTap: () {
-                              final currentText = _commentController.text;
-                              final cursorPosition =
-                                  _commentController.selection.base.offset;
-                              final newText = currentText.substring(0, cursorPosition) + suggestedUsers[index] + ' ' +
-                                  currentText.substring(cursorPosition);
-
+                        child: TextFormField(
+                          decoration: InputDecoration(
+                            hintText: "Write your Comments",
+                            contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AppColors.secondaryColor2,
+                                width: 1.2,
+                              ),
+                            )
+                          ),
+                          controller: _commentController,
+                          onChanged: (text) {
+                            if (text.endsWith('@')) {
                               setState(() {
-                                _commentController.text = newText;
-                                mentionedUserIds.add(suggestedUsers[index]);
+                                showSuggestions = true;
+                              });
+                            } else {
+                              setState(() {
                                 showSuggestions = false;
                               });
-                            },
-                          );
+                            }
+                          },
+                        ),
+                      ),
+                      if (showSuggestions)
+                        ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: suggestedUsers.length,
+                          itemBuilder: (context, index) {
+                            return ListTile(
+                              title: Text(suggestedUsers[index]),
+                              onTap: () {
+                                final currentText = _commentController.text;
+                                final cursorPosition =
+                                    _commentController.selection.base.offset;
+                                final newText = currentText.substring(0, cursorPosition) + suggestedUsers[index] + ' ' +
+                                    currentText.substring(cursorPosition);
+
+                                setState(() {
+                                  _commentController.text = newText;
+                                  mentionedUserIds.add(suggestedUsers[index]);
+                                  showSuggestions = false;
+                                });
+                              },
+                            );
+                          },
+                        ),
+                      SizedBox(height: 20,),
+                      RoundGradientButton(
+                        title: "Add Comments",
+                        onPressed: () async {
+                          String commentText = _commentController.text;
+                          print("Comment Text: $commentText");
+
+                          List<String> mentionedUserIdsList = []; // Create a list to store user IDs
+
+                          for (String mentionedUser in mentionedUserIds) {
+                            print("Mentioned User: @$mentionedUser");
+                          }
+
+                          String commentTextWithoutMentions = commentText;
+                          for (String mentionedUser in mentionedUserIds) {
+                            commentTextWithoutMentions = commentTextWithoutMentions.replaceAll('@$mentionedUser', '');
+                          }
+                          commentTextWithoutMentions = commentTextWithoutMentions.trim(); // Remove unnecessary spaces
+
+                          print("Comment Text without Mentions: $commentTextWithoutMentions");
+
+                          for (String mentionedUser in mentionedUserIds) {
+                            try {
+                              String userId = await getUserIdByUsername(mentionedUser);
+                              mentionedUserIdsList.add(userId); // Store user ID in the list
+                              print("Mentioned User: @$mentionedUser ($userId)");
+                            } catch (e) {
+                              print("Error getting user ID for $mentionedUser: $e");
+                            }
+                          }
+                          print("Mentioned User IDs List: $mentionedUserIdsList");
+                          await addComment(widget.task.taskId!, commentTextWithoutMentions, mentionedUserIdsList);
                         },
                       ),
-                    SizedBox(height: 20,),
-                    RoundGradientButton(
-                      title: "Send",
-                      onPressed: () async {
-                        String commentText = _commentController.text;
-                        print("Comment Text: $commentText");
-
-                        List<String> mentionedUserIdsList = []; // Create a list to store user IDs
-
-                        for (String mentionedUser in mentionedUserIds) {
-                          print("Mentioned User: @$mentionedUser");
-                        }
-
-                        String commentTextWithoutMentions = commentText;
-                        for (String mentionedUser in mentionedUserIds) {
-                          commentTextWithoutMentions = commentTextWithoutMentions.replaceAll('@$mentionedUser', '');
-                        }
-                        commentTextWithoutMentions = commentTextWithoutMentions.trim(); // Remove unnecessary spaces
-
-                        print("Comment Text without Mentions: $commentTextWithoutMentions");
-
-                        for (String mentionedUser in mentionedUserIds) {
-                          try {
-                            String userId = await getUserIdByUsername(mentionedUser);
-                            mentionedUserIdsList.add(userId); // Store user ID in the list
-                            print("Mentioned User: @$mentionedUser ($userId)");
-                          } catch (e) {
-                            print("Error getting user ID for $mentionedUser: $e");
-                          }
-                        }
-                        print("Mentioned User IDs List: $mentionedUserIdsList");
-                        await addComment(widget.task.taskId!, commentTextWithoutMentions, mentionedUserIdsList);
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -597,6 +580,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen>  with SingleTicke
       },
     );
   }
+
 }
 
 String formatDate(String? dateString) {

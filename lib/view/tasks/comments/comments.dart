@@ -19,11 +19,13 @@ class CommentScreen extends StatefulWidget {
 }
 
 class _CommentScreenState extends State<CommentScreen> {
-  bool showReplies = false;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool showReplies =false;
   TextEditingController _replyController = TextEditingController();
   List<String> suggestedUsers = [];
   List<String> mentionedUserIds = [];
   bool showSuggestions = false;
+  List<Comment> comments = [];
 
   Future<List<Comment>> fetchComments(String taskId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -145,7 +147,8 @@ class _CommentScreenState extends State<CommentScreen> {
           final List<dynamic> data = jsonDecode(responseBody);
           final List<String> users =
           data.map((userJson) =>
-          User.fromJson(userJson)
+          User
+              .fromJson(userJson)
               .userName).toList();
 
           setState(() {
@@ -317,6 +320,106 @@ class _CommentScreenState extends State<CommentScreen> {
     return Text('Loading data...');
   }
 
+  void _deleteComments(String commentId) async {
+    try {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Confirm Delete'),
+            content: Text('Are you sure you want to delete this comments?'),
+            actions: [
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  try {
+                    SharedPreferences prefs =
+                    await SharedPreferences.getInstance();
+                    final storedData = prefs.getString('jwtToken');
+                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+                    if (orgId == null) {
+                      // If the user hasn't switched organizations, use the organization ID obtained during login time
+                      orgId = prefs.getString('org_id') ?? "";
+                    }
+
+                    print("OrgId: $orgId");
+
+                    if (orgId == null) {
+                      throw Exception('orgId not found locally');
+                    }
+
+                    final url = Uri.parse(
+                        'http://43.205.97.189:8000/api/Comment/deleteComment?comment_id=$commentId&org_id=$orgId');
+
+                    final headers = {
+                      'accept': '*/*',
+                      'Content-Type': 'application/json',
+                      'Authorization': 'Bearer $storedData',
+                    };
+
+                    final response = await http.delete(
+                      url,
+                      headers: headers,
+                    );
+
+                    print("Delete API response: ${response.body}");
+                    print("Delete StatusCode: ${response.statusCode}");
+
+                    if (response.statusCode == 200) {
+                      showDialog(
+                        context: _scaffoldKey.currentContext ?? context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Thank You'),
+                            content: Text("Comments deleted successfully."),
+                            actions: [
+                              InkWell(
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  setState(() {
+                                    comments.removeWhere((comment) => comment.commentId == commentId);
+                                  });
+                                },
+                                child: Text(
+                                  "OK",
+                                  style: TextStyle(
+                                      color: AppColors.blackColor, fontSize: 20),
+                                ),
+                              )
+                            ],
+                          );
+                        },
+                      );
+                      fetchComments(widget.task.taskId!);
+                      print('Comments deleted successfully.');
+                    } else {
+                      print('Failed to delete comments.');
+                      // Handle other status codes, if needed
+                    }
+                  } catch (e) {
+                    print('Error deleting comments: $e');
+                  }
+                },
+                child: Text('Delete'),
+              ),
+            ],
+          );
+        },
+      ).then((value) {
+
+      });
+    } catch (e) {
+      print('Error showing delete confirmation dialog: $e');
+    }
+  }
+
   Future<String> getUserIdByUsername(String username) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -375,7 +478,8 @@ class _CommentScreenState extends State<CommentScreen> {
     }
   }
 
-  void _replyBottomSheet(BuildContext context,Comment comment){
+  void _replyBottomSheet(BuildContext context,Comment comment)async{
+    await fetchUsers();
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -383,7 +487,7 @@ class _CommentScreenState extends State<CommentScreen> {
           builder: (BuildContext context, StateSetter setState) {
             return Container(
               padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 48.0), // Added padding from bottom
-              margin: EdgeInsets.only(bottom: 20.0),
+              margin: EdgeInsets.only(bottom: 100.0),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -425,7 +529,9 @@ class _CommentScreenState extends State<CommentScreen> {
                         ),
                         controller:_replyController,
                         onChanged: (text) {
+                          print("Text: $text");
                           if (text.endsWith('@')) {
+                            print("Detected '@'");
                             setState(() {
                               showSuggestions = true;
                             });
@@ -462,7 +568,7 @@ class _CommentScreenState extends State<CommentScreen> {
                       ),
                     SizedBox(height: 20,),
                     RoundGradientButton(
-                      title: "Send",
+                      title: "Add Reply",
                       onPressed: () async {
                         String replyText = _replyController.text;
                         print("Reply Text: $replyText");
@@ -508,6 +614,7 @@ class _CommentScreenState extends State<CommentScreen> {
 
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       body: Container(
         child: FutureBuilder<List<Comment>>(
           future: fetchComments(widget.task.taskId!),
@@ -582,7 +689,7 @@ class _CommentScreenState extends State<CommentScreen> {
       title: Row(
         children: [
           Container(
-            width: 190,
+            width: 100,
             child: RichText(
               text: TextSpan(
                 text: "${comment.commenterName}: ",
@@ -596,19 +703,29 @@ class _CommentScreenState extends State<CommentScreen> {
             ),
           ),
           Spacer(),
-          _buildIconButton(Icons.more_vert, () async {
-            bool edited = await showModalBottomSheet(
-              context: context,
-              builder: (BuildContext context) {
-                return EditDeleteComments(comment: comment, task: widget.task,);
-              },
-            );
-            if(edited == true){
-              await fetchComments(widget.task.taskId!);
-            }
-          }),
           _buildIconButton(Icons.reply, () {
             _replyBottomSheet(context, comment);
+          }),
+          SizedBox(width: 1,),
+          _buildIconButton(Icons.edit, () {
+            showDialog(context: context, builder: (BuildContext context){
+              return EditDeleteComments(comment: comment, task: widget.task);
+            });
+          }),
+          SizedBox(width: 1,),
+          // _buildIconButton(Icons.more_vert, () async {
+          //   bool edited = await showModalBottomSheet(
+          //     context: context,
+          //     builder: (BuildContext context) {
+          //       return EditDeleteComments(comment: comment, task: widget.task,);
+          //     },
+          //   );
+          //   if(edited == true){
+          //     await fetchComments(widget.task.taskId!);
+          //   }
+          // }),
+          _buildIconButton(Icons.delete, () {
+            _deleteComments(comment.commentId);
           }),
         ],
       ),
@@ -628,13 +745,14 @@ class _CommentScreenState extends State<CommentScreen> {
                 showReplies = !showReplies;
               });
             },
-            child: Text(
+            child: comment.replies.length > 0 ? Text(
               "View ${comment.replies.length} comments",
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
                 color: AppColors.secondaryColor2,
               ),
-            ),
+            ) : SizedBox(), // Use SizedBox() to render nothing when there are no replies
           ),
         ],
       ),
@@ -650,4 +768,5 @@ class _CommentScreenState extends State<CommentScreen> {
       ),
     );
   }
+
 }

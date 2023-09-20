@@ -72,55 +72,56 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
 
       DateTime endDate = DateTime.parse(dateController.text!).toUtc();
       String? endDateString = endDate.toIso8601String();
-      List<User> users = await fetchUsers();
-      List<Team> teams = await fetchTeams();
 
-      List<String> selectedMembers = assignedToController.text.split(',');
-      List<String> selectedTeams = assignedTeamController.text.split(',');
+      // Fetch existing users and teams
+      List<User> existingUsers = await fetchUsers();
+      List<Team> existingTeams = await fetchTeams();
 
-      print("selectedTeams: $selectedTeams");
-      print("selectedMember: $selectedMembers");
+      // Get the selected members and teams as strings
+      List<String> selectedMembers = assignedToController.text.split(', ');
+      List<String> selectedTeams = assignedTeamController.text.split(', ');
 
+      // Create a list to store user IDs and team IDs
+      List<String> selectedMemberIds = [];
+      List<String> selectedTeamIds = [];
 
-      String? getMemberIdFromName(String memberName, List<User> users) {
-        for (User user in users) {
-          if (user.userName == memberName) {
+      // Function to get or create user ID from username
+      String getOrCreateUserId(String userName) {
+        for (User user in existingUsers) {
+          if (user.userName == userName) {
             return user.userId;
           }
         }
-        return null; // Return null if no matching member name is found
+        // If the user doesn't exist, you can choose to handle this case as needed.
+        // For example, you can create a new user on the server and get their ID.
+        // For now, we'll assume the user already exists.
+        return '';
       }
 
-      // Function to convert team names to IDs
-      String? getTeamIdFromName(String teamName, List<Team> teams) {
-        for (Team team in teams) {
+      // Function to get or create team ID from team name
+      String getOrCreateTeamId(String teamName) {
+        for (Team team in existingTeams) {
           if (team.teamName == teamName) {
             return team.id;
           }
         }
-        return null; // Return null if no matching team name is found
+        // If the team doesn't exist, you can choose to handle this case as needed.
+        // For example, you can create a new team on the server and get its ID.
+        // For now, we'll assume the team already exists.
+        return '';
       }
 
-      // Usage example in your code
-      List<String> selectedMemberIds = [];
+      // Populate selectedMemberIds and selectedTeamIds
       for (String memberName in selectedMembers) {
-        String? memberId = getMemberIdFromName(memberName, users);
-        if (memberId != null) {
-          selectedMemberIds.add(memberId);
-        } else {
-          print("Member ID not found for: $memberName");
-        }
+        String memberId = getOrCreateUserId(memberName);
+        selectedMemberIds.add(memberId);
       }
 
-      List<String> selectedTeamIds = [];
       for (String teamName in selectedTeams) {
-        String? teamId = getTeamIdFromName(teamName, teams);
-        if (teamId != null) {
-          selectedTeamIds.add(teamId);
-        } else {
-          print("Team ID not found for: $teamName");
-        }
+        String teamId = getOrCreateTeamId(teamName);
+        selectedTeamIds.add(teamId);
       }
+
 
       print("selectedTeamIds: $selectedTeamIds");
       print("selectedMemberIds: $selectedMemberIds");

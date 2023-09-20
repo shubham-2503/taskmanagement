@@ -1,4 +1,4 @@
-
+import 'package:Taskapp/view/tasks/widgets/taskdetailsModal.dart';
 import 'dart:convert';
 import 'package:Taskapp/view/tasks/MistaskCreation.dart';
 import 'package:Taskapp/view/tasks/editCreatetasks.dart';
@@ -13,8 +13,6 @@ import '../../models/task_model.dart';
 import '../../utils/app_colors.dart';
 import 'editMyTaks.dart';
 
-
-
 class CreatedByMe extends StatefulWidget {
   final VoidCallback refreshCallback;
   final Map<String, String?> selectedFilters;
@@ -26,6 +24,7 @@ class CreatedByMe extends StatefulWidget {
 }
 
 class _CreatedByMeState extends State<CreatedByMe> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   List<Task> filteredTasks = [];
   List<Task> ByMytasks = [];
 
@@ -108,41 +107,100 @@ class _CreatedByMeState extends State<CreatedByMe> {
       print('Error fetching tasks: $e');
     }
   }
-  Future<void> _deleteTask(BuildContext context, Task task) async {
-    // Make an API call to delete the task
+
+  void _deleteTask(String taskId) async {
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final storedData = prefs.getString('jwtToken');
-      final url = Uri.http('43.205.97.189:8000', '/api/Task/delete/${task.taskId}');
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Confirm Delete'),
+            content: Text('Are you sure you want to delete this task?'),
+            actions: [
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  try {
+                    SharedPreferences prefs =
+                    await SharedPreferences.getInstance();
+                    final storedData = prefs.getString('jwtToken');
+                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
 
-      final headers = {
-        'accept': '*/*',
-        'Authorization': 'Bearer $storedData',
-      };
+                    if (orgId == null) {
+                      // If the user hasn't switched organizations, use the organization ID obtained during login time
+                      orgId = prefs.getString('org_id') ?? "";
+                    }
 
-      final response = await http.delete(url, headers: headers);
+                    print("OrgId: $orgId");
 
-      if (response.statusCode == 200) {
-        // Task deleted successfully
-        // Update the UI to remove the deleted task
-        setState(() {
-          ByMytasks.remove(task);
-          filteredTasks.remove(task);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Task deleted successfully'),
-        ));
-      } else {
-        print('Error deleting task: ${response.statusCode}');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error deleting task'),
-        ));
-      }
+                    if (orgId == null) {
+                      throw Exception('orgId not found locally');
+                    }
+
+                    final response = await http.delete(
+                      Uri.parse(
+                          'http://43.205.97.189:8000/api/Task/tasks/$taskId'),
+                      headers: {
+                        'accept': '*/*',
+                        'Authorization': "Bearer $storedData",
+                      },
+                    );
+
+                    print("Delete API response: ${response.body}");
+                    print("Delete StatusCode: ${response.statusCode}");
+
+                    if (response.statusCode == 200) {
+                      showDialog(
+                        context: _scaffoldKey.currentContext ?? context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Thank You'),
+                            content: Text("Task deleted successfully."),
+                            actions: [
+                              InkWell(
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  setState(() {
+                                    ByMytasks.removeWhere((task) => task.taskId == taskId);
+                                    filteredTasks.removeWhere((task) => task.taskId == taskId);
+                                  });
+                                },
+                                child: Text(
+                                  "OK",
+                                  style: TextStyle(
+                                      color: AppColors.blackColor, fontSize: 20),
+                                ),
+                              )
+                            ],
+                          );
+                        },
+                      );
+                      fetchCreatedByMeTasks();
+                      print('Task deleted successfully.');
+                    } else {
+                      print('Failed to delete task.');
+                      // Handle other status codes, if needed
+                    }
+                  } catch (e) {
+                    print('Error deleting task: $e');
+                  }
+                },
+                child: Text('Delete'),
+              ),
+            ],
+          );
+        },
+      ).then((value) {
+
+      });
     } catch (e) {
-      print('Error deleting task: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error deleting task'),
-      ));
+      print('Error showing delete confirmation dialog: $e');
     }
   }
 
@@ -174,6 +232,7 @@ class _CreatedByMeState extends State<CreatedByMe> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         automaticallyImplyLeading: false, // Removes the back button
         iconTheme: IconThemeData(
@@ -281,14 +340,17 @@ class _CreatedByMeState extends State<CreatedByMe> {
                   // Add more cases for different priorities if needed
                   }
                   return Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-                      padding: EdgeInsets.symmetric(vertical: 8,horizontal: 9),
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 0),
+                      padding:
+                      EdgeInsets.symmetric(vertical: 8, horizontal: 7),
                       decoration: BoxDecoration(
                         color: AppColors.whiteColor,
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 20, horizontal: 5),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(colors: [
                             AppColors.primaryColor2.withOpacity(0.3),
@@ -335,7 +397,7 @@ class _CreatedByMeState extends State<CreatedByMe> {
                                             fontWeight: FontWeight.bold),
                                       ),
                                       Container(
-                                        width: 110,
+                                        width: 90,
                                         child: Text(
                                           task.taskName.length >10
                                               ? task.taskName.substring(0,10) + '...'
@@ -372,32 +434,34 @@ class _CreatedByMeState extends State<CreatedByMe> {
                             ),
                             Spacer(),
                             IconButton(
-                              icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2),
+                              icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2,size: 20,),
                               onPressed: () {
                                 _showViewTaskDialog(task);
                               },
-                            ), // Add a Spacer to push the menu image to the end
-                            GestureDetector(
-                              onTap: () async {
-                                bool? shouldRefresh = await showModalBottomSheet<bool>(
+                            ),
+                            SizedBox(width: 1,),// Add a Spacer to push the menu image to the end
+                            IconButton(
+                              icon: Icon(Icons.edit, color: AppColors.secondaryColor2, size: 20,),
+                              onPressed: () async {
+                                bool? edited = await showModalBottomSheet<bool>(
                                   context: context,
-                                  builder: (context) {
-                                    return TaskDetailsModal(task: task);
+                                  builder: (BuildContext context) {
+                                    return TaskDetailsModal(task: task,);
                                   },
                                 );
 
-                                if (shouldRefresh ?? false) {
+                                if (edited == true) {
                                   await fetchCreatedByMeTasks();
                                 }
                               },
-                              child: Image.asset(
-                                "assets/images/menu.png",
-                                width: 40,
-                                height: 20,
-                              ),
                             ),
-
-
+                            SizedBox(width: 1,),
+                            IconButton(
+                              icon: Icon(Icons.delete, color: AppColors.secondaryColor2,size: 20,),
+                              onPressed: () {
+                                _deleteTask(task.taskId!);
+                              },
+                            ),
                           ],
                         ),
                       ));
@@ -505,38 +569,6 @@ class _CreatedByMeState extends State<CreatedByMe> {
     );
   }
 }
-/*void _showDeleteTaskDialog(BuildContext context, Task task) async {
-  final confirm = await showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Delete Task'),
-        content: Text('Are you sure you want to delete this task?'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(false); // Cancel the deletion
-            },
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(true); // Confirm the deletion
-            },
-            child: Text('Delete'),
-          ),
-        ],
-      );
-    },
-  );
-
-  if (confirm == true) {
-    // Delete the task here
-    await _deleteTask(context, task);
-  }
-}*/
-
-
 
 class TaskDetailsModal extends StatefulWidget {
   final Task task;
@@ -549,9 +581,9 @@ class TaskDetailsModal extends StatefulWidget {
 
 class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
-  List<Task> mytasks = [];
+  List<Task> ByMytasks = [];
 
-  Future<void> fetchMyTasks() async {
+  Future<void> fetchCreatedByMeTasks() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final storedData = prefs.getString('jwtToken');
@@ -569,7 +601,12 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
         throw Exception('orgId not found locally');
       }
 
-      final url = Uri.http('43.205.97.189:8000', '/api/Task/myTasks', );
+      // Use the selected filters to build the query parameters
+      Map<String, String?> queryParameters = {
+        'org_id': orgId,
+      };
+
+      final url = Uri.http('43.205.97.189:8000', '/api/Task/createdByMe', queryParameters);
 
       final headers = {
         'accept': '*/*',
@@ -597,10 +634,11 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
               ? teams.map((team) => team['teamName'].toString()).toList()
               : [];
           // Assuming the 'assignedTo' and 'assignedTeam' properties of 'task' are either List<String> or comma-separated strings.
-          print("AssignedTeam: $assignedTeams");
+
 
           return Task(
             taskId: taskData['id'],
+            uniqueId: taskData['unique_id'] ?? '',
             taskName: taskData['task_name'] ?? '',
             assignedTo: assignedTo,
             status: taskData['status'] ?? '',
@@ -613,7 +651,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
         }).toList();
 
         setState(() {
-          mytasks = fetchedTasks;
+          ByMytasks = fetchedTasks;
         });
       } else {
         print('Error fetching tasks: ${response.statusCode}');
@@ -772,7 +810,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
 
                     if (edited == true) {
                       // Fetch tasks using your API call here
-                      await fetchMyTasks();
+                      await fetchCreatedByMeTasks();
                     }
                   },
                   title: "Edit",

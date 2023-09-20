@@ -1,12 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:Taskapp/common_widgets/round_button.dart';
 import 'package:Taskapp/utils/app_colors.dart';
 import 'package:http/http.dart' as http;
 import 'package:Taskapp/view/signup/inviteTeammates.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'View_model/UserApiServices.dart';
 import 'common_widgets/round_textfield.dart';
 import 'models/user_invitation_modal.dart';

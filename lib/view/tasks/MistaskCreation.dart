@@ -24,6 +24,7 @@ class MisTaskCreationScreen extends StatefulWidget {
 }
 
 class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
+  bool projectSelected = false;
   late String _taskTitle;
   late String _taskDescription = '';
   late String _attachment = '';
@@ -49,6 +50,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
     super.initState();
     _attachmentController.text = _attachment;
     fetchPriorities();
+    _selectedProject = null;
     fetchStatusData();
     fetchUsers();
     fetchTeams();
@@ -469,7 +471,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                               ),
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
-                              hintText: "Select Project", // Set the initial hint text here
+                              hintText: "Select Project",
                               hintStyle: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey,
@@ -484,10 +486,6 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                               ),
                             ),
                             items: [
-                              DropdownMenuItem<String>(
-                                value: null,
-                                child: Text("Select Project"), // Display the hint text as the first option
-                              ),
                               ...projects.map<DropdownMenuItem<String>>((project) {
                                 return DropdownMenuItem<String>(
                                   value: project.id,
@@ -497,7 +495,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                             ],
                             onChanged: (value) {
                               setState(() {
-                                _selectedProject = value; // Update the selected project here
+                                _selectedProject = value;
                               });
                             },
                           ),
@@ -721,7 +719,7 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
                             backgroundColor: AppColors.secondaryColor2,
                           ),
                           onPressed: _handleSaveChanges,
-                          child: Text("Create Project", style: TextStyle(color: Colors.white)),
+                          child: Text("Create Task", style: TextStyle(color: Colors.white)),
                         ),
                       ),
                     ],

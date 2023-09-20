@@ -68,9 +68,11 @@ class _AllScreenState extends State<AllScreen> {
           future: fetchActivityHistory(widget.task.taskId!),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return _buildLoadingText(); // Show a loading indicator while fetching data.
+              return _buildLoadingText();
             } else if (snapshot.hasError) {
               return Text('Error: ${snapshot.error}');
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Text('No activity history available.');
             } else {
               activityHistoryData = snapshot.data ?? [];
               return Column(

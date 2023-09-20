@@ -1,21 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:Taskapp/view/projects/projectCreation.dart';
-import 'package:Taskapp/view/projects/projectDetailsScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../Providers/project_provider.dart';
-import '../../../common_widgets/round_button.dart';
 import '../../../common_widgets/round_textfield.dart';
 import '../../../models/project_model.dart';
 import '../../../models/project_team_model.dart';
-import '../../../models/task_model.dart';
 import '../../../models/user.dart';
 import '../../../utils/app_colors.dart';
 import 'package:intl/intl.dart';
-
 import 'editMyProjects.dart';
 
 class CreatedbyMe extends StatefulWidget {
@@ -28,6 +24,7 @@ class CreatedbyMe extends StatefulWidget {
 }
 
 class _CreatedbyMeState extends State<CreatedbyMe> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   List<Project> projects = [];
   late List<Project> filteredprojects = [];
   late Future<void> fetchDataFuture;
@@ -63,7 +60,10 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
         final List<dynamic> responseData = jsonDecode(response.body);
         projectCount = responseData.length;
         print("Count: ${projectCount}");
-        final List<Future<Project>> fetchedProjects = responseData.map((projectData) async {
+        final List<Project> fetchedProjects = responseData.map((projectData) {
+          projectCount = responseData.length;
+          print("Count: ${projectCount}");
+          String status = projectData['status'] == true ? 'Active' : 'In-Active';
           String projectId = projectData['project_id'] ?? '';
 
           // List<Task> tasks = await fetchProjectTasks(projectData['project_id']); // Fetch tasks for the project
@@ -91,19 +91,20 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
           );
         }).toList();
 
-        final List<Project> projectsWithTasks = await Future.wait(fetchedProjects);
+        // Use Provider to update projects list
+        final projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
+        projectProvider.updateProjects(fetchedProjects);
 
+        // Update filtered projects as well
         setState(() {
-          projects = projectsWithTasks;
-          filteredprojects= List.from(projects);
-
+          projects = List.from(fetchedProjects);
+          filteredprojects = List.from(fetchedProjects);
         });
 
         // Store the projectId locally using SharedPreferences
-        final List<String> projectIds = projectsWithTasks.map((project) => project.id).toList();
+        final List<String> projectIds = fetchedProjects.map((project) => project.id).toList();
         await prefs.setStringList('projectIds', projectIds);
         print("ProjectID: $projectIds");
-
       } else {
         print('Error fetching projects: ${response.statusCode}');
       }
@@ -128,6 +129,102 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
         }).toList();
       }
     });
+  }
+
+  void _deleteProject(String projectId) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      ProjectCountManager projectCountManager = ProjectCountManager(prefs);
+      showDialog(
+        context: context, // Use the original context for the first dialog
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Confirm Delete'),
+            content: Text('Are you sure you want to delete this Project?'),
+            actions: [
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop(); // Close the first dialog
+                  try {
+                    SharedPreferences prefs = await SharedPreferences.getInstance();
+                    final storedData = prefs.getString('jwtToken');
+                    String? orgId = prefs.getString("selectedOrgId");
+
+                    if (orgId == null) {
+                      orgId = prefs.getString('org_id') ?? "";
+                    }
+
+                    print("OrgId: $orgId");
+
+                    if (orgId == null) {
+                      throw Exception('orgId not found locally');
+                    }
+
+                    final response = await http.delete(
+                      Uri.parse('http://43.205.97.189:8000/api/Project/deleteProject/$projectId'),
+                      headers: {
+                        'accept': '*/*',
+                        'Authorization': "Bearer $storedData",
+                      },
+                    );
+
+                    print("Delete API response: ${response.body}");
+                    print("Delete StatusCode: ${response.statusCode}");
+
+                    if (response.statusCode == 200) {
+                      // Use the scaffold's context for the second dialog
+                      showDialog(
+                        context: _scaffoldKey.currentContext ?? context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Thank You'),
+                            content: Text("Project deleted successfully."),
+                            actions: [
+                              InkWell(
+                                onTap: () async {
+                                  Navigator.pop(context); // Close the second dialog
+                                  setState(() {
+                                    projects.removeWhere((project) => project.id == projectId);
+                                    filteredprojects.removeWhere((project) => project.id == projectId);
+                                  });
+                                },
+                                child: Text(
+                                  "OK",
+                                  style: TextStyle(
+                                    color: AppColors.blackColor,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              )
+                            ],
+                          );
+                        },
+                      );
+                      fetchCreatedbyProjects();
+                      print('Project deleted successfully.');
+                    } else {
+                      print('Failed to delete Project.');
+                      // Handle other status codes, if needed
+                    }
+                  } catch (e) {
+                    print('Error deleting project: $e');
+                  }
+                },
+                child: Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print('Error showing delete confirmation dialog: $e');
+    }
   }
 
   @override
@@ -164,6 +261,7 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         automaticallyImplyLeading: false, // Removes the back button
         iconTheme: IconThemeData(
@@ -256,7 +354,7 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
                             ),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  vertical: 20, horizontal: 10),
+                                  vertical: 20, horizontal: 5),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(colors: [
                                   AppColors.primaryColor2.withOpacity(0.3),
@@ -459,102 +557,6 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
       },
     );
   }
-
-  void _deleteProject(String projectId) async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      ProjectCountManager projectCountManager = ProjectCountManager(prefs);
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete this Project?'),
-            actions: [
-              TextButton(
-                child: Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop(); // Close the confirmation dialog
-
-                  try {
-                    SharedPreferences prefs = await SharedPreferences.getInstance();
-                    final storedData = prefs.getString('jwtToken');
-                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
-
-                    if (orgId == null) {
-                      // If the user hasn't switched organizations, use the organization ID obtained during login time
-                      orgId = prefs.getString('org_id') ?? "";
-                    }
-
-                    print("OrgId: $orgId");
-
-                    if (orgId == null) {
-                      throw Exception('orgId not found locally');
-                    }
-
-                    final response = await http.delete(
-                      Uri.parse('http://43.205.97.189:8000/api/Project/deleteProject/$projectId'),
-                      headers: {
-                        'accept': '*/*',
-                        'Authorization': "Bearer $storedData",
-                      },
-                    );
-
-                    print("Delete API response: ${response.body}");
-                    print("Delete StatusCode: ${response.statusCode}");
-
-                    if (response.statusCode == 200) {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text('Thank You'),
-                            content: Text("Project deleted successfully."),
-                            actions: [
-                              InkWell(
-                                onTap: () {
-                                  Navigator.pop(context,true);
-                                  Navigator.pop(context,true);
-                                },
-                                child: Text(
-                                  "OK",
-                                  style: TextStyle(
-                                      color: AppColors.blackColor, fontSize: 20),
-                                ),
-                              )
-                            ],
-                          );
-                        },
-                      );
-                      print('Project deleted successfully.');
-                      setState(() {
-                        Navigator.pop(context);
-                        Navigator.pop(context, true); // Sending a result back to the previous screen
-                      });
-
-                    } else {
-                      print('Failed to delete Project.');
-                      // Handle other status codes, if needed
-                    }
-                  } catch (e) {
-                    print('Error deleting project: $e');
-                  }
-                },
-                child: Text('Delete'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      print('Error showing delete confirmation dialog: $e');
-    }
-  }
 }
 
 class ProjectDetailsModal extends StatefulWidget {
@@ -655,6 +657,7 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   "Project Name",
@@ -667,7 +670,7 @@ class _ProjectDetailsModalState extends State<ProjectDetailsModal> {
                     // Fetch tasks using your API call here
                     await fetchCreatedbyProjects();
                   }
-                }, icon: Icon(Icons.edit)),
+                }, icon: Icon(Icons.edit,color: AppColors.secondaryColor2,)),
               ],
             ),
             SizedBox(height: 10,),

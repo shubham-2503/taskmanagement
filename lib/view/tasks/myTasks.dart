@@ -21,6 +21,7 @@ class MyTaskScreen extends StatefulWidget {
 }
 
 class _MyTaskScreenState extends State<MyTaskScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   List<Task> filteredMyTasks = [];
   List<Task> mytasks = [];
 
@@ -120,6 +121,102 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
     });
   }
 
+  void _deleteTask(String taskId) async {
+    try {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Confirm Delete'),
+            content: Text('Are you sure you want to delete this task?'),
+            actions: [
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  try {
+                    SharedPreferences prefs =
+                    await SharedPreferences.getInstance();
+                    final storedData = prefs.getString('jwtToken');
+                    String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+                    if (orgId == null) {
+                      // If the user hasn't switched organizations, use the organization ID obtained during login time
+                      orgId = prefs.getString('org_id') ?? "";
+                    }
+
+                    print("OrgId: $orgId");
+
+                    if (orgId == null) {
+                      throw Exception('orgId not found locally');
+                    }
+
+                    final response = await http.delete(
+                      Uri.parse(
+                          'http://43.205.97.189:8000/api/Task/tasks/$taskId'),
+                      headers: {
+                        'accept': '*/*',
+                        'Authorization': "Bearer $storedData",
+                      },
+                    );
+
+                    print("Delete API response: ${response.body}");
+                    print("Delete StatusCode: ${response.statusCode}");
+
+                    if (response.statusCode == 200) {
+                      showDialog(
+                        context: _scaffoldKey.currentContext ?? context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Thank You'),
+                            content: Text("Task deleted successfully."),
+                            actions: [
+                              InkWell(
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  setState(() {
+                                    mytasks.removeWhere((task) => task.taskId == taskId);
+                                    filteredMyTasks.removeWhere((task) => task.taskId == taskId);
+                                  });
+                                },
+                                child: Text(
+                                  "OK",
+                                  style: TextStyle(
+                                      color: AppColors.blackColor, fontSize: 20),
+                                ),
+                              )
+                            ],
+                          );
+                        },
+                      );
+                      fetchMyTasks();
+                      print('Task deleted successfully.');
+                    } else {
+                      print('Failed to delete task.');
+                      // Handle other status codes, if needed
+                    }
+                  } catch (e) {
+                    print('Error deleting task: $e');
+                  }
+                },
+                child: Text('Delete'),
+              ),
+            ],
+          );
+        },
+      ).then((value) {
+
+      });
+    } catch (e) {
+      print('Error showing delete confirmation dialog: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -129,6 +226,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         automaticallyImplyLeading: false, // Removes the back button
         iconTheme: IconThemeData(
@@ -236,14 +334,17 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                   // Add more cases for different priorities if needed
                   }
                   return Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-                      padding: EdgeInsets.symmetric(vertical: 8,horizontal: 9),
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 0),
+                      padding:
+                      EdgeInsets.symmetric(vertical: 8, horizontal: 7),
                       decoration: BoxDecoration(
                         color: AppColors.whiteColor,
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 20, horizontal: 5),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(colors: [
                             AppColors.primaryColor2.withOpacity(0.3),
@@ -290,7 +391,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                                             fontWeight: FontWeight.bold),
                                       ),
                                       Container(
-                                        width: 110,
+                                        width: 90,
                                         child: Text(
                                           task.taskName.length >10
                                               ? task.taskName.substring(0,10) + '...'
@@ -327,29 +428,33 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                             ),
                             Spacer(),
                             IconButton(
-                              icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2),
+                              icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2,size: 20,),
                               onPressed: () {
                                 _showViewTaskDialog(task);
                               },
-                            ), // Add a Spacer to push the menu image to the end
-                            GestureDetector(
-                              onTap: () async {
-                                final result = await showModalBottomSheet<bool>(
+                            ),
+                            SizedBox(width: 1,),// Add a Spacer to push the menu image to the end
+                            IconButton(
+                              icon: Icon(Icons.edit, color: AppColors.secondaryColor2, size: 20,),
+                              onPressed: () async {
+                                bool? edited = await showModalBottomSheet<bool>(
                                   context: context,
-                                  builder: (context) {
-                                    return TaskDetailsModal(task: task);
+                                  builder: (BuildContext context) {
+                                    return TaskDetailsModal(task: task,);
                                   },
                                 );
 
-                                if (result == true) {
+                                if (edited == true) {
                                   await fetchMyTasks();
                                 }
                               },
-                              child: Image.asset(
-                                "assets/images/menu.png",
-                                width: 40,
-                                height: 20,
-                              ),
+                            ),
+                            SizedBox(width: 1,),
+                            IconButton(
+                              icon: Icon(Icons.delete, color: AppColors.secondaryColor2,size: 20,),
+                              onPressed: () {
+                                _deleteTask(task.taskId!);
+                              },
                             ),
                           ],
                         ),
@@ -459,20 +564,6 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
   }
 }
 
-String formatDate(String? dateString) {
-  print('Raw Date String: $dateString');
-  if (dateString == null || dateString.isEmpty) {
-    return 'N/A'; // Return "N/A" for null or empty date strings
-  }
-  try {
-    final dateTime = DateTime.parse(dateString);
-    final formattedDate = DateFormat('yyyy-MM-dd').format(dateTime);
-    return formattedDate;
-  } catch (e) {
-    print('Error parsing date: $e');
-    return 'Invalid Date'; // Return a placeholder for invalid date formats
-  }
-}
 
 
 

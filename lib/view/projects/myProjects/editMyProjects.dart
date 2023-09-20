@@ -27,6 +27,8 @@ class _EditMyProjectState extends State<EditMyProject> {
   final TextEditingController descriptionController = TextEditingController();
   TextEditingController dateController = TextEditingController();
   TextEditingController _activeController = TextEditingController();
+  TextEditingController assignedToController = TextEditingController();
+  TextEditingController assignedTeamController = TextEditingController();
   String _selectedStatus = "";
   List<dynamic> statuses = [];
   late String activeText;
@@ -45,7 +47,6 @@ class _EditMyProjectState extends State<EditMyProject> {
 
   Future<void> _handleSaveChanges() async {
     if (_isLoading) {
-      // Don't allow multiple project creation attempts while loading
       return;
     }
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -58,28 +59,55 @@ class _EditMyProjectState extends State<EditMyProject> {
     List<User> users = await fetchUsers();
     List<Team> teams = await fetchTeams();
 
-    List<String> selectedMembers = List<String>.from((project.users ?? []).map((user) => user.userName));
-    List<String> selectedTeams = List<String>.from((project.teams ?? []).map((team) => team.teamName));
+    // Fetch existing users and teams
+    List<User> existingUsers = await fetchUsers();
+    List<Team> existingTeams = await fetchTeams();
 
-    print("selectedTeams: $selectedTeams");
-    print("selectedMembers: $selectedMembers");
+    // Get the selected members and teams as strings
+    List<String> selectedMembers = assignedToController.text.split(', ');
+    List<String> selectedTeams = assignedTeamController.text.split(', ');
 
+    // Create a list to store user IDs and team IDs
     List<String> selectedMemberIds = [];
+    List<String> selectedTeamIds = [];
+
+    // Function to get or create user ID from username
+    String getOrCreateUserId(String userName) {
+      for (User user in existingUsers) {
+        if (user.userName == userName) {
+          return user.userId;
+        }
+      }
+      // If the user doesn't exist, you can choose to handle this case as needed.
+      // For example, you can create a new user on the server and get their ID.
+      // For now, we'll assume the user already exists.
+      return '';
+    }
+
+    // Function to get or create team ID from team name
+    String getOrCreateTeamId(String teamName) {
+      for (Team team in existingTeams) {
+        if (team.teamName == teamName) {
+          return team.id;
+        }
+      }
+      // If the team doesn't exist, you can choose to handle this case as needed.
+      // For example, you can create a new team on the server and get its ID.
+      // For now, we'll assume the team already exists.
+      return '';
+    }
+
+    // Populate selectedMemberIds and selectedTeamIds
     for (String memberName in selectedMembers) {
-      // Assuming you have a way to map member names to their IDs
-      String memberId = getUserIdFromName(memberName, users); // Replace with actual logic
+      String memberId = getOrCreateUserId(memberName);
       selectedMemberIds.add(memberId);
     }
 
-    List<String> selectedTeamIds = [];
     for (String teamName in selectedTeams) {
-      // Assuming you have a way to map team names to their IDs
-      String teamId = getTeamIdFromName(teamName, teams); // Replace with actual logic
+      String teamId = getOrCreateTeamId(teamName);
       selectedTeamIds.add(teamId);
     }
 
-    print("selectedTeamsIdds: $selectedTeamIds");
-    print("selectedMembersids: $selectedMemberIds");
 
 
     final Map<String, dynamic> updatedProjectData = {
@@ -327,6 +355,110 @@ class _EditMyProjectState extends State<EditMyProject> {
     return team?.id ?? ''; // Return an empty string if team not found
   }
 
+  Future<void> _showTeamsDropdown(BuildContext context) async {
+    List<Team> teams = await fetchTeams();
+    List<String> selectedTeams = assignedTeamController.text.isNotEmpty
+        ? assignedTeamController.text.split('\n')
+        : (project.teams ?? []).map((team) => team.teamName).toList();
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Teams'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: teams.map((team) {
+                    bool isSelected = selectedTeams.contains(team.teamName);
+
+                    return ListTile(
+                      title: Text(team.teamName),
+                      trailing: isSelected
+                          ? Icon(Icons.cancel, color: Colors.red)
+                          : Icon(Icons.add_circle, color: Colors.green),
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            selectedTeams.remove(team.teamName);
+                          } else {
+                            selectedTeams.add(team.teamName);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    assignedTeamController.text = selectedTeams.join(', ');
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showMembersDropdown(BuildContext context) async {
+    List<User> users = await fetchUsers();
+    List<String> selectedUsers = assignedToController.text.isNotEmpty
+        ? assignedToController.text.split('\n')
+        : (project.users ?? []).map((user) => user.userName).toList();
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select Users'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: users.map((user) {
+                    bool isSelected = selectedUsers.contains(user.userName);
+
+                    return ListTile(
+                      title: Text(user.userName),
+                      trailing: isSelected
+                          ? Icon(Icons.cancel, color: Colors.red)
+                          : Icon(Icons.add_circle, color: Colors.green),
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            selectedUsers.remove(user.userName);
+                          } else {
+                            selectedUsers.add(user.userName);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Done'),
+                  onPressed: () {
+                    assignedToController.text = selectedUsers.join(', ');
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
 
   @override
   void initState() {
@@ -335,6 +467,8 @@ class _EditMyProjectState extends State<EditMyProject> {
     _selectedStatus = project.status;
     activeText = getActiveText(project.active);
     _activeController.text = activeText;
+    assignedToController.text = project.users?.map((user) => user.userName).join(', ') ?? '';
+    assignedTeamController.text = project.teams?.map((team) => team.teamName).join(', ') ?? '';
     titleController.text = project.name;
     descriptionController.text = project.description ?? " ";
     dateController.text = formatDate(dueDate);
@@ -432,22 +566,54 @@ class _EditMyProjectState extends State<EditMyProject> {
                     textEditingController: titleController,
                   ),
                 ),
-                // Padding(
-                //   padding: EdgeInsets.only(left: 10),
-                //   child: Text("Description",
-                //     style: TextStyle(
-                //       color: AppColors.secondaryColor2,
-                //       fontSize: 14,
-                //       fontWeight: FontWeight.bold,
-                //     ),
-                //   ),
-                // ),
-                // Padding(
-                //   padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-                //   child: RoundTextField(
-                //     hintText: project != null ? project.description : "No descriptions",
-                //   ),
-                // ),
+                Padding(
+                  padding: EdgeInsets.only(left: 10),
+                  child: Text(
+                    "Members",
+                    style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                  child: RoundTextField(
+                    hintText: "AssigneeMembers",
+                    icon: "assets/images/des.png",
+                    textInputType: TextInputType.text,
+                    isReadOnly: true,
+                    textEditingController: assignedToController,
+                    onTap: (){
+                      _showMembersDropdown(context);
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: 10),
+                  child: Text(
+                    "Teams",
+                    style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                  child: RoundTextField(
+                    hintText: "AssigneeTeams",
+                    icon: "assets/images/des.png",
+                    textInputType: TextInputType.text,
+                    isReadOnly: true,
+                    textEditingController: assignedTeamController,
+                    onTap: (){
+                      _showTeamsDropdown(context);
+                    },
+                  ),
+                ),
                 Padding(
                   padding: EdgeInsets.only(left: 10),
                   child: Text(
@@ -602,7 +768,7 @@ class _EditMyProjectState extends State<EditMyProject> {
                         backgroundColor: AppColors.secondaryColor2,
                       ),
                       onPressed: _handleSaveChanges,
-                      child: Text("Create Project", style: TextStyle(color: Colors.white)),
+                      child: Text("Update Project", style: TextStyle(color: Colors.white)),
                     ),
                   ),
                 ),

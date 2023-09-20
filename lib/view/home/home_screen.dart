@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isAlertSet =false;
   bool _shouldRefresh = false;
   late ProjectCountManager projectCountManager;
+  int notificationCount = 0;
   int totalCompletedTasks = 0;
   List<Task> tasks = [];
   int totalProjectCount = 0;
@@ -80,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose()
   {
+    notificationCount = 0;
     subscription.cancel();
     super.dispose();
 
@@ -124,7 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
   @override
   void initState() {
     super.initState();
@@ -138,6 +139,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _updateTasksCountLocally();
     refreshScreen(); // Initial data fetching
     getConnectivity();
+    // When a new push notification is received
+    notificationCount++;
   }
 
   @override
@@ -343,13 +346,34 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () {
                         Navigator.pushNamed(context, NotificationScreen.routeName);
                       },
-                      icon: Image.asset(
-                        hasNewNotifications
-                            ? "assets/images/notification.png" // Use this image if there are new notifications
-                            : "assets/images/notification_clear.png", // Use this image if there are no new notifications
-                        width: 25,
-                        height: 25,
-                        fit: BoxFit.fitHeight,
+                      icon: Stack(
+                        children: [
+                          Image.asset(
+                            "assets/images/notification_clear.png", // Use the image without the count
+                            width: 25,
+                            height: 25,
+                            fit: BoxFit.fitHeight,
+                          ),
+                          if (notificationCount > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.red, // Choose a color for the count badge
+                                ),
+                                child: Text(
+                                  notificationCount.toString(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12, // Choose a suitable font size
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     SizedBox(
