@@ -39,6 +39,7 @@ class _EditTeamPageState extends State<EditTeamPage> {
 
   Future<void> updateTeamNameAndMembers(String teamId, String newTeamName,List<String> users) async {
     try {
+      print("Updated teams");
       print("users: $users");
       print("TeamIds: $teamId");
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -225,15 +226,9 @@ class _EditTeamPageState extends State<EditTeamPage> {
     );
   }
 
-
   Future<void> _showMembersDropdown(BuildContext context) async {
     List<User> allUsers = await fetchUsers();
-    List<String> selectedIds = [];
-
-    // Initialize selectedIds with existing selected members
-    for (String username in _usercontroller.text.split(', ')) {
-      selectedIds.addAll(selectedMembers[username] ?? []);
-    }
+    List<String> selectedMembers = List.from(widget.team.users);
 
     await showDialog<void>(
       context: context,
@@ -245,27 +240,19 @@ class _EditTeamPageState extends State<EditTeamPage> {
               content: SingleChildScrollView(
                 child: Column(
                   children: allUsers.map((user) {
-                    bool isSelected = selectedIds.contains(user.userId);
+                    bool isSelected = selectedMembers.contains(user.userName);
 
                     return ListTile(
                       title: Text(user.userName),
                       trailing: isSelected
                           ? Icon(Icons.remove_circle, color: Colors.red)
                           : Icon(Icons.add_circle, color: Colors.green),
-
                       onTap: () {
                         setState(() {
                           if (isSelected) {
-                            selectedIds.remove(user.userId);
+                            selectedMembers.remove(user.userName);
                           } else {
-                            selectedIds.add(user.userId);
-                          }
-
-                          // Update selected members based on user name
-                          for (String username in _usercontroller.text.split(', ')) {
-                            selectedMembers[username] = selectedIds
-                                .where((userId) => allUsers.any((user) => user.userId == userId))
-                                .toList();
+                            selectedMembers.add(user.userName);
                           }
                         });
                       },
@@ -277,15 +264,8 @@ class _EditTeamPageState extends State<EditTeamPage> {
                 TextButton(
                   child: Text('Done'),
                   onPressed: () {
-                    // Update _usercontroller text with selected user names
-                    List<String> selectedUserNames = [];
-                    for (String username in _usercontroller.text.split(', ')) {
-                      selectedUserNames.addAll(selectedMembers[username]?.map(
-                            (userId) => allUsers.firstWhere((user) => user.userId == userId).userName,
-                      ) ?? []);
-                    }
-                    _usercontroller.text = selectedUserNames.join(', ');
-
+                    _usercontroller.text = selectedMembers.join(', ');
+                    widget.team.users = _usercontroller.text.isNotEmpty ? _usercontroller.text.split(', ') : []; // Update the task's assignedTo
                     Navigator.of(context).pop();
                   },
                 ),
@@ -297,10 +277,7 @@ class _EditTeamPageState extends State<EditTeamPage> {
     );
   }
 
-  // ... (existing code)
-
   Future<void> _handleSaveChanges() async {
-    // Check if members are not selected
     if (_usercontroller.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -314,16 +291,29 @@ class _EditTeamPageState extends State<EditTeamPage> {
       _isLoading = true; // Set loading state to true
     });
 
-    List<String> usernames = _usercontroller.text.split(', ');
-    List<String> userIds = [];
-
-    for (String username in usernames) {
-      userIds.addAll(selectedMembers[username] ?? []);
+    List<String> selectedMembers = _usercontroller.text.split(', ');
+    // Create a list to store user IDs and team IDs
+    List<User> existingUsers = await fetchUsers();
+    List<String> selectedMemberIds = [];
+    // Function to get or create user ID from username
+    String getOrCreateUserId(String userName) {
+      for (User user in existingUsers) {
+        if (user.userName == userName) {
+          return user.userId;
+        }
+      }
+      return '';
     }
 
-    print("User IDs: $userIds");
+    // Populate selectedMemberIds and selectedTeamIds
+    for (String memberName in selectedMembers) {
+      String memberId = getOrCreateUserId(memberName);
+      selectedMemberIds.add(memberId);
+    }
+
+    print("User IDs: $selectedMemberIds");
     String newTeamName = _nameController.text;
-    await updateTeamNameAndMembers(widget.team.teamId!, newTeamName, userIds);
+    await updateTeamNameAndMembers(widget.team.teamId!, newTeamName, selectedMemberIds);
 
     setState(() {
       _isLoading = false; // Set loading state to false
@@ -332,8 +322,6 @@ class _EditTeamPageState extends State<EditTeamPage> {
     Navigator.pop(context, true);
     Navigator.pop(context, true);
   }
-  // ... (existing code)
-
 
   @override
   Widget build(BuildContext context) {
