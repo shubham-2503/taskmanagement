@@ -362,24 +362,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             fit: BoxFit.fitHeight,
                           ),
                         ),
-                        if (hasNewNotifications)
-                          Container(
-                            width: 18, // Adjust the width to accommodate larger numbers
-                            height: 18, // Adjust the height to accommodate larger numbers
-                            decoration: BoxDecoration(
-                              color: Colors.red, // Customize the badge color
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$newNotificationCount', // Display the count of new notifications here
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12, // Adjust the font size for larger numbers
-                                ),
-                              ),
-                            ),
-                          ),
+                        // if (hasNewNotifications)
+                        //   Container(
+                        //     width: 18, // Adjust the width to accommodate larger numbers
+                        //     height: 18, // Adjust the height to accommodate larger numbers
+                        //     decoration: BoxDecoration(
+                        //       color: Colors.red, // Customize the badge color
+                        //       shape: BoxShape.circle,
+                        //     ),
+                        //     child: Center(
+                        //       child: Text(
+                        //         '$newNotificationCount', // Display the count of new notifications here
+                        //         style: TextStyle(
+                        //           color: Colors.white,
+                        //           fontSize: 12, // Adjust the font size for larger numbers
+                        //         ),
+                        //       ),
+                        //     ),
+                        //   ),
                       ],
                     ),
 

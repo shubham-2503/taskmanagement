@@ -8,7 +8,7 @@ import '../../models/task_model.dart';
 
 class AllScreen extends StatefulWidget {
   final Task task;
-  const AllScreen({super.key, required this.task});
+  const AllScreen({Key? key, required this.task}) : super(key: key);
 
   @override
   State<AllScreen> createState() => _AllScreenState();
@@ -29,7 +29,6 @@ class _AllScreenState extends State<AllScreen> {
     }
 
     print("OrgId: $orgId");
-
 
     if (orgId == null) {
       throw Exception('orgId not found locally');
@@ -134,30 +133,28 @@ class _AllScreenState extends State<AllScreen> {
                             ),
                             backgroundColor: AppColors.primaryColor1,
                           ),
-                          title: Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                text: "$activityUserName:",
-                                style: TextStyle(
-                                  color: AppColors.secondaryColor2,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                children: [
-                                  if (textParts.any((textPart) => textPart.startsWith("@")))
-                                    ...textParts.map((textPart) {
-                                      if (textPart.startsWith("@")) {
-                                        // Apply the taggedUserStyle to tagged users
-                                        return TextSpan(text: "$textPart  ", style: userMentionStyle);
-                                      } else {
-                                        // Apply the commentTextStyle to the rest of the comment text
-                                        return TextSpan(text: textPart, style: commentTextStyle);
-                                      }
-                                    }).toList()
-                                  else
-                                    TextSpan(text: displayActivityComment, style: commentTextStyle),
-                                ],
+                          title: RichText(
+                            text: TextSpan(
+                              text: "$activityUserName:",
+                              style: TextStyle(
+                                color: AppColors.secondaryColor2,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
+                              children: [
+                                if (textParts.any((textPart) => textPart.startsWith("@")))
+                                  ...textParts.map((textPart) {
+                                    if (textPart.startsWith("@")) {
+                                      // Apply the taggedUserStyle to tagged users
+                                      return TextSpan(text: "$textPart  ", style: userMentionStyle);
+                                    } else {
+                                      // Apply the commentTextStyle to the rest of the comment text
+                                      return TextSpan(text: textPart, style: commentTextStyle);
+                                    }
+                                  }).toList()
+                                else
+                                  TextSpan(text: displayActivityComment, style: commentTextStyle),
+                              ],
                             ),
                           ),
                           subtitle: Row(

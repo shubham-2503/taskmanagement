@@ -9,6 +9,8 @@ import '../../../models/comment_model.dart';
 import '../../../models/fetch_user_model.dart';
 import '../../../models/task_model.dart';
 import '../../../utils/app_colors.dart';
+import 'edit_reply_comments.dart';
+
 
 class CommentScreen extends StatefulWidget {
   final Task task;
@@ -169,12 +171,7 @@ class _CommentScreenState extends State<CommentScreen> {
     }
   }
 
-  Future<void> replyComment(
-    String commentId,
-    String replyText,
-    String taskId,
-    List<String> mentionedUserIds,
-  ) async {
+  Future<void> replyComment(String commentId, String replyText, String taskId, List<String> mentionedUserIds,) async {
     print("Commentid: $commentId");
     print("ReplyText: $replyText");
     print("TaskId: $taskId");
@@ -318,6 +315,13 @@ class _CommentScreenState extends State<CommentScreen> {
 
   Widget _buildLoadingText() {
     return Text('Loading data...');
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    fetchComments(widget.task.taskId!);
   }
 
   void _deleteComments(String commentId) async {
@@ -624,6 +628,7 @@ class _CommentScreenState extends State<CommentScreen> {
                             replyTextWithoutMentions,
                             widget.task.taskId!,
                             mentionedUserIdsList);
+                        _replyController.clear();
                       },
                     ),
                   ],
@@ -737,13 +742,16 @@ class _CommentScreenState extends State<CommentScreen> {
               SizedBox(
                 width: 1,
               ),
-              _buildIconButton(Icons.edit, () {
-                showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return EditDeleteComments(
-                          comment: comment, task: widget.task);
-                    });
+              _buildIconButton(Icons.edit, () async {
+               final result = await showDialog(context: context, builder: (BuildContext context){
+                  return AlertDialog(
+                    content: EditDeleteComments(task: widget.task,comment: comment,),
+                  );
+                });
+               if(result == true){
+                 setState(() {});
+                 await fetchComments(widget.task.taskId!);
+               }
               }),
               SizedBox(
                 width: 1,
@@ -766,13 +774,13 @@ class _CommentScreenState extends State<CommentScreen> {
               InkWell(
                 onTap: () {
                   setState(() {
-                    comment.showReplies = !comment.showReplies;
+                    showReplies = !showReplies;
                   });
                   print("Show Replies");
                 },
                 child: comment.replies.isNotEmpty
                     ? Text(
-                        comment.showReplies
+                       showReplies
                             ? "Hide comments"
                             : "View ${comment.replies.length} comments",
                         style: TextStyle(
@@ -786,12 +794,10 @@ class _CommentScreenState extends State<CommentScreen> {
             ],
           ),
         ),
-        // Display replies if comment.showReplies is true
-        // Display replies here using ListView.builder or other widgets
-        if (comment.replies.isNotEmpty && showReplies)
+        if (showReplies)
           Padding(
               padding: const EdgeInsets.only(
-                  left: 40.0), // Add indentation for replies
+                  left: 30.0), // Add indentation for replies
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: comment.replies.map((reply) {
@@ -805,13 +811,42 @@ class _CommentScreenState extends State<CommentScreen> {
                       ),
                       backgroundColor: AppColors.primaryColor1,
                     ),
-                    title: Text(
-                      "${reply.replierName}:",
-                      style: TextStyle(
-                        color: AppColors.secondaryColor2,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    title: Row(
+                      children: [
+                        Container(
+                          child: Text(
+                            "${reply.replierName}:",
+                            style: TextStyle(
+                              color: AppColors.secondaryColor2,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Spacer(),
+                        _buildreplyIconButton(Icons.reply, () {
+                          _replyBottomSheet(context, comment);
+                        }),
+                        SizedBox(
+                          width: 1,
+                        ),
+                        _buildIconButton(Icons.edit, () async {
+                          final result = await showDialog(context: context, builder: (BuildContext context){
+                            return AlertDialog(
+                              content: EditReplyComments(task: widget.task,reply: reply,),
+                            );
+                          });
+                          if(result == true){
+                            await fetchComments(widget.task.taskId!);
+                          }
+                        }),
+                        SizedBox(
+                          width: 1,
+                        ),
+                        _buildreplyIconButton(Icons.delete, () {
+                          _deleteComments(reply.replyId);
+                        }),
+                      ],
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -824,7 +859,7 @@ class _CommentScreenState extends State<CommentScreen> {
                         Row(
                           children: [
                             Text(
-                              '${DateFormat('dd MMMM, yyyy hh:mm a').format(DateTime.parse(reply.replyTime))}',
+                              '${DateFormat('dd MMMM, yyyy').format(DateTime.parse(comment.commentTime))}',
                               style: TextStyle(
                                 fontStyle: FontStyle.italic,
                                 fontSize: 8,
@@ -836,131 +871,8 @@ class _CommentScreenState extends State<CommentScreen> {
                     ),
                   );
                 }).toList(),
-              ))
+              )),
       ],
-    );
-  }
-
-  Widget _buildReplyTile(Reply reply) {
-    final taggedUserNames =
-        reply.taggedUsers.map((user) => "@${user['name']}").join(', ');
-
-    final replyTextParts = reply.replyText.split(" ");
-    final textSpans = <InlineSpan>[];
-
-    if (taggedUserNames.isNotEmpty) {
-      textSpans.add(
-        TextSpan(
-          text: taggedUserNames,
-          style: TextStyle(
-            color: AppColors.primaryColor2,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-      textSpans.add(const TextSpan(text: " "));
-    }
-
-    textSpans.addAll(replyTextParts.map((textPart) {
-      if (!textPart.startsWith("@")) {
-        return TextSpan(
-          text: textPart,
-          style: TextStyle(color: AppColors.blackColor),
-        );
-      }
-      return TextSpan(
-        text: textPart + " ",
-        style: TextStyle(
-            color: AppColors.primaryColor2, fontWeight: FontWeight.bold),
-      );
-    }));
-
-    return ListTile(
-      leading: CircleAvatar(
-        child: Text(
-          reply.replierName[0],
-          style: TextStyle(
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: AppColors.primaryColor1,
-      ),
-      title: Row(
-        children: [
-          Container(
-            width: 100,
-            child: RichText(
-              text: TextSpan(
-                text: "${reply.replierName}: ",
-                style: TextStyle(
-                  color: AppColors.secondaryColor2,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-                children: textSpans,
-              ),
-            ),
-          ),
-          Spacer(),
-          _buildIconButton(Icons.reply, () {
-            // _replyBottomSheet(context, reply);
-          }),
-          SizedBox(
-            width: 1,
-          ),
-          _buildIconButton(Icons.edit, () {
-            // showDialog(context: context, builder: (BuildContext context){
-            //   return EditDeleteComments(comment: comment, task: widget.task);
-            // });
-          }),
-          SizedBox(
-            width: 1,
-          ),
-          // _buildIconButton(Icons.more_vert, () async {
-          //   bool edited = await showModalBottomSheet(
-          //     context: context,
-          //     builder: (BuildContext context) {
-          //       return EditDeleteComments(comment: comment, task: widget.task,);
-          //     },
-          //   );
-          //   if(edited == true){
-          //     await fetchComments(widget.task.taskId!);
-          //   }
-          // }),
-          _buildIconButton(Icons.delete, () {
-            // _deleteComments(comment.commentId);
-          }),
-        ],
-      ),
-      subtitle: Row(
-        children: [
-          Text(
-            '${DateFormat('dd MMMM, yyyy').format(DateTime.parse(reply.replyTime))}',
-            style: TextStyle(
-              fontStyle: FontStyle.italic,
-              fontSize: 12,
-            ),
-          ),
-          SizedBox(width: 10),
-          InkWell(
-            onTap: () {
-              setState(() {
-                showReplies = !showReplies;
-              });
-            },
-            child: reply.replyOfReply.length > 0
-                ? Text(
-                    "View ${reply.replyOfReply.length} comments",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                      color: AppColors.secondaryColor2,
-                    ),
-                  )
-                : SizedBox(), // Use SizedBox() to render nothing when there are no replies
-          ),
-        ],
-      ),
     );
   }
 
@@ -970,6 +882,17 @@ class _CommentScreenState extends State<CommentScreen> {
       icon: Icon(
         icon,
         color: AppColors.secondaryColor2,
+      ),
+    );
+  }
+
+  Widget _buildreplyIconButton(IconData icon, VoidCallback onPressed) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(
+        icon,
+        color: AppColors.secondaryColor2,
+        size: 16,
       ),
     );
   }

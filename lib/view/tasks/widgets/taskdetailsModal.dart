@@ -6,7 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../models/task_model.dart';
 import '../../../utils/app_colors.dart';
-import '../editMyTaks.dart';
+import '../editCreatetasks.dart';
+
 
 class TaskDetailsModal extends StatefulWidget {
   final Task task;
@@ -37,23 +38,7 @@ class _TaskDetailsModalState extends State<TaskDetailsModal> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: AppColors.secondaryColor2),
                 ),
                 IconButton(onPressed: () async {
-                  bool edited = await showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text("Edit Task"),
-                        content: EditMyTask(task: widget.task),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop(); // Close the dialog
-                            },
-                            child: Text("Close"),
-                          ),
-                        ],
-                      );
-                    },
-                  );
+                  bool edited = await Navigator.push(context, MaterialPageRoute(builder: (context)=> EditCreatedByTask(task: widget.task)));
                 }, icon: Icon(Icons.edit,color: AppColors.secondaryColor2,))
               ],
             ),

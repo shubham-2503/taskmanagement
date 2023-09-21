@@ -9,16 +9,16 @@ import '../../../models/comment_model.dart';
 import '../../../models/task_model.dart';
 import '../../../utils/app_colors.dart';
 
-class EditDeleteComments extends StatefulWidget {
+class EditReplyComments extends StatefulWidget {
   final Task task;
-  final Comment comment;
-  const EditDeleteComments({super.key, required this.comment, required this.task});
+  final Reply reply;
+  const EditReplyComments({super.key, required this.reply, required this.task});
 
   @override
-  State<EditDeleteComments> createState() => _EditDeleteCommentsState();
+  State<EditReplyComments> createState() => _EditReplyCommentsState();
 }
 
-class _EditDeleteCommentsState extends State<EditDeleteComments> {
+class _EditReplyCommentsState extends State<EditReplyComments> {
   List<String> suggestedUsers = [];
   List<String> mentionedUserIds = [];
   bool showSuggestions = false;
@@ -219,7 +219,7 @@ class _EditDeleteCommentsState extends State<EditDeleteComments> {
     // TODO: implement initState
     super.initState();// Use an empty string as the default value if it's null
     // Initialize the controller with the commentText
-    _editCommentController.text = widget.comment.commentText ?? '';
+    _editCommentController.text = widget.reply.replyText ?? '';
   }
 
   @override
@@ -232,7 +232,7 @@ class _EditDeleteCommentsState extends State<EditDeleteComments> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Edit comments ${widget.comment.commenterName}", style: TextStyle(
+              Text("Edit comments ${widget.reply.replierName}", style: TextStyle(
                 color: AppColors.secondaryColor2,
                 fontWeight: FontWeight.bold,
                 fontSize: 10,
@@ -246,7 +246,7 @@ class _EditDeleteCommentsState extends State<EditDeleteComments> {
           ),
           Wrap(
             spacing: 4,
-            children: widget.comment.taggedUsers.toList().asMap().entries.map((entry) {
+            children: widget.reply.taggedUsers.toList().asMap().entries.map((entry) {
               int index = entry.key;
               Map<String, String> taggedUser = entry.value;
 
@@ -264,17 +264,9 @@ class _EditDeleteCommentsState extends State<EditDeleteComments> {
                     GestureDetector(
                       onTap: () {
                         setState(() {
-                          List<Map<String, String>> updatedTaggedUsers = List.from(widget.comment.taggedUsers);
+                          List<Map<String, String>> updatedTaggedUsers = List.from(widget.reply.taggedUsers);
                           updatedTaggedUsers.removeAt(index);
-                          Reply updatedReply = Reply(
-                            replyId: widget.comment.commentId,
-                            replierName: widget.comment.commenterName,
-                            replyText: widget.comment.commentText,
-                            replyTime: widget.comment.commentTime,
-                            taggedUsers: updatedTaggedUsers,
-                            replyOfReply: widget.comment.replies,
-                          );
-                          print("Reply: ${widget.comment.taggedUsers}");
+                          print("Reply: ${widget.reply.taggedUsers}");
                         });
                       },
                       child: Icon(Icons.close, size: 16),
@@ -285,7 +277,7 @@ class _EditDeleteCommentsState extends State<EditDeleteComments> {
             }).toList(),
           ),
           RoundTextField(hintText: "Edit your comments...",
-          textEditingController: _editCommentController,),
+            textEditingController: _editCommentController,),
           SizedBox(height: 30,),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -297,7 +289,7 @@ class _EditDeleteCommentsState extends State<EditDeleteComments> {
                   onPressed: () {
                     String editedCommentText = _editCommentController.text;
                     List<String> editedTaggedUsers = _getTaggedUserNames(_editCommentController.text);
-                    editComment(widget.comment.commentId, editedCommentText);
+                    editComment(widget.reply.replyId, editedCommentText);
                     Navigator.pop(context);
                   },),
               ),

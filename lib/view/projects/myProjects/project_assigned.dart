@@ -353,6 +353,15 @@ class _AssignedToMeState extends State<AssignedToMe> {
                        } else if (project.status == 'In-Active') {
                          statusColor = Colors.green;
                        }
+                       List<Color> gradientColors = project.active!
+                           ? [
+                         AppColors.primaryColor2.withOpacity(0.3),
+                         AppColors.primaryColor1.withOpacity(0.3),
+                       ]
+                           : [
+                         Colors.grey, // Set the background color to grey for inactive projects
+                         Colors.grey, // Set the background color to grey for inactive projects
+                       ];
                        return Container(
                            margin: const EdgeInsets.symmetric(
                                vertical: 8, horizontal: 0),
@@ -366,10 +375,7 @@ class _AssignedToMeState extends State<AssignedToMe> {
                              padding: const EdgeInsets.symmetric(
                                  vertical: 20, horizontal: 5),
                              decoration: BoxDecoration(
-                               gradient: LinearGradient(colors: [
-                                 AppColors.primaryColor2.withOpacity(0.3),
-                                 AppColors.primaryColor1.withOpacity(0.3)
-                               ]),
+                               gradient: LinearGradient(colors: gradientColors),
                                borderRadius: BorderRadius.circular(15),
                              ),
                              child: Row(
