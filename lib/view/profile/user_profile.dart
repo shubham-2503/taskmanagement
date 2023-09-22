@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:Taskapp/view/profile/addOrganization.dart';
-import 'package:Taskapp/view/profile/widgets/confirmationModal.dart';
 import 'package:Taskapp/view/profile/widgets/edit_organization.dart';
 import 'package:Taskapp/view/subscription/subscriptions.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -233,7 +232,7 @@ class _UserProfileState extends State<UserProfile> {
 
   @override
   Widget build(BuildContext context) {
-    _fetchOrganizationList();
+    // _fetchOrganizationList();
     final organizationProvider = Provider.of<OrganizationProvider>(context);
     final _selectedOrganizationIndex = organizationProvider.selectedOrganizationIndex;
     final _organizationList = organizationProvider.organizationList;

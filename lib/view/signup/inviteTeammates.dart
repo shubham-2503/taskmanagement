@@ -249,7 +249,11 @@ class _InviteTeammatesScreenState extends State<InviteTeammatesScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>DashboardScreen()));
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          DashboardScreen.routeName, // Replace with the route name of your User Dashboard screen
+              (route) => false, // This will remove all routes from the stack
+        );
         return true; // Allow the back action to proceed
       },
       child: Scaffold(

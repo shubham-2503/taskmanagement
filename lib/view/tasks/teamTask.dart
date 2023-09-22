@@ -94,6 +94,17 @@ class _TeamTaskScreenState extends State<TeamTaskScreen> {
           );
         }).toList();
 
+        // Apply a custom sorting function to move "Completed" tasks to the bottom
+        fetchedTasks.sort((a, b) {
+          if (a.status == "Completed" && b.status != "Completed") {
+            return 1; // Move "Completed" task to the bottom
+          } else if (a.status != "Completed" && b.status == "Completed") {
+            return -1; // Keep "Completed" task at the bottom
+          } else {
+            return 0; // Keep the order as is
+          }
+        });
+
         setState(() {
           teamtasks = fetchedTasks;
           filteredteamTasks = fetchedTasks;

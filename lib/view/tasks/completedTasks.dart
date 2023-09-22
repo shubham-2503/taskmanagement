@@ -9,6 +9,7 @@ import '../../common_widgets/round_button.dart';
 import '../../common_widgets/round_textfield.dart';
 import '../../models/task_model.dart';
 import '../../utils/app_colors.dart';
+import '../dashboard/dashboard_screen.dart';
 
 class CompletedTaskScreen extends StatefulWidget {
   const CompletedTaskScreen({super.key});
@@ -243,200 +244,210 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: AppBar(
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: SizedBox(height: 50,width: 150,child:  RoundTextField(
-              onChanged: (query) => filterCompletedTasks(query), hintText: 'Search',
-              icon: "assets/images/search_icon.png",
-            ),),
-          )
-        ],
-      ),
-      body: Container(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 30),
-          child: Column(
-            children: [
-              Text(
-                'Completed Tasks',
-                style: TextStyle(
-                    color: AppColors.secondaryColor2,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: filteredOpenTasks.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    Task task = filteredOpenTasks[index];
-                    // Determine color based on the task's status
-                    Color statusColor = Colors.grey; // Default color
-                    switch (task.status) {
-                      case 'InProgress':
-                        statusColor = Colors.blue;
-                        break;
-                      case 'Completed':
-                        statusColor = Colors.red;
-                        break;
-                      case 'ToDo':
-                        statusColor = AppColors.primaryColor2;
-                        break;
-                      case 'transferred':
-                        statusColor = Colors.black54;
-                        break;
-                    // Add more cases for different statuses if needed
-                    }
-                    // Determine color based on the task's priority
-                    Color priorityColor = Colors.grey; // Default color
-                    switch (task.priority) {
-                      case 'High':
-                        priorityColor = Color(0xFFE1B297);
-                        break;
-                      case 'Low':
-                        priorityColor = Colors.green;
-                        break;
-                      case 'Critical':
-                        priorityColor = Colors.red;
-                        break;
-                      case 'Medium':
-                        priorityColor = Colors.yellow;
-                        break;
-                    // Add more cases for different priorities if needed
-                    }
-                    return Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 0),
-                        padding:
-                        EdgeInsets.symmetric(vertical: 8, horizontal: 7),
-                        decoration: BoxDecoration(
-                          color: AppColors.whiteColor,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 20, horizontal: 5),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          DashboardScreen.routeName, // Replace with the route name of your User Dashboard screen
+              (route) => false, // This will remove all routes from the stack
+        );
+        return true; // Allow the back action to proceed
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        appBar: AppBar(
+          actions: [
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: SizedBox(height: 50,width: 150,child:  RoundTextField(
+                onChanged: (query) => filterCompletedTasks(query), hintText: 'Search',
+                icon: "assets/images/search_icon.png",
+              ),),
+            )
+          ],
+        ),
+        body: Container(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 30),
+            child: Column(
+              children: [
+                Text(
+                  'Completed Tasks',
+                  style: TextStyle(
+                      color: AppColors.secondaryColor2,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredOpenTasks.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      Task task = filteredOpenTasks[index];
+                      // Determine color based on the task's status
+                      Color statusColor = Colors.grey; // Default color
+                      switch (task.status) {
+                        case 'InProgress':
+                          statusColor = Colors.blue;
+                          break;
+                        case 'Completed':
+                          statusColor = Colors.red;
+                          break;
+                        case 'ToDo':
+                          statusColor = AppColors.primaryColor2;
+                          break;
+                        case 'transferred':
+                          statusColor = Colors.black54;
+                          break;
+                      // Add more cases for different statuses if needed
+                      }
+                      // Determine color based on the task's priority
+                      Color priorityColor = Colors.grey; // Default color
+                      switch (task.priority) {
+                        case 'High':
+                          priorityColor = Color(0xFFE1B297);
+                          break;
+                        case 'Low':
+                          priorityColor = Colors.green;
+                          break;
+                        case 'Critical':
+                          priorityColor = Colors.red;
+                          break;
+                        case 'Medium':
+                          priorityColor = Colors.yellow;
+                          break;
+                      // Add more cases for different priorities if needed
+                      }
+                      return Container(
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 0),
+                          padding:
+                          EdgeInsets.symmetric(vertical: 8, horizontal: 7),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              AppColors.primaryColor2.withOpacity(0.3),
-                              AppColors.primaryColor1.withOpacity(0.3)
-                            ]),
+                            color: AppColors.whiteColor,
                             borderRadius: BorderRadius.circular(15),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Task Id: ',
-                                          style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Container(
-                                          width:110,
-                                          child: Text(
-                                            task.uniqueId?? '',
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 20, horizontal: 5),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: [
+                                AppColors.primaryColor2.withOpacity(0.3),
+                                AppColors.primaryColor1.withOpacity(0.3)
+                              ]),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Task Id: ',
+                                            style: TextStyle(
+                                                color: AppColors.blackColor,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          Container(
+                                            width:110,
+                                            child: Text(
+                                              task.uniqueId?? '',
+                                              style: TextStyle(
+                                                  color: AppColors.secondaryColor2,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Task Name: ',
+                                            style: TextStyle(
+                                                color: AppColors.blackColor,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          Container(
+                                            width: 90,
+                                            child: Text(
+                                              task.taskName.length >10
+                                                  ? task.taskName.substring(0,10) + '...'
+                                                  : task.taskName,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                  color: AppColors.secondaryColor2,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Status: ',
+                                            style: TextStyle(
+                                                color: AppColors.blackColor,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          Text(
+                                            task.status,
                                             style: TextStyle(
                                                 color: AppColors.secondaryColor2,
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.bold),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Task Name: ',
-                                          style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Container(
-                                          width: 90,
-                                          child: Text(
-                                            task.taskName.length >10
-                                                ? task.taskName.substring(0,10) + '...'
-                                                : task.taskName,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                                color: AppColors.secondaryColor2,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Status: ',
-                                          style: TextStyle(
-                                              color: AppColors.blackColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        Text(
-                                          task.status,
-                                          style: TextStyle(
-                                              color: AppColors.secondaryColor2,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Spacer(),
-                              IconButton(
-                                icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2,size: 20,),
-                                onPressed: () {
-                                  _showViewTaskDialog(task);
-                                },
-                              ),
-                              SizedBox(width: 1,),// Add a Spacer to push the menu image to the end
-                              IconButton(
-                                icon: Icon(Icons.edit, color: AppColors.secondaryColor2, size: 20,),
-                                onPressed: () async {
-                                  bool? edited = await showModalBottomSheet<bool>(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return TaskDetailsModal(task: task,);
-                                    },
-                                  );
+                                Spacer(),
+                                IconButton(
+                                  icon: Icon(Icons.remove_red_eye, color: AppColors.secondaryColor2,size: 20,),
+                                  onPressed: () {
+                                    _showViewTaskDialog(task);
+                                  },
+                                ),
+                                SizedBox(width: 1,),// Add a Spacer to push the menu image to the end
+                                IconButton(
+                                  icon: Icon(Icons.edit, color: AppColors.secondaryColor2, size: 20,),
+                                  onPressed: () async {
+                                    bool? edited = await showModalBottomSheet<bool>(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return TaskDetailsModal(task: task,);
+                                      },
+                                    );
 
-                                  if (edited == true) {
-                                    await fetchCompletedTasks();
-                                  }
-                                },
-                              ),
-                              SizedBox(width: 1,),
-                              IconButton(
-                                icon: Icon(Icons.delete, color: AppColors.secondaryColor2,size: 20,),
-                                onPressed: () {
-                                  _deleteTask(task.taskId!);
-                                },
-                              ),
-                            ],
-                          ),
-                        ));
-                  },
+                                    if (edited == true) {
+                                      await fetchCompletedTasks();
+                                    }
+                                  },
+                                ),
+                                SizedBox(width: 1,),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: AppColors.secondaryColor2,size: 20,),
+                                  onPressed: () {
+                                    _deleteTask(task.taskId!);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ));
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -483,6 +494,7 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                 )),
                 SizedBox(height: 16),
                 // Display assigned teams if applicable
@@ -507,28 +519,32 @@ class _CompletedTaskScreenState extends State<CompletedTaskScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                       )),
                     ],
                   ),
                 SizedBox(height: 16),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
-                      },
-                    ),
-                    Text(
-                      'TaskDetails',
-                      style: TextStyle(
-                        color: AppColors.secondaryColor2,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                GestureDetector(
+                  onTap: (){
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
+                  },
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
+                        onPressed: () {
+                          // Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
+                        },
                       ),
-                    ),
-                  ],
+                      Text(
+                        'Comments & History',
+                        style: TextStyle(
+                          color: AppColors.secondaryColor2,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

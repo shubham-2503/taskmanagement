@@ -63,8 +63,11 @@ class OrganizationProvider with ChangeNotifier {
     String selectedName = _organizationList[newIndex]["name"];
     _storeSelectedOrgId(selectedOrgId, selectedName);
 
-    // Pop the current screen and push it again to trigger rebuild
-    Navigator.popAndPushNamed(context, DashboardScreen.routeName);
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      DashboardScreen.routeName, // Replace with the route name of your User Dashboard screen
+          (route) => false, // This will remove all routes from the stack
+    );
   }
 
   Future<void> _storeSelectedOrgId(String selectedOrgId,String selectedName) async {

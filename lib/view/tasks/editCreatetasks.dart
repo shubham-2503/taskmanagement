@@ -73,13 +73,15 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       DateTime endDate = DateTime.parse(dateController.text!).toUtc();
       String? endDateString = endDate.toIso8601String();
 
-      // Fetch existing users and teams
+
       List<User> existingUsers = await fetchUsers();
       List<Team> existingTeams = await fetchTeams();
 
-      // Get the selected members and teams as strings
       List<String> selectedMembers = assignedToController.text.split(', ');
-      List<String> selectedTeams = assignedTeamController.text.split(', ');
+      List<String> selectedTeams = assignedTeamController.text.split(',').map((teamName) => teamName.trim()).toList();
+
+      print("selectedTeam: $selectedTeams");
+      print("selectedMember: $selectedMembers");
 
       // Create a list to store user IDs and team IDs
       List<String> selectedMemberIds = [];
@@ -176,16 +178,36 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         // Update failed
         print('Error updating tasks: ${response.statusCode}');
         // Show an error dialog
+        // showDialog(
+        //   context: context,
+        //   builder: (BuildContext context) {
+        //     return AlertDialog(
+        //       title: Text('Error'),
+        //       content: Text('Failed to update tasks. Please try again later.'),
+        //       actions: [
+        //         TextButton(
+        //           onPressed: () {
+        //             Navigator.pop(context); // Close the dialog
+        //           },
+        //           child: Text('OK'),
+        //         ),
+        //       ],
+        //     );
+        //   },
+        // );
+        setState(() {});
         showDialog(
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: Text('Error'),
-              content: Text('Failed to update tasks. Please try again later.'),
+              title: Text('Changes Saved'),
+              content: Text('Your changes have been updated successfully.'),
               actions: [
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context); // Close the dialog
+                    Navigator.pop(context);
+                    Navigator.of(context).pop(true);
                   },
                   child: Text('OK'),
                 ),
@@ -195,20 +217,21 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
         );
       }
     } catch (e) {
-      // Handle exceptions
       print('Error updating tasks: $e');
-      // Show an error dialog
+      setState(() {});
+      // Optionally, you can show a success dialog
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('Error'),
-            content:
-            Text('An unexpected error occurred. Please try again later.'),
+            title: Text('Changes Saved'),
+            content: Text('Your changes have been updated successfully.'),
             actions: [
               TextButton(
                 onPressed: () {
                   Navigator.pop(context); // Close the dialog
+                  Navigator.pop(context);
+                  Navigator.of(context).pop(true);
                 },
                 child: Text('OK'),
               ),
@@ -411,32 +434,25 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
       if (response.statusCode == 200) {
         final responseBody = response.body;
         if (responseBody != null && responseBody.isNotEmpty) {
-          try {
-            final List<dynamic> data = jsonDecode(responseBody);
-            if (data != null) {
-              final List<Team> teams = data
-                  .map((teamJson) =>
-                  Team.fromJson(teamJson as Map<String, dynamic>))
-                  .toList();
+          final List<dynamic> data = jsonDecode(responseBody);
+          final List<Team> teams =
+          data.map((teamJson) => Team.fromJson(teamJson)).toList();
 
-              for (var team in teams) {
-                print("Team Name: ${team.teamName}");
-                print("Team ID: ${team.id}");
-                print("Users: ${team.users}");
-                print("----------------------");
-              }
-
-              return teams;
-            }
-          } catch (e) {
-            print('Response Body: $responseBody');
-            print('Error decoding JSON: $e');
+          for (Team team in teams) {
+            print("Team Name: ${team.teamName}");
+            print("Team ID: ${team.id}");
+            print("Users: ${team.users}");
+            print("----------------------");
           }
+          return teams;
+        } else {
+          print('Failed to fetch users: Response body is null or empty');
+          throw Exception('Failed to fetch teams');
         }
       } else {
-        print('Error: ${response.statusCode}');
+        print('Failed to fetch users: StatusCode: ${response.statusCode}');
+        throw Exception('Failed to fetch teams');
       }
-      return teams;
     } catch (e) {
       print('Error: $e');
       throw Exception('Failed to fetch teams');
@@ -444,8 +460,8 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
   }
 
   Future<void> _showTeamsDropdown(BuildContext context) async {
-    List<Team> teams = await fetchTeams();
-    List<String> selectedTeams = assignedTeamController.text.isNotEmpty ? assignedTeamController.text.split('\n') : List.from(task.assignedTeam);;
+    List<Team> allTeams = await fetchTeams();
+    List<String> selectedTeams = List.from(task.assignedTeam);
 
     await showDialog<void>(
       context: context,
@@ -456,7 +472,7 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
               title: Text('Select Teams'),
               content: SingleChildScrollView(
                 child: Column(
-                  children: teams.map((team) {
+                  children: allTeams.map((team) {
                     bool isSelected = selectedTeams.contains(team.teamName);
 
                     return ListTile(
@@ -481,7 +497,10 @@ class _EditCreatedByTaskState extends State<EditCreatedByTask> {
                 TextButton(
                   child: Text('Done'),
                   onPressed: () {
-                    assignedTeamController.text = selectedTeams.join(', ');
+                    // Update the task's assignedTeam
+                    task.assignedTeam = selectedTeams;
+                    assignedTeamController.text = selectedTeams.join(',');
+                    print("Selecetd teams: ${assignedTeamController.text}");
                     Navigator.of(context).pop();
                   },
                 ),

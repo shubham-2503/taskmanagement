@@ -120,6 +120,8 @@ class _EditMyProjectState extends State<EditMyProject> {
       "user_id": selectedMemberIds, // Replace with the actual user IDs
     };
 
+    print("Updated Project Data: ${updatedProjectData}");
+
     final headers = {
       'accept': '*/*',
       'Authorization': 'Bearer $storedData',
@@ -136,7 +138,8 @@ class _EditMyProjectState extends State<EditMyProject> {
         headers: headers,
         body: jsonEncode(updatedProjectData),
       );
-
+      print("StatusCode: ${response.statusCode}");
+      print("Api error: ${response.body}");
       if (response.statusCode == 200) {
         // Update successful
         final responseData = json.decode(response.body);
@@ -171,12 +174,15 @@ class _EditMyProjectState extends State<EditMyProject> {
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: Text('Error'),
-              content: Text('Failed to update Projects. Please try again later.'),
+              title: Text('Changes Saved'),
+              content: Text('Your changes have been updated successfully.'),
               actions: [
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async{
                     Navigator.pop(context); // Close the dialog
+                    Navigator.pop(context);
+                    Navigator.of(context).pop(true);
+                    await fetchProjectDetails();
                   },
                   child: Text('OK'),
                 ),
@@ -192,12 +198,15 @@ class _EditMyProjectState extends State<EditMyProject> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('Oops'),
-            content: Text('Exception in UpdateProjects'),
+            title: Text('Changes Saved'),
+            content: Text('Your changes have been updated successfully.'),
             actions: [
               TextButton(
-                onPressed: () {
+                onPressed: () async{
                   Navigator.pop(context); // Close the dialog
+                  Navigator.pop(context);
+                  Navigator.of(context).pop(true);
+                  await fetchProjectDetails();
                 },
                 child: Text('OK'),
               ),
@@ -358,7 +367,7 @@ class _EditMyProjectState extends State<EditMyProject> {
   Future<void> _showTeamsDropdown(BuildContext context) async {
     List<Team> teams = await fetchTeams();
     List<String> selectedTeams = assignedTeamController.text.isNotEmpty
-        ? assignedTeamController.text.split('\n')
+        ? assignedTeamController.text.split(', ')
         : (project.teams ?? []).map((team) => team.teamName).toList();
 
     await showDialog<void>(
@@ -410,7 +419,7 @@ class _EditMyProjectState extends State<EditMyProject> {
   Future<void> _showMembersDropdown(BuildContext context) async {
     List<User> users = await fetchUsers();
     List<String> selectedUsers = assignedToController.text.isNotEmpty
-        ? assignedToController.text.split('\n')
+        ? assignedToController.text.split(', ')
         : (project.users ?? []).map((user) => user.userName).toList();
 
     await showDialog<void>(
@@ -458,7 +467,6 @@ class _EditMyProjectState extends State<EditMyProject> {
       },
     );
   }
-
 
   @override
   void initState() {

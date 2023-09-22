@@ -33,6 +33,13 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
   late List<Project> filteredprojects = [];
   int projectCount = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    print("InitState is called");
+    fetchTeamProjects();
+  }
+
   Future<void> fetchTeamProjects() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -84,7 +91,7 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
             dueDate: projectData['due_Date'] is bool ? null : projectData['due_Date'],
             teams: teams,
             users: users,
-            active: projectData['active'] ?? " ",
+            active: projectData['active'] ?? false,
           );
         }).toList();
 
@@ -92,47 +99,35 @@ class _MyTeamProjectScreenState extends State<MyTeamProjectScreen> {
         final projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
         projectProvider.updateProjects(fetchedProjects);
 
-        // Update filtered projects as well
-        setState(() {
-          projects = List.from(fetchedProjects);
-          filteredprojects = List.from(fetchedProjects);
-        });
-
         // Store the projectId locally using SharedPreferences
         final List<String> projectIds = fetchedProjects.map((project) => project.id).toList();
         await prefs.setStringList('projectIds', projectIds);
         print("ProjectID: $projectIds");
+        // Manually reorder the projects list to move inactive projects to the bottom
+
+        final activeProjects = fetchedProjects.where((project) => project.active == true).toList();
+
+        // Apply a custom sorting function to move "Completed" projects to the bottom
+        activeProjects.sort((a, b) {
+          if (a.status == "Completed" && b.status != "Completed") {
+            return 1; // Move "Completed" project to the bottom
+          } else if (a.status != "Completed" && b.status == "Completed") {
+            return -1; // Keep "Completed" project at the bottom
+          } else {
+            return 0; // Keep the order as is
+          }
+        });
+        final inactiveProjects = fetchedProjects.where((project) => project.active == false).toList();
+        setState(() {
+          projects = [...activeProjects, ...fetchedProjects.where((project) => project.active == false).toList(), ...inactiveProjects];
+          filteredprojects = List.from(projects);
+        });
+
       } else {
         print('Error fetching projects: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching projects: $e');
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    print("InitState is called");
-    fetchTeamProjects();
-    projects.sort((a, b) {
-      return _getStatusOrder(a.status).compareTo(_getStatusOrder(b.status));
-    });
-  }
-
-  int _getStatusOrder(String status) {
-    // Define the order of statuses based on your requirements
-    switch (status) {
-      case 'ToDo':
-        return 1;
-      case 'InProgress':
-        return 2;
-      case 'Completed':
-        return 3;
-      case 'Transferred':
-        return 4;
-      default:
-        return 5;
     }
   }
 

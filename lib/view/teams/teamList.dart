@@ -705,18 +705,17 @@
 //     );
 //   }
 // }
+import 'dart:async';
 import 'dart:convert';
-import 'package:Taskapp/common_widgets/round_button.dart';
 import 'package:Taskapp/common_widgets/round_textfield.dart';
 import 'package:Taskapp/view/teams/editTeam.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-
 import '../../models/fetch_user_model.dart';
 import '../../models/teams.dart';
 import '../../utils/app_colors.dart';
+import '../dashboard/dashboard_screen.dart';
 import 'createTeams.dart';
 
 class TeamsFormedScreen extends StatefulWidget {
@@ -729,6 +728,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
   List<User> _selectedUsers = [];
   final TextEditingController _searchController = TextEditingController();
   List<MyTeam> _filteredTeams = [];
+  late Timer _timer;
 
 
   void initState() {
@@ -763,8 +763,6 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
       });
     }
   }
-
-
 
   Future<List<String>> fetchUserNames() async {
     try {
@@ -935,6 +933,7 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
+              Navigator.pop(context,true);
             },
             child: Text("Ok"),
           ),
@@ -1004,7 +1003,6 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
       throw Exception('Failed to fetch users');
     }
   }
-
 
   void _deleteTeam(String teamId,int index) async {
     try {
@@ -1108,174 +1106,185 @@ class _TeamsFormedScreenState extends State<TeamsFormedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Text('My Teams',style:TextStyle(fontSize:19)),
-        ],
-      ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: SizedBox(height: 50,width: 150,child:  RoundTextField(
-              onChanged: (query) {
-                searchTeams(query); // Step 3: Call filterTeams on text change
-              },
-              hintText: 'Search',
-              icon: "assets/images/search_icon.png",
-            ),),
-          )
-        ],),
-      body: Container(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  // itemCount: _teams.length,
-                  itemCount: _filteredTeams.length,
-                  itemBuilder: (context, index) {
-                    // MyTeam team = _teams[index];
-                    MyTeam team = _filteredTeams[index];
-                    return Stack(
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 2),
-                          padding: EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 9),
-                          decoration: BoxDecoration(
-                            color: AppColors.whiteColor,
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 15, horizontal: 20),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          DashboardScreen.routeName, // Replace with the route name of your User Dashboard screen
+              (route) => false, // This will remove all routes from the stack
+        );
+        return true; // Allow the back action to proceed
+      },
+      child: Scaffold(
+        appBar: AppBar(title: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Text('My Teams',style:TextStyle(fontSize:19)),
+          ],
+        ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: SizedBox(height: 50,width: 150,child:  RoundTextField(
+                onChanged: (query) {
+                  searchTeams(query); // Step 3: Call filterTeams on text change
+                },
+                hintText: 'Search',
+                icon: "assets/images/search_icon.png",
+              ),),
+            )
+          ],),
+        body: Container(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    // itemCount: _teams.length,
+                    itemCount: _filteredTeams.length,
+                    itemBuilder: (context, index) {
+                      // MyTeam team = _teams[index];
+                      MyTeam team = _filteredTeams[index];
+                      return Stack(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 2),
+                            padding: EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 9),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [
-                                AppColors.primaryColor2.withOpacity(0.3),
-                                AppColors.primaryColor1.withOpacity(0.3)
-                              ]),
+                              color: AppColors.whiteColor,
                               borderRadius: BorderRadius.circular(15),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        width: 150,
-                                        child: Text(
-                                          team.teamName.length >30
-                                              ? team.teamName.substring(0,30) + '...'
-                                              : team.teamName,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                              color: AppColors.secondaryColor2,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 15, horizontal: 20),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(colors: [
+                                  AppColors.primaryColor2.withOpacity(0.3),
+                                  AppColors.primaryColor1.withOpacity(0.3)
+                                ]),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          width: 150,
+                                          child: Text(
+                                            team.teamName.length >30
+                                                ? team.teamName.substring(0,30) + '...'
+                                                : team.teamName,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                                color: AppColors.secondaryColor2,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold),
+                                          ),
                                         ),
-                                      ),
-                                      SizedBox(
-                                        height: 10,
-                                      ),
-                                      Row(
-                                        mainAxisAlignment:
-                                        MainAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'No. of Members: ',
-                                            style: TextStyle(
-                                                color: AppColors
-                                                    .blackColor,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight
-                                                    .bold),
-                                          ),
-                                          Text(
-                                            team.users!.length.toString(),
-                                            style: TextStyle(
-                                                color:
-                                                AppColors.secondaryColor2,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight
-                                                    .bold),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                        SizedBox(
+                                          height: 10,
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'No. of Members: ',
+                                              style: TextStyle(
+                                                  color: AppColors
+                                                      .blackColor,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight
+                                                      .bold),
+                                            ),
+                                            Text(
+                                              team.users!.length.toString(),
+                                              style: TextStyle(
+                                                  color:
+                                                  AppColors.secondaryColor2,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight
+                                                      .bold),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                SizedBox(
-                                  height: 20,
-                                ),
+                                  SizedBox(
+                                    height: 20,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 30,
+                            right: 8,
+                            child: Column(
+                              children: [
+                                Row(children: [
+                                  IconButton(
+                                      onPressed: () async {
+                                        _showViewTeamDialog(team); // Pass both team and userNames
+                                      },
+                                      icon: Icon(
+                                        Icons.remove_red_eye,
+                                        color: AppColors.secondaryColor2,
+                                      )),
+                                  IconButton(
+                                    onPressed: () async {
+                                      bool? changesMade = await showModalBottomSheet<bool>(
+                                        context: context,
+                                        builder: (context) {
+                                          return EditTeamPage(team: team,);
+                                        },
+                                      );
+                                      if (changesMade == true) {
+                                        setState(() {
+                                          fetchMyTeams();
+                                        });
+                                        await fetchMyTeams();
+                                      }
+                                    },
+                                    icon: Icon(Icons.edit, color: AppColors.secondaryColor2),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.delete,
+                                      color: AppColors.secondaryColor2,
+                                    ),
+                                    onPressed: () {
+                                      _deleteTeam(team.teamId!,index);
+                                    },
+                                  ),
+                                ]),
                               ],
                             ),
                           ),
-                        ),
-                        Positioned(
-                          top: 30,
-                          right: 8,
-                          child: Column(
-                            children: [
-                              Row(children: [
-                                IconButton(
-                                    onPressed: () async {
-                                      _showViewTeamDialog(team); // Pass both team and userNames
-                                    },
-                                    icon: Icon(
-                                      Icons.remove_red_eye,
-                                      color: AppColors.secondaryColor2,
-                                    )),
-                                IconButton(
-                                  onPressed: () async {
-                                    bool? changesMade = await showModalBottomSheet<bool>(
-                                      context: context,
-                                      builder: (context) {
-                                        return EditTeamPage(team: team,);
-                                      },
-                                    );
-
-                                    // If changes were made, fetch teams again
-                                    if (changesMade == true) {
-                                      await fetchMyTeams();
-                                    }
-                                  },
-                                  icon: Icon(Icons.edit, color: AppColors.secondaryColor2),
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.delete,
-                                    color: AppColors.secondaryColor2,
-                                  ),
-                                  onPressed: () {
-                                    _deleteTeam(team.teamId!,index);
-                                  },
-                                ),
-                              ]),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _navigateToCreateTeamScreen();
-        },
-        child: Icon(Icons.add),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            _navigateToCreateTeamScreen();
+          },
+          child: Icon(Icons.add),
+        ),
       ),
     );
   }

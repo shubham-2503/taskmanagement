@@ -225,92 +225,99 @@ class _EditDeleteCommentsState extends State<EditDeleteComments> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
+      body: Padding(
+        padding: const EdgeInsets.only(top: 70,bottom: 40),
+        child: Center(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Text("Edit comments ${widget.comment.commenterName}", style: TextStyle(
-                color: AppColors.secondaryColor2,
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
-              ),),
-              IconButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  icon: Icon(Icons.close,size: 15,)),
-            ],
-          ),
-          Wrap(
-            spacing: 4,
-            children: widget.comment.taggedUsers.toList().asMap().entries.map((entry) {
-              int index = entry.key;
-              Map<String, String> taggedUser = entry.value;
-
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(taggedUser['name']!),
-                    SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          List<Map<String, String>> updatedTaggedUsers = List.from(widget.comment.taggedUsers);
-                          updatedTaggedUsers.removeAt(index);
-                          Reply updatedReply = Reply(
-                            replyId: widget.comment.commentId,
-                            replierName: widget.comment.commenterName,
-                            replyText: widget.comment.commentText,
-                            replyTime: widget.comment.commentTime,
-                            taggedUsers: updatedTaggedUsers,
-                            replyOfReply: widget.comment.replies,
-                          );
-                          print("Reply: ${widget.comment.taggedUsers}");
-                        });
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text("Edit comments ${widget.comment.commenterName}", style: TextStyle(
+                    color: AppColors.secondaryColor2,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),),
+                  IconButton(
+                      onPressed: () {
+                        Navigator.pop(context);
                       },
-                      child: Icon(Icons.close, size: 16),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-          RoundTextField(hintText: "Edit your comments...",
-          textEditingController: _editCommentController,),
-          SizedBox(height: 30,),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              SizedBox(
-                height: 20,
-                width: 80,
-                child: RoundButton(title: "Save",
-                  onPressed: () {
-                    String editedCommentText = _editCommentController.text;
-                    List<String> editedTaggedUsers = _getTaggedUserNames(_editCommentController.text);
-                    editComment(widget.comment.commentId, editedCommentText);
-                    Navigator.pop(context);
-                  },),
+                      icon: Icon(Icons.close,size: 15,)),
+                ],
               ),
-              SizedBox(
-                height: 20,
-                width: 80,
-                child: RoundButton(title: "cancel", onPressed: (){
-                  Navigator.pop(context);
-                }),
-              )
+              Wrap(
+                spacing: 4,
+                children: widget.comment.taggedUsers.toList().asMap().entries.map((entry) {
+                  int index = entry.key;
+                  Map<String, String> taggedUser = entry.value;
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(taggedUser['name']!),
+                        SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              List<Map<String, String>> updatedTaggedUsers = List.from(widget.comment.taggedUsers);
+                              updatedTaggedUsers.removeAt(index);
+                              Reply updatedReply = Reply(
+                                replyId: widget.comment.commentId,
+                                replierName: widget.comment.commenterName,
+                                replyText: widget.comment.commentText,
+                                replyTime: widget.comment.commentTime,
+                                taggedUsers: updatedTaggedUsers,
+                                replyOfReply: widget.comment.replies,
+                              );
+                              print("Reply: ${widget.comment.taggedUsers}");
+                            });
+                          },
+                          child: Icon(Icons.close, size: 16),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+              RoundTextField(hintText: "Edit your comments...",
+              textEditingController: _editCommentController,),
+              SizedBox(height: 30,),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  SizedBox(
+                    height: 20,
+                    width: 80,
+                    child: RoundButton(title: "Save",
+                      onPressed: () async{
+                        String editedCommentText = _editCommentController.text;
+                        List<String> editedTaggedUsers = _getTaggedUserNames(_editCommentController.text);
+                        editComment(widget.comment.commentId, editedCommentText);
+                        Navigator.pop(context,true);
+                        await fetchComments(widget.task.taskId!);
+                      },),
+                  ),
+                  SizedBox(
+                    height: 20,
+                    width: 80,
+                    child: RoundButton(title: "cancel", onPressed: (){
+                      Navigator.pop(context);
+                    }),
+                  )
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

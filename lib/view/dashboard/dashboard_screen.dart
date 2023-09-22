@@ -72,78 +72,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final sessionProvider = Provider.of<SessionProvider>(context);
     sessionProvider.checkLoginStatus();
-    return Scaffold(
-      backgroundColor: AppColors.whiteColor,
-      body: IndexedStack(
-        index: selectTab,
-        children: _widgetOptions,
-      ),
-      bottomNavigationBar: BottomAppBar(
-        height: Platform.isIOS ? 70 : 65,
-        color: Colors.transparent,
-        padding: const EdgeInsets.all(0),
-        child: Container(
+    return WillPopScope(
+      onWillPop: () async {
+        // Check if you are on the DashboardScreen
+        if (selectTab == 0) {
+          // You are on the DashboardScreen, so exit the app
+          exit(0); // This will exit the app
+          return true; // Return true to prevent default navigation behavior
+        } else {
+          // You are on another screen, so allow the default navigation behavior
+          return true;
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.whiteColor,
+        body: IndexedStack(
+          index: selectTab,
+          children: _widgetOptions,
+        ),
+        bottomNavigationBar: BottomAppBar(
           height: Platform.isIOS ? 70 : 65,
-          decoration: const BoxDecoration(
-              color: AppColors.whiteColor,
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 2,
-                    offset: Offset(0, -2))
-              ]),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              TabButton(
-                title: "Home",
-                  icon: "assets/images/home.png",
-                  selectIcon: "assets/images/home_select.png",
-                  isActive: selectTab == 0,
-                  onTap: () {
-                    if (mounted) {
-                      setState(() {
-                        selectTab = 0;
-                      });
-                    }
-                  }),
-              TabButton(
-                  title: "My Spaces",
-                  icon: "assets/images/folders.png",
-                  selectIcon: "assets/images/folders.png",
-                  isActive: selectTab == 1,
-                  onTap: () {
-                    if (mounted) {
-                      setState(() {
-                        selectTab = 1;
-                      });
-                    }
-                  }),
-              TabButton(
-                  title: "Reports",
-                  icon: "assets/icons/activity_icon.png",
-                  selectIcon: "assets/icons/activity_select_icon.png",
-                  isActive: selectTab == 2,
-                  onTap: () {
-                    if (mounted) {
-                      setState(() {
-                        selectTab = 2;
-                      });
-                    }
-                  }),
-              TabButton(
-                  title: "User Profile",
-                  icon: "assets/images/account.png",
-                  selectIcon: "assets/images/account_select.png",
-                  isActive: selectTab == 3,
-                  onTap: () {
-                    if (mounted) {
-                      setState(() {
-                        selectTab = 3;
-                      });
-                    }
-                  }),
-            ],
+          color: Colors.transparent,
+          padding: const EdgeInsets.all(0),
+          child: Container(
+            height: Platform.isIOS ? 70 : 65,
+            decoration: const BoxDecoration(
+                color: AppColors.whiteColor,
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 2,
+                      offset: Offset(0, -2))
+                ]),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TabButton(
+                  title: "Home",
+                    icon: "assets/images/home.png",
+                    selectIcon: "assets/images/home_select.png",
+                    isActive: selectTab == 0,
+                    onTap: () {
+                      if (mounted) {
+                        setState(() {
+                          selectTab = 0;
+                        });
+                      }
+                    }),
+                TabButton(
+                    title: "My Spaces",
+                    icon: "assets/images/folders.png",
+                    selectIcon: "assets/images/folders.png",
+                    isActive: selectTab == 1,
+                    onTap: () {
+                      if (mounted) {
+                        setState(() {
+                          selectTab = 1;
+                        });
+                      }
+                    }),
+                TabButton(
+                    title: "Reports",
+                    icon: "assets/icons/activity_icon.png",
+                    selectIcon: "assets/icons/activity_select_icon.png",
+                    isActive: selectTab == 2,
+                    onTap: () {
+                      if (mounted) {
+                        setState(() {
+                          selectTab = 2;
+                        });
+                      }
+                    }),
+                TabButton(
+                    title: "User Profile",
+                    icon: "assets/images/account.png",
+                    selectIcon: "assets/images/account_select.png",
+                    isActive: selectTab == 3,
+                    onTap: () {
+                      if (mounted) {
+                        setState(() {
+                          selectTab = 3;
+                        });
+                      }
+                    }),
+              ],
+            ),
           ),
         ),
       ),

@@ -888,10 +888,10 @@ class _MisTaskCreationScreenState extends State<MisTaskCreationScreen> {
       print("StatusCode: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        TaskCountManager taskCountManager = TaskCountManager(prefs);
-        await taskCountManager.incrementTaskCount();
-        await taskCountManager.fetchTotalTaskCount();
-        await taskCountManager.updateTaskCount();
+        // TaskCountManager taskCountManager = TaskCountManager(prefs);
+        // await taskCountManager.incrementTaskCount();
+        // await taskCountManager.fetchTotalTaskCount();
+        // await taskCountManager.updateTaskCount();
         showDialog(
           context: context,
           builder: (BuildContext context) {

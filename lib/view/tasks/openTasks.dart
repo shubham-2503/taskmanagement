@@ -229,7 +229,11 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>DashboardScreen()));
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          DashboardScreen.routeName, // Replace with the route name of your User Dashboard screen
+              (route) => false, // This will remove all routes from the stack
+        );
         return true; // Allow the back action to proceed
       },
       child: Scaffold(
@@ -472,6 +476,7 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                 )),
                 SizedBox(height: 16),
                 // Display assigned teams if applicable
@@ -496,28 +501,32 @@ class _OpenTaskScreenState extends State<OpenTaskScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                       )),
                     ],
                   ),
                 SizedBox(height: 16),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
-                      },
-                    ),
-                    Text(
-                      'TaskDetails',
-                      style: TextStyle(
-                        color: AppColors.secondaryColor2,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                GestureDetector(
+                  onTap: (){
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
+                  },
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
+                        onPressed: () {
+                          // Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
+                        },
                       ),
-                    ),
-                  ],
+                      Text(
+                        'Comments & History',
+                        style: TextStyle(
+                          color: AppColors.secondaryColor2,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

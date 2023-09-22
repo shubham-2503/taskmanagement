@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:Taskapp/common_widgets/round_textfield.dart';
 import 'package:Taskapp/models/teams.dart';
+import 'package:Taskapp/view/teams/teamList.dart';
 import 'package:http/http.dart' as http;
-import 'package:Taskapp/common_widgets/round_button.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/fetch_user_model.dart';
@@ -29,6 +29,62 @@ class _EditTeamPageState extends State<EditTeamPage> {
     _usercontroller = TextEditingController(
       text: widget.team.users != null ? widget.team.users!.join(", ") : "",
     );
+  }
+
+  Future<void> fetchMyTeams() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final storedData = prefs.getString('jwtToken');
+      String? orgId = prefs.getString("selectedOrgId"); // Get the selected organization ID
+
+      if (orgId == null) {
+        // If the user hasn't switched organizations, use the organization ID obtained during login time
+        orgId = prefs.getString('org_id') ?? "";
+      }
+
+      print("OrgId: $orgId");
+
+      if (orgId == null) {
+        throw Exception('orgId not found locally');
+      }
+
+      final response = await http.get(
+        Uri.parse('http://43.205.97.189:8000/api/Team/teamUsers?org_id=$orgId'),
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $storedData',
+        },
+      );
+
+      print("Stored: $storedData");
+      print("API response: ${response.body}");
+      print("StatusCode: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> responseData = json.decode(response.body);
+        final List<MyTeam> teams = responseData.map((teamJson) {
+          return MyTeam.fromJson(teamJson as Map<String, dynamic>);
+        }).toList();
+
+
+        for (MyTeam team in teams) {
+          print('Team Name: ${team.teamName}');
+          print('Users: ${team.users}');
+          print('Total Members: ${team.users!.length}');
+        }
+
+        setState(() {
+          _teams = teams; // Update the _teams list with the fetched data
+          // Set _filteredTeams to a copy of _teams
+        });
+      } else {
+        print('Failed to fetch teams');
+        throw Exception('Failed to fetch teams');
+      }
+    } catch (e) {
+      print('Error: $e');
+      throw Exception('Failed to fetch teams');
+    }
   }
 
   void dispose(){
@@ -78,6 +134,8 @@ class _EditTeamPageState extends State<EditTeamPage> {
       print("Decode Data: $requestBody");
 
       if (response.statusCode == 200) {
+        await fetchMyTeams();
+        setState(() {});
         String message = "Team updated successfully name.";
         _showDialog(message);
         print('Team updated successfully with name.');
@@ -217,7 +275,18 @@ class _EditTeamPageState extends State<EditTeamPage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context, true);
+              Navigator.pushReplacement(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (_, __, ___) =>
+                        TeamsFormedScreen(), // Replace with your screen widget
+                    transitionsBuilder: (_, anim, __, child) {
+                      return FadeTransition(
+                        opacity: anim,
+                        child: child,
+                      );
+                    },
+                  ));
             },
             child: Text("Ok"),
           ),
@@ -315,12 +384,9 @@ class _EditTeamPageState extends State<EditTeamPage> {
     String newTeamName = _nameController.text;
     await updateTeamNameAndMembers(widget.team.teamId!, newTeamName, selectedMemberIds);
 
-    setState(() {
+    setState(() async {
       _isLoading = false; // Set loading state to false
     });
-
-    Navigator.pop(context, true);
-    Navigator.pop(context, true);
   }
 
   @override

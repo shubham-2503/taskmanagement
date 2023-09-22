@@ -96,6 +96,17 @@ class _CreatedByMeState extends State<CreatedByMe> {
           );
         }).toList();
 
+        // Apply a custom sorting function to move "Completed" tasks to the bottom
+        fetchedTasks.sort((a, b) {
+          if (a.status == "Completed" && b.status != "Completed") {
+            return 1; // Move "Completed" task to the bottom
+          } else if (a.status != "Completed" && b.status == "Completed") {
+            return -1; // Keep "Completed" task at the bottom
+          } else {
+            return 0; // Keep the order as is
+          }
+        });
+
         setState(() {
           ByMytasks = fetchedTasks;
           filteredTasks = fetchedTasks;
@@ -514,6 +525,7 @@ class _CreatedByMeState extends State<CreatedByMe> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                 )),
                 SizedBox(height: 16),
                 // Display assigned teams if applicable
@@ -538,28 +550,32 @@ class _CreatedByMeState extends State<CreatedByMe> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                       )),
                     ],
                   ),
                 SizedBox(height: 16),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
-                      },
-                    ),
-                    Text(
-                      'TaskDetails',
-                      style: TextStyle(
-                        color: AppColors.secondaryColor2,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                GestureDetector(
+                  onTap: (){
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
+                  },
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.remove_red_eye, color: AppColors.primaryColor2),
+                        onPressed: () {
+                          // Navigator.push(context, MaterialPageRoute(builder: (context)=>TaskDetailsScreen(task: task)));
+                        },
                       ),
-                    ),
-                  ],
+                      Text(
+                        'Comments & History',
+                        style: TextStyle(
+                          color: AppColors.secondaryColor2,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -568,6 +584,7 @@ class _CreatedByMeState extends State<CreatedByMe> {
       },
     );
   }
+
 }
 
 

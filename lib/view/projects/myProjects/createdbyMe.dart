@@ -95,12 +95,24 @@ class _CreatedbyMeState extends State<CreatedbyMe> {
         final projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
         projectProvider.updateProjects(fetchedProjects);
 
-        // Update filtered projects as well
-        setState(() {
-          projects = List.from(fetchedProjects);
-          filteredprojects = List.from(fetchedProjects);
-        });
 
+        final activeProjects = fetchedProjects.where((project) => project.active == true).toList();
+
+        // Apply a custom sorting function to move "Completed" projects to the bottom
+        activeProjects.sort((a, b) {
+          if (a.status == "Completed" && b.status != "Completed") {
+            return 1; // Move "Completed" project to the bottom
+          } else if (a.status != "Completed" && b.status == "Completed") {
+            return -1; // Keep "Completed" project at the bottom
+          } else {
+            return 0; // Keep the order as is
+          }
+        });
+        final inactiveProjects = fetchedProjects.where((project) => project.active == false).toList();
+        setState(() {
+          projects = [...activeProjects, ...fetchedProjects.where((project) => project.active == false).toList(), ...inactiveProjects];
+          filteredprojects = List.from(projects);
+        });
         // Store the projectId locally using SharedPreferences
         final List<String> projectIds = fetchedProjects.map((project) => project.id).toList();
         await prefs.setStringList('projectIds', projectIds);

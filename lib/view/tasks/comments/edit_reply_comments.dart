@@ -225,84 +225,87 @@ class _EditReplyCommentsState extends State<EditReplyComments> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text("Edit comments ${widget.reply.replierName}", style: TextStyle(
-                color: AppColors.secondaryColor2,
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
-              ),),
-              IconButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  icon: Icon(Icons.close,size: 15,)),
-            ],
-          ),
-          Wrap(
-            spacing: 4,
-            children: widget.reply.taggedUsers.toList().asMap().entries.map((entry) {
-              int index = entry.key;
-              Map<String, String> taggedUser = entry.value;
+      body: Padding(
+        padding: const EdgeInsets.only(top: 70),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text("Edit comments ${widget.reply.replierName}", style: TextStyle(
+                  color: AppColors.secondaryColor2,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                ),),
+                IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: Icon(Icons.close,size: 15,)),
+              ],
+            ),
+            Wrap(
+              spacing: 4,
+              children: widget.reply.taggedUsers.toList().asMap().entries.map((entry) {
+                int index = entry.key;
+                Map<String, String> taggedUser = entry.value;
 
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(taggedUser['name']!),
+                      SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            List<Map<String, String>> updatedTaggedUsers = List.from(widget.reply.taggedUsers);
+                            updatedTaggedUsers.removeAt(index);
+                            print("Reply: ${widget.reply.taggedUsers}");
+                          });
+                        },
+                        child: Icon(Icons.close, size: 16),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            RoundTextField(hintText: "Edit your comments...",
+              textEditingController: _editCommentController,),
+            SizedBox(height: 30,),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                SizedBox(
+                  height: 20,
+                  width: 80,
+                  child: RoundButton(title: "Save",
+                    onPressed: () {
+                      String editedCommentText = _editCommentController.text;
+                      List<String> editedTaggedUsers = _getTaggedUserNames(_editCommentController.text);
+                      editComment(widget.reply.replyId, editedCommentText);
+                      Navigator.pop(context);
+                    },),
                 ),
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(taggedUser['name']!),
-                    SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          List<Map<String, String>> updatedTaggedUsers = List.from(widget.reply.taggedUsers);
-                          updatedTaggedUsers.removeAt(index);
-                          print("Reply: ${widget.reply.taggedUsers}");
-                        });
-                      },
-                      child: Icon(Icons.close, size: 16),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-          RoundTextField(hintText: "Edit your comments...",
-            textEditingController: _editCommentController,),
-          SizedBox(height: 30,),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              SizedBox(
-                height: 20,
-                width: 80,
-                child: RoundButton(title: "Save",
-                  onPressed: () {
-                    String editedCommentText = _editCommentController.text;
-                    List<String> editedTaggedUsers = _getTaggedUserNames(_editCommentController.text);
-                    editComment(widget.reply.replyId, editedCommentText);
+                SizedBox(
+                  height: 20,
+                  width: 80,
+                  child: RoundButton(title: "cancel", onPressed: (){
                     Navigator.pop(context);
-                  },),
-              ),
-              SizedBox(
-                height: 20,
-                width: 80,
-                child: RoundButton(title: "cancel", onPressed: (){
-                  Navigator.pop(context);
-                }),
-              )
-            ],
-          ),
-        ],
+                  }),
+                )
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
