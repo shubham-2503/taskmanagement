@@ -2,20 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:Taskapp/Providers/project_provider.dart';
 import 'package:Taskapp/view/projects/myProjects/editMyProjects.dart';
-import 'package:Taskapp/view/projects/projectDetailsScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import '../../../common_widgets/round_button.dart';
 import '../../../common_widgets/round_textfield.dart';
 import '../../../models/project_model.dart';
 import '../../../models/project_team_model.dart';
-import '../../../models/task_model.dart';
 import '../../../models/user.dart';
 import '../../../utils/app_colors.dart';
 import 'package:intl/intl.dart';
-
 import '../projectCreation.dart';
 
 class MyTeamProjectScreen extends StatefulWidget {
